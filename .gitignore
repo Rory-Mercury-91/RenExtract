@@ -6,7 +6,8 @@
 01_Temporaires/
 02_Sauvegardes/
 03_Rapports/
-04_Configs/
+04_Configs/*
+!04_Configs/.gitkeep
 
 # ============================================
 # PYTHON
@@ -73,3 +74,4 @@ desktop.ini
 # SCRIPTS DE DÉVELOPPEMENT LOCAL
 # ============================================
 clean_project.py
+create_windows_exe.py
