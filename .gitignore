@@ -1,0 +1,75 @@
+# RenExtract - Fichiers à ignorer
+
+# ============================================
+# DOSSIERS DE TRAVAIL (générés par l'app)
+# ============================================
+01_Temporaires/
+02_Sauvegardes/
+03_Rapports/
+04_Configs/
+
+# ============================================
+# PYTHON
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+env/
+
+# ============================================
+# PYINSTALLER
+# ============================================
+build/
+dist/
+*.spec
+build_number.txt
+
+# ============================================
+# EXÉCUTABLES ET INSTALLATEURS
+# ============================================
+# Exécutables générés
+*.exe
+
+# Installateur Python pour compilation locale
+python-*.exe
+
+# ============================================
+# IDEs
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# OS
+# ============================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================
+# LOGS
+# ============================================
+*.log
+
+# ============================================
+# FICHIERS TEMPORAIRES
+# ============================================
+*.tmp
+*.bak
+*~
+
+# ============================================
+# SCRIPTS DE DÉVELOPPEMENT LOCAL
+# ============================================
+clean_project.py

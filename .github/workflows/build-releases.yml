@@ -1,0 +1,317 @@
+# .github/workflows/build-releases.yml
+name: Build & Release RenExtract
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+env:
+  RELEASE_NAME: ${{ github.ref_name }}
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller>=5.0
+          pip install tkinterdnd2>=0.3.0
+          pip install requests>=2.0
+          
+          # Si requirements.txt existe
+          if (Test-Path requirements.txt) {
+            pip install -r requirements.txt
+          }
+        shell: pwsh
+
+      - name: Build Windows Executable
+        run: |
+          echo "🔨 Construction de RenExtract pour Windows..."
+          
+          # Créer les dossiers artifacts
+          mkdir artifacts
+          mkdir artifacts/windows
+          
+          # Vérifier la présence de l'icône
+          if (Test-Path icone.ico) {
+            echo "🎨 Icône détectée"
+            $iconArg = "--icon=icone.ico"
+          } else {
+            echo "⚠️  Icône non trouvée, compilation sans icône"
+            $iconArg = ""
+          }
+          
+          # Créer l'exécutable avec PyInstaller
+          pyinstaller --onefile --windowed `
+            --name "RenExtract" `
+            $iconArg `
+            --add-data "core;core" `
+            --add-data "infrastructure;infrastructure" `
+            --add-data "ui;ui" `
+            --add-data "04_Configs;04_Configs" `
+            --add-data "tutorial_images;tutorial_images" `
+            $(if (Test-Path icone.ico) { "--add-data icone.ico;." }) `
+            main.py
+          
+          # Copier l'exécutable
+          copy "dist/RenExtract.exe" "artifacts/windows/"
+          
+          # Créer l'archive avec un nom descriptif
+          $version = "${{ env.RELEASE_NAME }}"
+          if (-not $version.StartsWith("v")) {
+            $version = "dev-$(Get-Date -Format 'yyyyMMdd')"
+          }
+          Compress-Archive -Path "artifacts/windows/RenExtract.exe" -DestinationPath "artifacts/windows/RenExtract-$version-Windows.zip"
+          
+          echo "✅ Build Windows terminé: RenExtract-$version-Windows.zip"
+        shell: pwsh
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ env.RELEASE_NAME }}
+          path: artifacts/windows/*.zip
+          retention-days: 30
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk python3-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller>=5.0
+          pip install tkinterdnd2>=0.3.0
+          pip install requests>=2.0
+          
+          # Si requirements.txt existe
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Build Linux Binary
+        run: |
+          echo "🔨 Construction de RenExtract pour Linux..."
+          mkdir -p artifacts/linux
+          
+          # Créer l'exécutable Linux
+          pyinstaller --onefile \
+            --name "RenExtract" \
+            --add-data "core:core" \
+            --add-data "infrastructure:infrastructure" \
+            --add-data "ui:ui" \
+            --add-data "04_Configs:04_Configs" \
+            --add-data "tutorial_images:tutorial_images" \
+            main.py
+          
+          # Copier l'exécutable
+          cp dist/RenExtract artifacts/linux/
+          
+          # Rendre exécutable
+          chmod +x artifacts/linux/RenExtract
+          
+          # Créer l'archive tar.gz
+          VERSION="${{ env.RELEASE_NAME }}"
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            VERSION="dev-$(date +%Y%m%d)"
+          fi
+          tar -czf artifacts/linux/RenExtract-${VERSION}-Linux.tar.gz -C artifacts/linux RenExtract
+          
+          echo "✅ Build Linux terminé: RenExtract-${VERSION}-Linux.tar.gz"
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ env.RELEASE_NAME }}
+          path: artifacts/linux/*.tar.gz
+          retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    # Ne créer une release que pour les tags
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-${{ env.RELEASE_NAME }}
+          path: release/windows
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-${{ env.RELEASE_NAME }}
+          path: release/linux
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          
+          cat > release_notes.md << 'EOFNOTES'
+          ## 🎮 RenExtract ${{ github.ref_name }}
+          
+          **Outil professionnel d'extraction, préparation et reconstruction de traductions pour Ren'Py**
+          
+          ### 📥 Téléchargements
+          
+          | Plateforme | Fichier | Instructions |
+          |------------|---------|--------------|
+          | 🪟 **Windows** | `RenExtract-${{ github.ref_name }}-Windows.zip` | Extraire et exécuter `RenExtract.exe` |
+          | 🐧 **Linux** | `RenExtract-${{ github.ref_name }}-Linux.tar.gz` | Extraire, `chmod +x RenExtract`, puis `./RenExtract` |
+          
+          ### 🚀 Installation Rapide
+          
+          #### Windows
+          ```bash
+          # 1. Télécharger RenExtract-${{ github.ref_name }}-Windows.zip
+          # 2. Extraire l'archive
+          # 3. Double-cliquer sur RenExtract.exe
+          ```
+          
+          #### Linux
+          ```bash
+          # Télécharger et extraire
+          tar -xzf RenExtract-${{ github.ref_name }}-Linux.tar.gz
+          
+          # Rendre exécutable
+          chmod +x RenExtract
+          
+          # Exécuter
+          ./RenExtract
+          ```
+          
+          ### ✨ Fonctionnalités Principales
+          
+          #### 🎯 Extraction & Génération
+          - 📄 Extraction intelligente des dialogues depuis fichiers `.rpy`
+          - 🔧 Génération de fichiers de traduction Ren'Py (pas besoin du SDK !)
+          - 🛡️ Protection automatique des codes spéciaux et variables
+          - 🔄 Reconstruction intelligente des fichiers traduits au format Ren'Py
+          - 📦 Décompilation des archives `.rpa` et scripts `.rpyc`
+          
+          #### 🌍 Personnalisation Avancée (Optionnel)
+          - 🔧 Générateur screen preferences pour jeux avec structure standard :
+            - 🎛️ Contrôle taille de police dynamique
+            - 🎨 Textbox personnalisé (opacité, offset, contour)
+            - 🌐 Sélecteur de langue intégré au jeu
+            - 🎯 Détection automatique du style Ren'Py
+          
+          #### 🔧 Outils de Maintenance
+          - 🧹 Nettoyage intelligent
+          - 📊 Vérification de cohérence
+          - 💾 Système de sauvegarde hiérarchique
+          - 📈 Rapports HTML détaillés
+          
+          #### 🎨 Interface Moderne
+          - 🖼️ Interface graphique intuitive
+          - 🌙 Thèmes personnalisables
+          - 📖 Tutoriel intégré interactif
+          - ⚡ Drag & Drop et copier-coller
+          - 🔄 Édition temps réel
+          
+          ### 🏗️ Architecture Professionnelle MVP 10/10
+          
+          - **114 fichiers** Python (core, ui, infrastructure)
+          - **24 packages surveillés** avec système de santé
+          - **Logs intelligents** : 1 ligne si OK, détails si problème
+          - **Cache persistant** : Performance optimale multi-session
+          - **0 warning** parasite dans les logs
+          - **100% production-ready**
+          
+          ### 💡 Utilisation Rapide
+          
+          > **Important** : RenExtract ne traduit pas automatiquement ! Il prépare vos fichiers, vous traduisez avec vos outils préférés (DeepL, ChatGPT, etc.), puis RenExtract reconstruit les fichiers Ren'Py.
+          
+          1. **Chargez** votre projet Ren'Py
+          2. **Ouvrez** l'interface du générateur
+          3. **Décompressez** les `.rpa` et `.rpyc` (si nécessaire)
+          4. **Générez** la structure de fichiers de traduction
+          5. **Naviguez** vers le fichier souhaité
+          6. **Extrayez** les dialogues (bouton "⚡Extraire")
+          7. **Traduisez** les fichiers `.txt` avec vos outils
+          8. **Reconstruisez** (bouton "🔧 Reconstruire")
+          9. **Vérifiez** la cohérence (bouton "🔄 Revérifier")
+          10. **Testez** dans votre jeu !
+          
+          ### 📚 Documentation Complète
+          
+          - 📖 **README** : https://github.com/Rory-Mercury-91/RenExtract
+          - 🎓 **Tutoriel intégré** : Appuyez sur `F1` dans l'application
+          - 💬 **Support** : https://github.com/Rory-Mercury-91/RenExtract/issues
+          
+          ### 🔧 Configuration Requise
+          
+          - **Windows** : Windows 10/11 (64-bit)
+          - **Linux** : Distribution moderne avec GTK3
+          - **RAM** : Minimum 4 GB
+          - **Disque** : ~100 MB
+          
+          ### ⚠️ Notes Importantes
+          
+          - Les fichiers `.rpy` doivent être visibles (RenExtract peut décompiler `.rpa` et `.rpyc`)
+          - RenExtract crée automatiquement des sauvegardes avant chaque opération critique
+          - Vérifiez toujours la cohérence avec le bouton "🔄 Revérifier"
+          
+          ---
+          
+          ### 🆕 Nouveautés de cette Version
+          
+          Consultez le [CHANGELOG](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md) pour les détails complets.
+          
+          ---
+          
+          💖 **Merci d'utiliser RenExtract !**
+          
+          🐛 **Bugs** : [Ouvrir une issue](https://github.com/Rory-Mercury-91/RenExtract/issues)  
+          ⭐ **Aimer** : N'oubliez pas de mettre une étoile !  
+          🤝 **Contribuer** : Les pull requests sont les bienvenues !
+          EOFNOTES
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: RenExtract ${{ github.ref_name }}
+          files: |
+            release/windows/*.zip
+            release/linux/*.tar.gz
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
