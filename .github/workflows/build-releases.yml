@@ -67,7 +67,6 @@ jobs:
             --add-data "ui;ui" `
             --add-data "04_Configs;04_Configs" `
             --add-data "tutorial_images;tutorial_images" `
-            $(if (Test-Path icone.ico) { "--add-data icone.ico;." }) `
             main.py
           
           # Copier l'exécutable
