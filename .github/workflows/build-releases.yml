@@ -54,6 +54,12 @@ jobs:
           mkdir artifacts
           mkdir artifacts/windows
           
+          # Créer le dossier 04_Configs s'il n'existe pas (ignoré par Git)
+          if (-not (Test-Path "04_Configs")) {
+            mkdir "04_Configs"
+            echo "📁 Dossier 04_Configs créé"
+          }
+          
           # Vérifier la présence de l'icône
           if (Test-Path icone.ico) {
             echo "🎨 Icône détectée"
@@ -133,6 +139,12 @@ jobs:
         run: |
           echo "🔨 Construction de RenExtract pour Linux..."
           mkdir -p artifacts/linux
+          
+          # Créer le dossier 04_Configs s'il n'existe pas (ignoré par Git)
+          if [ ! -d "04_Configs" ]; then
+            mkdir -p "04_Configs"
+            echo "📁 Dossier 04_Configs créé"
+          fi
           
           # Créer l'exécutable Linux
           pyinstaller --onefile \
