@@ -53,6 +53,8 @@ class MaintenanceToolsInterface:
         # État de l'interface
         self.current_project_path = None
         self.is_operation_running = False
+        self._is_updating_from_sync = False  # Protection contre les boucles de synchronisation
+        self.project_manager = None  # Référence au ProjectManager pour communication bidirectionnelle
         
         # Initialiser TOUTES les variables dès le début
         self._init_all_variables()
@@ -72,7 +74,7 @@ class MaintenanceToolsInterface:
         
         self._create_interface()
 
-        # Enregistrer dans le ProjectManager (récepteur uniquement)
+        # Enregistrer dans le ProjectManager (communication bidirectionnelle)
         if hasattr(self.parent_window, 'app_controller'):
             app_controller = self.parent_window.app_controller
             if hasattr(app_controller, 'project_manager'):
@@ -80,6 +82,8 @@ class MaintenanceToolsInterface:
                     self._on_project_sync_changed,
                     source_name="maintenance_tools"
                 )
+                # Stocker la référence au ProjectManager pour l'envoi
+                self.project_manager = app_controller.project_manager
                         
         
     
@@ -92,7 +96,7 @@ class MaintenanceToolsInterface:
             self.status_var = tk.StringVar(value="Prêt")
             
             # === VARIABLES ONGLET NETTOYAGE ===
-            self.cleanup_excluded_files_var = tk.StringVar(value=config_manager.get('cleanup_excluded_files', 'common.rpy, Z_LangSelect.rpy'))
+            self.cleanup_excluded_files_var = tk.StringVar(value=config_manager.get('cleanup_excluded_files', 'common.rpy'))
             self.available_languages = []
             self.language_vars = {}
             
@@ -149,17 +153,24 @@ class MaintenanceToolsInterface:
     # Nouvelle méthode dans MaintenanceToolsInterface
 
     def _on_project_sync_changed(self, new_path: str):
-        """Appelé quand le projet change depuis une autre interface (récepteur uniquement)"""
+        """Appelé quand le projet change depuis une autre interface"""
         try:
             if not new_path or new_path == self.current_project_path:
                 return
+            
+            # Marquer qu'on reçoit une synchronisation pour éviter une boucle
+            self._is_updating_from_sync = True
             
             log_message("INFO", f"Outils maintenance reçoivent sync: {os.path.basename(new_path)}", category="project_sync")
             
             # Appeler la fonction centrale qui valide et met à jour
             self._set_current_project(new_path)
             
+            # Réinitialiser le flag après mise à jour
+            self._is_updating_from_sync = False
+            
         except Exception as e:
+            self._is_updating_from_sync = False
             log_message("ERREUR", f"Erreur sync projet vers maintenance: {e}", category="project_sync")
 
     def _create_interface(self):
@@ -307,7 +318,10 @@ class MaintenanceToolsInterface:
             self.project_var.set(path)
             self._update_project_info(path)
 
-            # 🚫 PAS de notification au ProjectManager (récepteur uniquement)
+            # Notifier le ProjectManager UNIQUEMENT si ce n'est pas une synchronisation entrante
+            if not self._is_updating_from_sync and self.project_manager:
+                log_message("INFO", f"Outils maintenance notifient changement: {os.path.basename(path)}", category="project_sync")
+                self.project_manager.set_project(path, source="maintenance_tools")
 
             self._trigger_post_project_selection_actions()
 
@@ -598,7 +612,7 @@ class MaintenanceToolsInterface:
 
             # Exclusions nettoyage
             if hasattr(self, 'cleanup_excluded_files_var'):
-                cleanup_exclusions = config_manager.get('cleanup_excluded_files', 'common.rpy, Z_LangSelect.rpy')
+                cleanup_exclusions = config_manager.get('cleanup_excluded_files', 'common.rpy')
                 self.cleanup_excluded_files_var.set(cleanup_exclusions)
             
             # Configuration éditeur temps réel

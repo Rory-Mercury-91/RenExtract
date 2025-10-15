@@ -308,6 +308,100 @@ def show_custom_messagebox(
 def show_custom_askyesnocancel(title, message, theme, yes_text, no_text, cancel_text, parent=None):
     return show_custom_messagebox('askyesnocancel', title, message, theme, yes_text, no_text, cancel_text, parent=parent)
 
+def show_custom_input_dialog(title: str, message: str, theme: dict, parent: tk.Widget = None, initial_value: str = ""):
+    """Dialogue personnalisé pour saisie de texte avec thème"""
+    from infrastructure.logging.logging import log_message
+    import tkinter as tk
+    
+    result = {'value': None}
+    popup = tk.Toplevel(parent) if parent else tk.Toplevel()
+    popup.title(title)
+    popup.configure(bg=theme["bg"])
+    popup.resizable(False, False)
+    popup.geometry("450x200")
+    
+    # Centrer la fenêtre
+    popup.grab_set()
+    popup.update_idletasks()
+    
+    if parent:
+        parent_x, parent_y = parent.winfo_rootx(), parent.winfo_rooty()
+        parent_w, parent_h = parent.winfo_width(), parent.winfo_height()
+        popup_w, popup_h = popup.winfo_width(), popup.winfo_height()
+        x = parent_x + (parent_w // 2) - (popup_w // 2)
+        y = parent_y + (parent_h // 2) - (popup_h // 2)
+    else:
+        x = (popup.winfo_screenwidth() // 2) - (popup.winfo_width() // 2)
+        y = (popup.winfo_screenheight() // 2) - (popup.winfo_height() // 2)
+    popup.geometry(f"+{x}+{y}")
+    
+    main_frame = tk.Frame(popup, bg=theme["bg"])
+    main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+    
+    # Message
+    message_label = tk.Label(main_frame, text=message, 
+                           font=('Segoe UI', 10), bg=theme["bg"], fg=theme["fg"],
+                           wraplength=400)
+    message_label.pack(pady=(0, 15))
+    
+    # Champ de saisie
+    input_frame = tk.Frame(main_frame, bg=theme["bg"])
+    input_frame.pack(fill='x', pady=(0, 20))
+    
+    entry = tk.Entry(input_frame, font=('Segoe UI', 10), 
+                    bg=theme["entry_bg"], fg=theme["entry_fg"],
+                    insertbackground=theme["entry_fg"],
+                    relief='flat', bd=1)
+    entry.pack(fill='x', ipady=8)
+    entry.insert(0, initial_value)
+    entry.focus_set()
+    entry.select_range(0, tk.END)
+    
+    # Boutons
+    button_frame = tk.Frame(main_frame, bg=theme["bg"])
+    button_frame.pack(fill='x')
+    
+    def confirm():
+        value = entry.get().strip()
+        if value:
+            result['value'] = value
+            popup.destroy()
+        else:
+            # Animation d'erreur
+            entry.config(bg='#ff8379')
+            popup.after(200, lambda: entry.config(bg=theme["entry_bg"]))
+    
+    def cancel():
+        result['value'] = None
+        popup.destroy()
+    
+    # Bouton OK
+    ok_btn = tk.Button(button_frame, text="✓ Confirmer", command=confirm,
+                      bg=theme["button_primary_bg"], fg="#000000",
+                      font=('Segoe UI', 10, 'bold'), pady=8, padx=20,
+                      relief='flat', cursor='hand2')
+    ok_btn.pack(side='right', padx=(10, 0))
+    
+    # Bouton Annuler
+    cancel_btn = tk.Button(button_frame, text="✗ Annuler", command=cancel,
+                          bg=theme["button_danger_bg"], fg="#000000",
+                          font=('Segoe UI', 10, 'bold'), pady=8, padx=20,
+                          relief='flat', cursor='hand2')
+    cancel_btn.pack(side='right')
+    
+    # Bind Enter pour confirmer
+    def on_enter(event):
+        confirm()
+    
+    entry.bind('<Return>', on_enter)
+    popup.bind('<Escape>', lambda e: cancel())
+    
+    # Gestion de la fermeture
+    popup.protocol("WM_DELETE_WINDOW", cancel)
+    
+    popup.wait_window()
+    return result['value']
+
 
 # =====================================================================
 # EXTRACTION ET ANALYSE DE FICHIERS
@@ -613,6 +707,6 @@ def set_last_game_directory(directory_path: str) -> bool:
 __all__ = [
     'extract_game_name', 'get_file_base_name', 'sanitize_folder_name',
     'validate_file_path', 'get_file_info', 'show_translated_messagebox',
-    'show_custom_messagebox', 'show_custom_askyesnocancel',
+    'show_custom_messagebox', 'show_custom_askyesnocancel', 'show_custom_input_dialog',
     'clean_translation_artifacts', 'get_last_directory', 'set_last_directory', 'get_last_game_directory', 'set_last_game_directory'
 ]

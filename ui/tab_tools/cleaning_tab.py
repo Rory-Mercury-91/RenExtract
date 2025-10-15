@@ -171,7 +171,7 @@ def create_cleaning_tab(parent_notebook, main_interface):
     # Note d'exemple
     exclusions_note = tk.Label(
         exclusions_frame,
-        text="💡 Exemple: common.rpy, Z_LangSelect.rpy, mon_fichier.rpy",
+        text="💡 Exemple: common.rpy, menu.rpy, mon_fichier.rpy",
         font=('Segoe UI', 8, 'italic'),
         bg=theme["bg"],
         fg='#666666'
@@ -238,7 +238,7 @@ def _on_cleanup_exclusion_changed(main_interface):
 def _reset_cleanup_exclusions(main_interface):
     """Remet les exclusions de nettoyage par défaut"""
     try:
-        default_exclusions = "common.rpy, Z_LangSelect.rpy"
+        default_exclusions = "common.rpy"
         main_interface.cleanup_excluded_files_var.set(default_exclusions)
         config_manager.set('cleanup_excluded_files', default_exclusions)
         log_message("INFO", "Exclusions nettoyage remises par défaut", category="renpy_generator_clean_tl")
@@ -310,7 +310,7 @@ def _show_cleaning_help(main_interface):
         ("\n", "normal"),
         ("• ", "yellow"),
         ("Exemples :", "bold_yellow"),
-        (" common.rpy, Z_LangSelect.rpy, menu.rpy", "normal"),
+        (" common.rpy, menu.rpy, mon_fichier.rpy", "normal"),
         ("\n\n", "normal"),
         ("🎯 ", "bold"),
         ("Guide d'utilisation :", "bold"),

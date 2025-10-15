@@ -501,9 +501,13 @@ class HtmlOnlyLogger:
         # Vérifier si l'utilisateur a activé le mode debug
         user_debug_enabled = False
         try:
-            from .config import config_manager
-            user_debug_enabled = config_manager.get('debug_mode', False)
-        except ImportError:
+            import json
+            config_path = os.path.join(self._get_config_dir(), "config.json")
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                user_debug_enabled = bool(config.get('debug_mode', False))
+        except Exception:
             pass
         
         # Si l'utilisateur a activé le debug, ne pas le désactiver
@@ -570,20 +574,32 @@ class HtmlOnlyLogger:
 
     def _load_config(self):
         global MAX_LOG_FILES, MAX_FILE_SIZE_MB, HTML_FLUSH_MS, HTML_MAX_SIZE_MB, HTML_THEME, HTML_AUTO_REFRESH, HTML_AUTO_REFRESH_SECONDS
+        
         try:
-            from .config import config_manager
-            self.debug_enabled = bool(config_manager.get("debug_mode", False))
-            self.log_level     = int(config_manager.get("debug_level", 5) or (5 if self.debug_enabled else 3))
-            self.log_format    = str(config_manager.get("log_format", "html")).lower()  # ✅ NOUVEAU
-            MAX_LOG_FILES      = int(config_manager.get("max_log_files", MAX_LOG_FILES))
-            MAX_FILE_SIZE_MB   = float(config_manager.get("max_file_size_mb", MAX_FILE_SIZE_MB))
-            HTML_FLUSH_MS      = int(config_manager.get("html_log_flush_ms", HTML_FLUSH_MS))
-            HTML_MAX_SIZE_MB   = float(config_manager.get("html_log_max_size_mb", HTML_MAX_SIZE_MB))
-            HTML_THEME         = str(config_manager.get("html_log_theme", HTML_THEME)).lower()
-            HTML_AUTO_REFRESH          = bool(config_manager.get("html_auto_refresh", HTML_AUTO_REFRESH))
-            HTML_AUTO_REFRESH_SECONDS  = int(config_manager.get("html_auto_refresh_seconds", HTML_AUTO_REFRESH_SECONDS))
-            if HTML_THEME not in ("dark","light"): HTML_THEME = "dark"
-            if self.log_format not in ("txt", "html"): self.log_format = "html"  # ✅ VALIDATION
+            # ✅ CORRECTION : Charger directement depuis le fichier JSON pour éviter la circularité
+            import json
+            config_dir = self._get_config_dir()
+            config_path = os.path.join(config_dir, "config.json")
+            
+            # ✅ CORRECTION : S'assurer que le dossier existe
+            os.makedirs(config_dir, exist_ok=True)
+            
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                
+                self.debug_enabled = bool(config.get("debug_mode", False))
+                self.log_level     = int(config.get("debug_level", 5) or (5 if self.debug_enabled else 3))
+                self.log_format    = str(config.get("log_format", "html")).lower()
+                MAX_LOG_FILES      = int(config.get("max_log_files", MAX_LOG_FILES))
+                MAX_FILE_SIZE_MB   = float(config.get("max_file_size_mb", MAX_FILE_SIZE_MB))
+                HTML_FLUSH_MS      = int(config.get("html_log_flush_ms", HTML_FLUSH_MS))
+                HTML_MAX_SIZE_MB   = float(config.get("html_log_max_size_mb", HTML_MAX_SIZE_MB))
+                HTML_THEME         = str(config.get("html_log_theme", HTML_THEME)).lower()
+                HTML_AUTO_REFRESH  = bool(config.get("html_auto_refresh", HTML_AUTO_REFRESH))
+                HTML_AUTO_REFRESH_SECONDS = int(config.get("html_auto_refresh_seconds", HTML_AUTO_REFRESH_SECONDS))
+                if HTML_THEME not in ("dark","light"): HTML_THEME = "dark"
+                if self.log_format not in ("txt", "html"): self.log_format = "html"
         except Exception:
             pass
 
@@ -677,7 +693,7 @@ class HtmlOnlyLogger:
                         f'<span class="ts">{datetime.datetime.now():%Y-%m-%d %H:%M:%S}</span> '
                         f'<span class="lvl lvl-INFO" style="color:{info_color}">[INFO]</span> '
                         f'<span class="cat">[session]</span> '
-                        f'<span class="msg">Nouvelle session — Version: {_html.escape(v)} — Mode debug: {"Activé" if self.debug_enabled else "Désactivé"}</span>'
+                        f'<span class="msg">Nouvelle session — Version: {_html.escape(v)}</span>'
                         f'</div>\n'
                     )
         except Exception:
@@ -824,7 +840,6 @@ class HtmlOnlyLogger:
                 tf.write("=" * 80 + "\n")
                 tf.write(f"RENEXTRACT LOG - Version {v}\n")
                 tf.write(f"Session démarrée: {datetime.datetime.now():%Y-%m-%d %H:%M:%S}\n")
-                tf.write(f"Mode debug: {'Activé' if self.debug_enabled else 'Désactivé'}\n")
                 tf.write("=" * 80 + "\n\n")
             return txt_path
         except Exception:

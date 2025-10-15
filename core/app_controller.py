@@ -278,6 +278,17 @@ class AppController:
         except Exception as e:
             log_message("ERREUR", f"Erreur set_current_project: {e}", category="project_sync")
 
+    def force_refresh_project_languages(self):
+        """Force le refresh des langues du projet (utile après génération)"""
+        try:
+            if hasattr(self, 'main_window') and self.main_window:
+                self.main_window.force_refresh_project_languages()
+                log_message("INFO", "Refresh des langues demandé depuis AppController", category="project_sync")
+            else:
+                log_message("ATTENTION", "MainWindow non disponible pour refresh des langues", category="project_sync")
+        except Exception as e:
+            log_message("ERREUR", f"Erreur refresh des langues: {e}", category="project_sync")
+
     def update_output_field_visibility(self):
         """Met à jour la visibilité du champ de sortie dans tous les composants"""
         if hasattr(self, 'main_window') and self.main_window:
@@ -726,9 +737,8 @@ class AppController:
             # Obtenir le dossier utilisateur
             user_home = Path.home()
             
-            # Dossiers à nettoyer
+            # Dossier à nettoyer
             folders_to_clean = [
-                user_home / ".renextract",
                 user_home / ".renextract_tools"
             ]
             

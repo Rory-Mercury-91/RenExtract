@@ -22,19 +22,19 @@ from infrastructure.logging.logging import log_message
 
 class OptimizedTextExtractor:
     """
-    Extracteur optimisé avec patterns ciblés pour éviter la sur-détection
-    Analyse le dossier tl pour éviter les doublons avec le SDK
-    Version améliorée avec nouveaux patterns et gestion des apostrophes
+    Extracteur unifié avec patterns ciblés pour détecter les textes oubliés par le SDK
+    Analyse le dossier tl pour éviter les doublons avec les traductions existantes
+    Utilise des patterns regex optimisés pour une détection précise et efficace
     """
     
     def __init__(self):
-        """Initialise l'extracteur optimisé"""
+        """Initialise l'extracteur unifié"""
         self.existing_translations = set()  # Textes déjà dans tl/
         self.patterns = self._init_targeted_patterns()
         self.custom_patterns = self._init_custom_patterns()
         
     def _init_targeted_patterns(self) -> Dict[str, Pattern]:
-        """Patterns regex corrigés avec gestion séparée des guillemets simples et doubles"""
+        """Patterns regex unifiés avec gestion séparée des guillemets simples et doubles"""
         return {
             # Pattern pour Character() avec gestion séparée des guillemets
             'character_def_double': re.compile(r'Character\s*\(\s*"(?!persistent\.|store\.|config\.|renpy\.)([^"\\]*(?:\\.[^"\\]*)*)"', re.IGNORECASE),
@@ -503,17 +503,6 @@ class OptimizedTextExtractor:
         
         return results
 
-    def apply_simple_mode_filter(self):
-        """
-        DÉPRÉCIÉ: Le mode simple a été supprimé, cette méthode ne fait rien
-        """
-        log_message("INFO", "Mode simple supprimé - utilisation du mode optimisé uniquement", category="extraction_results")
-
-    def _get_simple_pattern_names(self) -> List[str]:
-        """
-        DÉPRÉCIÉ: Le mode simple a été supprimé
-        """
-        return []
 
     def _analyze_existing_translations(self, tl_folder: str) -> None:
         """Analyse le dossier tl pour identifier les textes déjà traduits"""
@@ -705,13 +694,7 @@ class TextExtractionResultsBusiness:
                 
                 extractor = OptimizedTextExtractor()
                 
-                detection_mode = extraction_params.get('detection_mode', 'optimized')
-                if detection_mode == "simple":
-                    # CORRIGÉ: Utiliser la nouvelle méthode de filtrage
-                    extractor.apply_simple_mode_filter()
-                    log_message("INFO", "Mode Simple activé - patterns basiques uniquement", category="extraction_results")
-                else:
-                    log_message("INFO", "Mode Optimisé activé - tous les patterns ciblés", category="extraction_results")
+                log_message("INFO", "Extraction avec tous les patterns ciblés", category="extraction_results")
                 
                 if status_callback:
                     status_callback("Analyse du dossier tl...")
@@ -788,7 +771,6 @@ class TextExtractionResultsBusiness:
             
             enriched['metadata'] = {
                 'extraction_date': datetime.now().isoformat(),
-                'detection_mode': extraction_params.get('detection_mode', 'optimized'),
                 'anti_duplicate_active': extraction_params.get('anti_duplicate_active', False),
                 'game_folder': extraction_params.get('game_folder'),
                 'tl_folder': extraction_params.get('tl_folder'),
@@ -991,7 +973,6 @@ class TextExtractionResultsBusiness:
                 
                 metadata = results.get('metadata', {})
                 f.write(f"Date d'analyse: {metadata.get('extraction_date', 'Inconnue')}\n")
-                f.write(f"Mode de détection: {metadata.get('detection_mode', 'Non spécifié')}\n")
                 f.write(f"Anti-doublon actif: {'Oui' if metadata.get('anti_duplicate_active') else 'Non'}\n")
                 f.write(f"Dossier analysé: {metadata.get('game_folder', 'Non spécifié')}\n")
                 f.write(f"Langue de référence: {os.path.basename(metadata.get('tl_folder', ''))}\n")
@@ -1062,71 +1043,6 @@ class TextExtractionResultsBusiness:
         
         return export_result
 
-def extract_texts_simple_mode(game_folder, tl_folder=None, detection_mode="optimized", 
-                             excluded_files=None, existing_translations=None):
-    """
-    CORRIGÉ: Mode d'extraction pour l'interface - migré depuis extract_ui_characters.py
-    """
-    log_message("INFO", f"Extraction mode interface: {detection_mode}", category="extraction_results")
-    log_message("INFO", f"   Dossier game: {game_folder}", category="extraction_results")
-    log_message("INFO", f"   Dossier tl: {tl_folder or 'Aucun'}", category="extraction_results")
-    
-    try:
-        if not os.path.exists(game_folder):
-            raise FileNotFoundError(f"Dossier game inexistant: {game_folder}")
-        
-        extractor = OptimizedTextExtractor()
-        
-        if detection_mode == "simple":
-            # CORRIGÉ: Utiliser la nouvelle méthode
-            extractor.apply_simple_mode_filter()
-            log_message("INFO", "Mode Simple activé - patterns de base uniquement", category="extraction_results")
-        else:
-            log_message("INFO", "Mode Optimisé activé - tous les patterns ciblés", category="extraction_results")
-        
-        # CORRIGÉ: Appeler la méthode avec le bon nom
-        results = extractor.extract_targeted_texts(
-            game_folder, 
-            tl_folder, 
-            existing_translations,
-            excluded_files
-        )
-        
-        auto_safe_count = len(results.get('auto_safe', set()))
-        textbutton_count = len(results.get('textbutton_check', set()))
-        text_check_count = len(results.get('text_check', set()))
-        total_detected = auto_safe_count + textbutton_count + text_check_count
-        
-        extraction_stats = {
-            'total_detected': total_detected,
-            'auto_safe': auto_safe_count,
-            'textbutton_check': textbutton_count,
-            'text_check': text_check_count,
-            'detection_mode': detection_mode,
-            'antiduplicate_active': tl_folder is not None,
-            'game_folder': game_folder,
-            'tl_folder': tl_folder
-        }
-        
-        log_message("INFO", f"Extraction interface terminée:", category="extraction_results")
-        log_message("INFO", f"   Total détecté: {total_detected}", category="extraction_results")
-        log_message("INFO", f"   Auto-safe: {auto_safe_count}", category="extraction_results")
-        log_message("INFO", f"   À vérifier: {textbutton_count + text_check_count}", category="extraction_results")
-        
-        return {
-            'success': True,
-            'results': results,
-            'stats': extraction_stats
-        }
-        
-    except Exception as e:
-        log_message("ERREUR", f"Erreur extraction interface: {e}", category="extraction_results")
-        return {
-            'success': False,
-            'error': str(e),
-            'results': None,
-            'stats': None
-        }
 
 def generate_rpy_file(selected_texts, output_path, metadata=None):
     """
@@ -1227,7 +1143,6 @@ def format_extraction_statistics(stats: Dict[str, Any]) -> str:
 __all__ = [
     'OptimizedTextExtractor',
     'TextExtractionResultsBusiness', 
-    'extract_texts_simple_mode',
     'generate_rpy_file',
     'get_extraction_statistics',
     'create_extraction_context',

@@ -1,516 +1,745 @@
 # ui/tutorial/content/tab_06.py
 """
-Module de contenu pour l'onglet 6 : Gestionnaire de Sauvegardes
+Module de contenu pour l'onglet 6 : Sauvegardes
+Gestionnaire de sauvegardes - Restauration et organisation
 """
 
-import html
-
-def generate_content(generator, language, translations):
-    """
-    Génère le contenu pour l'onglet 6 : Gestionnaire de Sauvegardes
+def generate_content(generator, language=None, translations=None):
+    """Génère le contenu de l'onglet Sauvegardes (français uniquement)
     
     Args:
         generator: Instance du générateur avec méthodes utilitaires
-        language: Code langue (fr, en, de)
-        translations: Dictionnaire des traductions
+        language: Non utilisé (compatibilité)
+        translations: Non utilisé (compatibilité)
     
     Returns:
-        str: HTML généré pour l'onglet gestionnaire de sauvegardes
+        str: HTML généré pour l'onglet
     """
-    # Vérification des traductions
-    if not isinstance(translations, dict) or 'tabs' not in translations or 'common' not in translations:
-        return "<div>Erreur : Traductions manquantes ou mal formées</div>"
     
-    # Récupération des traductions pour cette section
-    section_t = translations.get('tabs', {}).get('backup', {})
-    common_t = translations.get('common', {})
+    # ═══════════════════════════════════════════════════════════════════════════
+    # NAVIGATION RAPIDE
+    # ═══════════════════════════════════════════════════════════════════════════
     
-    def get_text(key, fallback=""):
-        """Récupère une traduction avec sanitisation HTML"""
-        value = section_t.get(key) or common_t.get(key) or fallback
-        return html.escape(value)
-    
-    # --- Navigation rapide ---
-    quick_nav_title = get_text('quick_nav_title', 'Navigation rapide')
-    nav_statistics = get_text('nav_statistics', 'Statistiques')
-    nav_statistics_desc = get_text('nav_statistics_desc', 'Métriques en temps réel et répartition')
-    nav_restoration = get_text('nav_restoration', 'Filtrage & Restauration')
-    nav_restoration_desc = get_text('nav_restoration_desc', 'Interface de liste et actions contextuelles')
-    nav_cleanup = get_text('nav_cleanup', 'Nettoyage automatique')
-    nav_cleanup_desc = get_text('nav_cleanup_desc', 'Critères intelligents et rotation')
-    
-    # --- Section Gestionnaire de Sauvegardes - Guide Complet ---
-    title = get_text('title', 'Gestionnaire de Sauvegardes - Guide Complet')
-    description = get_text('description', 'Le Gestionnaire de Sauvegardes centralise la gestion des 4 types de sauvegardes automatiques avec vue unifiée, filtres et restauration en un clic.')
-    backup_main_interface_alt = get_text('backup_main_interface_alt', 'Interface principale gestionnaire')
-    backup_main_interface_caption = get_text('backup_main_interface_caption', 'Vue d\'ensemble avec filtres et liste des sauvegardes')
-    hierarchy_title = get_text('hierarchy_title', 'Architecture hiérarchique')
-    hierarchy_desc = get_text('hierarchy_desc', 'Structure organisée : Nom_du_jeu/nom_fichier/type_backup/fichiers')
-    advantage_label = get_text('advantage_label', 'Avantage :')
-    hierarchy_advantage = get_text('hierarchy_advantage', 'Navigation intuitive et gestion automatique de l\'espace disque')
-    purpose_title = get_text('purpose_title', 'À quoi ça sert')
-    purpose_intro = get_text('purpose_intro', 'Le gestionnaire unifie l\'accès à tous les types de sauvegardes avec des fonctionnalités avancées :')
-    centralized_view_title = get_text('centralized_view_title', 'Vue centralisée')
-    centralized_view_desc = get_text('centralized_view_desc', 'Toutes les sauvegardes dans une interface unique')
-    smart_filtering_title = get_text('smart_filtering_title', 'Filtrage intelligent')
-    smart_filtering_desc = get_text('smart_filtering_desc', 'Par jeu, type, date avec recherche avancée')
-    one_click_restore_title = get_text('one_click_restore_title', 'Restauration en 1 clic')
-    one_click_restore_desc = get_text('one_click_restore_desc', 'Processus sécurisé avec confirmation')
-    auto_cleanup_title = get_text('auto_cleanup_title', 'Nettoyage automatique')
-    auto_cleanup_desc = get_text('auto_cleanup_desc', 'Rotation intelligente selon le type de sauvegarde')
-    
-    # --- Section Statistiques intelligentes ---
-    statistics_title = get_text('statistics_title', 'Section Statistiques intelligentes')
-    backup_statistics_alt = get_text('backup_statistics_alt', 'Section statistiques')
-    backup_statistics_caption = get_text('backup_statistics_caption', 'Métriques en temps réel et répartition par type')
-    realtime_metrics_title = get_text('realtime_metrics_title', 'Métriques en temps réel')
-    realtime_metrics_intro = get_text('realtime_metrics_intro', 'Informations mises à jour automatiquement à chaque action :')
-    general_overview_title = get_text('general_overview_title', 'Vue d\'ensemble générale')
-    total_backups_label = get_text('total_backups_label', 'Sauvegardes totales :')
-    total_backups_desc = get_text('total_backups_desc', 'Nombre total avec mise à jour automatique')
-    cumulative_size_label = get_text('cumulative_size_label', 'Taille cumulée :')
-    cumulative_size_desc = get_text('cumulative_size_desc', 'Espace disque utilisé en MB/GB')
-    game_distribution_title = get_text('game_distribution_title', 'Répartition par jeu')
-    games_concerned_label = get_text('games_concerned_label', 'Jeux concernés :')
-    games_concerned_desc = get_text('games_concerned_desc', 'Nombre de projets avec sauvegardes')
-    distinct_files_label = get_text('distinct_files_label', 'Fichiers distincts :')
-    distinct_files_desc = get_text('distinct_files_desc', 'Granularité par fichier traduit')
-    type_breakdown_title = get_text('type_breakdown_title', 'Répartition par type')
-    security_count_label = get_text('security_count_label', 'Sécurité :')
-    security_count_desc = get_text('security_count_desc', 'Nombre de sauvegardes avant reconstruction')
-    cleanup_count_label = get_text('cleanup_count_label', 'Nettoyage :')
-    cleanup_count_desc = get_text('cleanup_count_desc', 'Sauvegardes avant nettoyage TL')
-    rpa_count_label = get_text('rpa_count_label', 'RPA :')
-    rpa_count_desc = get_text('rpa_count_desc', 'Backups pré-compilation')
-    realtime_count_label = get_text('realtime_count_label', 'Temps réel :')
-    realtime_count_desc = get_text('realtime_count_desc', 'Modifications éditeur direct')
-    temporal_analysis_title = get_text('temporal_analysis_title', 'Analyse temporelle')
-    newest_backup_label = get_text('newest_backup_label', 'Plus récente :')
-    newest_backup_desc = get_text('newest_backup_desc', 'Date de la dernière sauvegarde')
-    oldest_backup_label = get_text('oldest_backup_label', 'Plus ancienne :')
-    oldest_backup_desc = get_text('oldest_backup_desc', 'Date de la première sauvegarde')
-    
-    # --- Section Système de filtrage avancé ---
-    filtering_title = get_text('filtering_title', 'Système de filtrage avancé')
-    backup_filters_alt = get_text('backup_filters_alt', 'Système de filtres')
-    backup_filters_caption = get_text('backup_filters_caption', 'Double filtrage par jeu et type avec options avancées')
-    double_filtering_title = get_text('double_filtering_title', 'Double filtrage intelligent')
-    double_filtering_intro = get_text('double_filtering_intro', 'Système de filtres combinés pour un accès précis aux sauvegardes :')
-    game_filter_title = get_text('game_filter_title', 'Filtre par jeu')
-    game_filter_desc = get_text('game_filter_desc', 'Liste déroulante avec tous les jeux ayant des sauvegardes')
-    type_filter_title = get_text('type_filter_title', 'Filtre par type')
-    type_filter_desc = get_text('type_filter_desc', 'Sécurité, Nettoyage, RPA, Temps réel')
-    search_bar_title = get_text('search_bar_title', 'Barre de recherche')
-    search_bar_desc = get_text('search_bar_desc', 'Recherche par nom de fichier ou date')
-    advanced_filters_title = get_text('advanced_filters_title', 'Filtres avancés')
-    advanced_filters_desc = get_text('advanced_filters_desc', 'Combinaison jeu + type + date pour précision maximale')
-    list_interface_title = get_text('list_interface_title', 'Interface de liste')
-    backup_list_alt = get_text('backup_list_alt', 'Liste des sauvegardes')
-    backup_list_caption = get_text('backup_list_caption', 'Vue détaillée avec métadonnées et actions')
-    list_interface_intro = get_text('list_interface_intro', 'Liste dynamique des sauvegardes avec colonnes riches :')
-    game_column_label = get_text('game_column_label', 'Jeu :')
-    game_column_desc = get_text('game_column_desc', 'Nom du projet avec icône')
-    file_column_label = get_text('file_column_label', 'Fichier :')
-    file_column_desc = get_text('file_column_desc', 'Nom du fichier .rpy concerné')
-    type_column_label = get_text('type_column_label', 'Type :')
-    type_column_desc = get_text('type_column_desc', 'Catégorie de sauvegarde avec code couleur')
-    date_column_label = get_text('date_column_label', 'Date :')
-    date_column_desc = get_text('date_column_desc', 'Format humain lisible')
-    size_column_label = get_text('size_column_label', 'Taille :')
-    size_column_desc = get_text('size_column_desc', 'Format KB/MB')
-    path_column_label = get_text('path_column_label', 'Chemin :')
-    path_column_desc = get_text('path_column_desc', 'Emplacement complet avec icône de copie')
-    actions_column_label = get_text('actions_column_label', 'Actions :')
-    actions_column_desc = get_text('actions_column_desc', 'Boutons contextuels (Restaurer, Supprimer, Détails)')
-    sorting_options_title = get_text('sorting_options_title', 'Options de tri')
-    sorting_options_desc = get_text('sorting_options_desc', 'Par date (défaut descendant), taille, nom avec indicateurs visuels')
-    pagination_title = get_text('pagination_title', 'Pagination intelligente')
-    pagination_desc = get_text('pagination_desc', 'Pour les listes volumineuses avec chargement lazy')
-    actions_menu_title = get_text('actions_menu_title', 'Menu contextuel des actions')
-    backup_actions_alt = get_text('backup_actions_alt', 'Actions contextuelles')
-    backup_actions_caption = get_text('backup_actions_caption', 'Menu déroulant avec options sécurisées')
-    restore_action_label = get_text('restore_action_label', 'Restaurer :')
-    restore_action_desc = get_text('restore_action_desc', 'Remplacement automatique au chemin original')
-    restore_to_action_label = get_text('restore_to_action_label', 'Restaurer vers... :')
-    restore_to_action_desc = get_text('restore_to_action_desc', 'Choix manuel du répertoire de destination')
-    delete_action_label = get_text('delete_action_label', 'Supprimer :')
-    delete_action_desc = get_text('delete_action_desc', 'Avec confirmation et mise à jour des stats')
-    details_action_label = get_text('details_action_label', 'Détails :')
-    details_action_desc = get_text('details_action_desc', 'Popup avec métadonnées complètes')
-    restoration_process_title = get_text('restoration_process_title', 'Processus de restauration')
-    restoration_dialog_alt = get_text('restoration_dialog_alt', 'Dialogue de restauration')
-    restoration_dialog_caption = get_text('restoration_dialog_caption', 'Processus sécurisé avec confirmation et résumé')
-    secure_workflow_title = get_text('secure_workflow_title', 'Workflow de restauration sécurisé')
-    selection_step_label = get_text('selection_step_label', 'Sélection :')
-    selection_step_desc = get_text('selection_step_desc', 'Choix de la sauvegarde dans la liste')
-    confirmation_step_label = get_text('confirmation_step_label', 'Confirmation :')
-    confirmation_step_desc = get_text('confirmation_step_desc', 'Dialogue avec résumé complet (fichier, jeu, type, date)')
-    path_verification_step_label = get_text('path_verification_step_label', 'Vérification chemin :')
-    path_verification_step_desc = get_text('path_verification_step_desc', 'Validation de l\'existence du répertoire cible')
-    restoration_step_label = get_text('restoration_step_label', 'Restauration :')
-    restoration_step_desc = get_text('restoration_step_desc', 'Copie avec préservation des métadonnées')
-    final_confirmation_step_label = get_text('final_confirmation_step_label', 'Confirmation finale :')
-    final_confirmation_step_desc = get_text('final_confirmation_step_desc', 'Popup de succès avec chemin restauré')
-    special_cases_title = get_text('special_cases_title', 'Gestion des cas particuliers')
-    missing_source_title = get_text('missing_source_title', 'Chemin source introuvable')
-    auto_detection_label = get_text('auto_detection_label', 'Détection automatique :')
-    auto_detection_fallback_desc = get_text('auto_detection_fallback_desc', 'Pour sauvegardes de nettoyage notamment')
-    smart_fallback_label = get_text('smart_fallback_label', 'Fallback intelligent :')
-    smart_fallback_desc = get_text('smart_fallback_desc', 'Reconstruction du chemin à la demande')
-    manual_mode_label = get_text('manual_mode_label', 'Mode manuel :')
-    manual_mode_desc = get_text('manual_mode_desc', 'Bascule automatique vers "Restaurer vers..." si échec')
-    directory_creation_label = get_text('directory_creation_label', 'Création répertoires :')
-    directory_creation_desc = get_text('directory_creation_desc', 'Dossiers créés automatiquement si nécessaire')
-    
-    # --- Section Nettoyage automatique avancé ---
-    auto_cleanup_title = get_text('auto_cleanup_title', 'Nettoyage automatique avancé')
-    cleanup_interface_alt = get_text('cleanup_interface_alt', 'Interface de nettoyage')
-    cleanup_interface_caption = get_text('cleanup_interface_caption', 'Critères et processus de nettoyage automatique')
-    smart_criteria_title = get_text('smart_criteria_title', 'Critères de nettoyage intelligents')
-    smart_criteria_intro = get_text('smart_criteria_intro', 'Chaque type de sauvegarde a sa propre stratégie de rétention :')
-    security_backups_title = get_text('security_backups_title', 'Sauvegardes Sécurité')
-    security_retention_label = get_text('security_retention_label', 'Rétention :')
-    security_retention_desc = get_text('security_retention_desc', '30 jours + garde minimum 5 par fichier')
-    security_logic_label = get_text('security_logic_label', 'Logique :')
-    security_logic_desc = get_text('security_logic_desc', 'Préservation des plus récentes importantes')
-    cleanup_backups_title = get_text('cleanup_backups_title', 'Sauvegardes Nettoyage')
-    cleanup_retention_label = get_text('cleanup_retention_label', 'Rétention :')
-    cleanup_retention_desc = get_text('cleanup_retention_desc', '7 jours (cycle court)')
-    cleanup_reason_label = get_text('cleanup_reason_label', 'Raison :')
-    cleanup_reason_desc = get_text('cleanup_reason_desc', 'Temporaires, remplacées fréquemment')
-    rpa_backups_title = get_text('rpa_backups_title', 'Sauvegardes RPA')
-    rpa_retention_label = get_text('rpa_retention_label', 'Rétention :')
-    rpa_retention_desc = get_text('rpa_retention_desc', '3 jours (très temporaires)')
-    rpa_usage_label = get_text('rpa_usage_label', 'Usage :')
-    rpa_usage_desc = get_text('rpa_usage_desc', 'Seulement avant compilation, rotation rapide')
-    realtime_backups_title = get_text('realtime_backups_title', 'Sauvegardes Temps Réel')
-    realtime_rotation_label = get_text('realtime_rotation_label', 'Rotation automatique :')
-    realtime_rotation_desc = get_text('realtime_rotation_desc', '10 fichiers maximum')
-    realtime_management_label = get_text('realtime_management_label', 'Gestion :')
-    realtime_management_desc = get_text('realtime_management_desc', 'Système de rotation intégré, pas de nettoyage manuel')
-    cleanup_process_title = get_text('cleanup_process_title', 'Processus de nettoyage')
-    analysis_step_label = get_text('analysis_step_label', 'Analyse :')
-    analysis_step_desc = get_text('analysis_step_desc', 'Scan de toutes les sauvegardes avec calcul d\'âge')
-    criteria_application_step_label = get_text('criteria_application_step_label', 'Application critères :')
-    criteria_application_step_desc = get_text('criteria_application_step_desc', 'Filtrage selon le type et la rétention')
-    file_deletion_step_label = get_text('file_deletion_step_label', 'Suppression fichiers :')
-    file_deletion_step_desc = get_text('file_deletion_step_desc', 'Suppression physique des fichiers obsolètes')
-    metadata_cleanup_step_label = get_text('metadata_cleanup_step_label', 'Nettoyage métadonnées :')
-    metadata_cleanup_step_desc = get_text('metadata_cleanup_step_desc', 'Mise à jour des index JSON')
-    empty_folders_step_label = get_text('empty_folders_step_label', 'Dossiers vides :')
-    empty_folders_step_desc = get_text('empty_folders_step_desc', 'Suppression de l\'arborescence vide')
-    final_report_step_label = get_text('final_report_step_label', 'Rapport final :')
-    final_report_step_desc = get_text('final_report_step_desc', 'Statistiques détaillées des suppressions')
-    use_cases_title = get_text('use_cases_title', 'Cas d\'usage pratiques')
-    error_restoration_title = get_text('error_restoration_title', 'Restauration après erreur')
-    error_context_label = get_text('error_context_label', 'Contexte :')
-    error_context_desc = get_text('error_context_desc', 'Fichier corrompu après modification')
-    error_solution_label = get_text('error_solution_label', 'Solution :')
-    error_solution_desc = get_text('error_solution_desc', 'Filtre par jeu → Type "Sécurité" → Restaurer dernière version valide')
-    disk_audit_title = get_text('disk_audit_title', 'Audit de l\'espace disque')
-    disk_context_label = get_text('disk_context_label', 'Contexte :')
-    disk_context_desc = get_text('disk_context_desc', 'Vérification utilisation espace')
-    disk_usage_label = get_text('disk_usage_label', 'Usage :')
-    disk_usage_desc = get_text('disk_usage_desc', 'Statistiques globales + nettoyage automatique ciblé')
-    project_change_title = get_text('project_change_title', 'Changement de projet')
-    project_context_label = get_text('project_context_label', 'Contexte :')
-    project_context_desc = get_text('project_context_desc', 'Travail sur autre jeu')
-    project_action_label = get_text('project_action_label', 'Action :')
-    project_action_desc = get_text('project_action_desc', 'Filtre par jeu spécifique pour vue dédiée')
-    tests_development_title = get_text('tests_development_title', 'Tests et développement')
-    tests_context_label = get_text('tests_context_label', 'Contexte :')
-    tests_context_desc = get_text('tests_context_desc', 'Expérimentation avec versions multiples')
-    tests_workflow_label = get_text('tests_workflow_label', 'Workflow :')
-    tests_workflow_desc = get_text('tests_workflow_desc', '"Restaurer vers..." pour tests parallèles')
-    best_practices_title = get_text('best_practices_title', 'Bonnes pratiques')
-    regular_monitoring_label = get_text('regular_monitoring_label', 'Surveillance régulière :')
-    regular_monitoring_desc = get_text('regular_monitoring_desc', 'Vérifiez périodiquement l\'espace utilisé')
-    selective_restoration_label = get_text('selective_restoration_label', 'Restauration sélective :')
-    selective_restoration_desc = get_text('selective_restoration_desc', 'Utilisez les filtres pour cibler précisément')
-    test_before_delete_label = get_text('test_before_delete_label', 'Test avant suppression :')
-    test_before_delete_desc = get_text('test_before_delete_desc', 'Vérifiez que vos fichiers principaux sont corrects')
-    backup_important_label = get_text('backup_important_label', 'Sauvegarde importante :')
-    backup_important_desc = get_text('backup_important_desc', 'Créez vos propres backups avant modifications majeures')
-    
-    # Génération du contenu HTML
-    return f"""
-        <div class="quick-nav-section" style="background: var(--card-bg); padding: 20px; margin-bottom: 30px; border-radius: 8px; border-left: 4px solid #4a90e2;">
-            <h3>🧭 {quick_nav_title}</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
-                <a href="#backup-statistics" class="nav-card-tab6" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">📊 {nav_statistics}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_statistics_desc}</div>
+    navigation = """
+        <div class="quick-nav-section" style="background: var(--card-bg); padding: 20px; margin-bottom: 30px; border-radius: 8px; border-left: 4px solid var(--accent);">
+            <h3 style="margin-top: 0;">🧭 Navigation Rapide</h3>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px;">
+                
+                <a href="#vue-ensemble-sauvegardes" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">💾 Vue d'ensemble</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Qu'est-ce que c'est ?</div>
                 </a>
-                <a href="#backup-restoration" class="nav-card-tab6" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">🔍 {nav_restoration}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_restoration_desc}</div>
+                
+                <a href="#acces" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🔓 Accès</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Ouvrir le gestionnaire</div>
                 </a>
-                <a href="#backup-cleanup" class="nav-card-tab6" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">🧹 {nav_cleanup}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_cleanup_desc}</div>
+                
+                <a href="#types-sauvegardes" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📊 Types</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Les 4 types de sauvegardes</div>
                 </a>
+                
+                <a href="#structure" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📂 Structure</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Organisation des fichiers</div>
+                </a>
+                
+                <a href="#filtres" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🔍 Filtres</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Trouver rapidement</div>
+                </a>
+                
+                <a href="#gestion" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📋 Gestion</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Tri et navigation</div>
+                </a>
+                
+                <a href="#restauration" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">💾 Restaurer</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Récupérer un fichier</div>
+                </a>
+                
+                <a href="#suppression" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🗑️ Supprimer</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Nettoyer l'espace</div>
+                </a>
+                
+                <a href="#avancees" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">⚙️ Avancé</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Fonctionnalités techniques</div>
+                </a>
+                
+                <a href="#astuces-sauvegardes" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">💡 Astuces</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Bonnes pratiques</div>
+                </a>
+                
             </div>
         </div>
         
         <style>
-        .nav-card-tab6:hover {{
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
-            border-color: #4a90e2 !important;
-            background: linear-gradient(135deg, var(--button-bg) 0%, rgba(74, 144, 226, 0.1) 100%) !important;
-        }}
+        .nav-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-color: var(--accent);
+        }
         </style>
-        
-        <div class="section" id="backup-manager">
-            <h2>💾 {title}</h2>
-            <p>{description}</p>
-            
-            {generator._get_image_html("04_interface_sauvegarde", "001", language, backup_main_interface_alt, backup_main_interface_caption)}
+    """
     
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 15px 0;">
-                <h4>🗂️ {hierarchy_title}</h4>
-                <p>{hierarchy_desc}</p>
-                <p><strong>{advantage_label}</strong> {hierarchy_advantage}</p>
-            </div>
-            
-            <h3>🎯 {purpose_title}</h3>
-            <p>{purpose_intro}</p>
-            
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>{centralized_view_title}</h4>
-                    <p>{centralized_view_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>{smart_filtering_title}</h4>
-                    <p>{smart_filtering_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>{one_click_restore_title}</h4>
-                    <p>{one_click_restore_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>{auto_cleanup_title}</h4>
-                    <p>{auto_cleanup_desc}</p>
-                </div>
-            </div>
-        </div>
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 1 : VUE D'ENSEMBLE
+    # ═══════════════════════════════════════════════════════════════════════════
     
-        <div class="section" id="backup-statistics">
-            <h2>📊 {statistics_title}</h2>
-            {generator._get_image_html("04_interface_sauvegarde", "002", language, backup_statistics_alt, backup_statistics_caption)}
-    
-            <h3>{realtime_metrics_title}</h3>
-            <p>{realtime_metrics_intro}</p>
+    section_1 = f"""
+        <div class="section" id="vue-ensemble-sauvegardes">
+            <h2>💾 Vue d'Ensemble du Gestionnaire de Sauvegardes</h2>
             
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>📈 {general_overview_title}</h4>
-                    <p><strong>{total_backups_label}</strong> {total_backups_desc}</p>
-                    <p><strong>{cumulative_size_label}</strong> {cumulative_size_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>🎮 {game_distribution_title}</h4>
-                    <p><strong>{games_concerned_label}</strong> {games_concerned_desc}</p>
-                    <p><strong>{distinct_files_label}</strong> {distinct_files_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>🏷️ {type_breakdown_title}</h4>
-                    <p><strong>{security_count_label}</strong> {security_count_desc}</p>
-                    <p><strong>{cleanup_count_label}</strong> {cleanup_count_desc}</p>
-                    <p><strong>{rpa_count_label}</strong> {rpa_count_desc}</p>
-                    <p><strong>{realtime_count_label}</strong> {realtime_count_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>⏰ {temporal_analysis_title}</h4>
-                    <p><strong>{newest_backup_label}</strong> {newest_backup_desc}</p>
-                    <p><strong>{oldest_backup_label}</strong> {oldest_backup_desc}</p>
-                </div>
-            </div>
-        </div>
-    
-        <div class="section" id="backup-restoration">
-            <h2>🔍 {filtering_title}</h2>
-            {generator._get_image_html("04_interface_sauvegarde", "003", language, backup_filters_alt, backup_filters_caption)}
-    
-            <h3>{double_filtering_title}</h3>
-            <p>{double_filtering_intro}</p>
+            {generator._get_image_html("06_sauvegardes", "003", 
+                "Interface complète du gestionnaire de sauvegardes", 
+                "Vue d'ensemble du gestionnaire avec statistiques, filtres et liste des sauvegardes")}
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 20px 0;">
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #4a90e2;">
-                    <h4>🎮 {game_filter_title}</h4>
-                    <p>{game_filter_desc}</p>
-                </div>
-                
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-                    <h4>🏷️ {type_filter_title}</h4>
-                    <p>{type_filter_desc}</p>
-                </div>
-                
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <h4>🔍 {search_bar_title}</h4>
-                    <p>{search_bar_desc}</p>
-                </div>
-                
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                    <h4>⚙️ {advanced_filters_title}</h4>
-                    <p>{advanced_filters_desc}</p>
-                </div>
-            </div>
+            <h3>Qu'est-ce que c'est ?</h3>
+            <p>Le <strong>Gestionnaire de Sauvegardes</strong> est ton centre de contrôle pour toutes les sauvegardes automatiques créées par RenExtract. 
+            Chaque fois que tu lances une opération importante (nettoyage, extraction, édition), RenExtract crée automatiquement une sauvegarde de tes fichiers.</p>
             
-            <h3>📋 {list_interface_title}</h3>
-            {generator._get_image_html("04_interface_sauvegarde", "004", language, backup_list_alt, backup_list_caption)}
-    
-            <p>{list_interface_intro}</p>
-            
+            <p>Cette interface te permet de :</p>
             <ul>
-                <li><strong>{game_column_label}</strong> {game_column_desc}</li>
-                <li><strong>{file_column_label}</strong> {file_column_desc}</li>
-                <li><strong>{type_column_label}</strong> {type_column_desc}</li>
-                <li><strong>{date_column_label}</strong> {date_column_desc}</li>
-                <li><strong>{size_column_label}</strong> {size_column_desc}</li>
-                <li><strong>{path_column_label}</strong> {path_column_desc}</li>
-                <li><strong>{actions_column_label}</strong> {actions_column_desc}</li>
+                <li>📊 <strong>Visualiser</strong> toutes tes sauvegardes en un coup d'œil</li>
+                <li>🔍 <strong>Filtrer</strong> par jeu ou par type de sauvegarde</li>
+                <li>💾 <strong>Restaurer</strong> un fichier en cas de problème</li>
+                <li>🗑️ <strong>Supprimer</strong> les anciennes sauvegardes pour libérer de l'espace</li>
+                <li>📈 <strong>Suivre</strong> l'espace disque utilisé</li>
             </ul>
             
-            <h4>{sorting_options_title}</h4>
-            <p>{sorting_options_desc}</p>
-            
-            <h4>{pagination_title}</h4>
-            <p>{pagination_desc}</p>
-            
-            <h3>⚙️ {actions_menu_title}</h3>
-            {generator._get_image_html("04_interface_sauvegarde", "005", language, backup_actions_alt, backup_actions_caption)}
-    
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>🔄 {restore_action_label}</h4>
-                    <p>{restore_action_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>📂 {restore_to_action_label}</h4>
-                    <p>{restore_to_action_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>🗑️ {delete_action_label}</h4>
-                    <p>{delete_action_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>ℹ️ {details_action_label}</h4>
-                    <p>{details_action_desc}</p>
-                </div>
+            <div class="info-box">
+                <h4>🛡️ Sécurité avant tout</h4>
+                <p>RenExtract ne supprime <strong>jamais</strong> une sauvegarde sans ta confirmation explicite. Même après restauration, 
+                le fichier sauvegardé est automatiquement supprimé uniquement pour éviter les doublons.</p>
             </div>
             
-            <h3>💾 {restoration_process_title}</h3>
-            {generator._get_image_html("04_interface_sauvegarde", "007", language, restoration_dialog_alt, restoration_dialog_caption)}
-    
-            <h4>{secure_workflow_title}</h4>
-            <ol>
-                <li><strong>{selection_step_label}</strong> {selection_step_desc}</li>
-                <li><strong>{confirmation_step_label}</strong> {confirmation_step_desc}</li>
-                <li><strong>{path_verification_step_label}</strong> {path_verification_step_desc}</li>
-                <li><strong>{restoration_step_label}</strong> {restoration_step_desc}</li>
-                <li><strong>{final_confirmation_step_label}</strong> {final_confirmation_step_desc}</li>
-            </ol>
-    
-            <h4>{special_cases_title}</h4>
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 15px 0;">
-                <h5>⚠️ {missing_source_title}</h5>
-                <ul>
-                    <li><strong>{auto_detection_label}</strong> {auto_detection_fallback_desc}</li>
-                    <li><strong>{smart_fallback_label}</strong> {smart_fallback_desc}</li>
-                    <li><strong>{manual_mode_label}</strong> {manual_mode_desc}</li>
-                    <li><strong>{directory_creation_label}</strong> {directory_creation_desc}</li>
-                </ul>
+            <h3>Quand l'utiliser ?</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                <div class="tip-box" style="margin: 0;">
+                    <h4>✅ Situations courantes</h4>
+                    <ul>
+                        <li>Tu as fait une erreur lors du nettoyage</li>
+                        <li>Un fichier a été modifié par erreur</li>
+                        <li>Tu veux récupérer une ancienne version</li>
+                        <li>Tu veux libérer de l'espace disque</li>
+                    </ul>
+                </div>
+                
+                <div class="warning-box" style="margin: 0;">
+                    <h4>⚠️ Important à savoir</h4>
+                    <ul>
+                        <li>Les sauvegardes prennent de l'espace disque</li>
+                        <li>Pense à nettoyer régulièrement</li>
+                        <li>La suppression est <strong>irréversible</strong></li>
+                        <li>Vérifie avant de supprimer !</li>
+                    </ul>
+                </div>
             </div>
         </div>
+    """
     
-        <div class="section" id="backup-cleanup">
-            <h2>🧹 {auto_cleanup_title}</h2>
-            {generator._get_image_html("04_interface_sauvegarde", "008", language, cleanup_interface_alt, cleanup_interface_caption)}
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 2 : ACCÈS AU GESTIONNAIRE
+    # ═══════════════════════════════════════════════════════════════════════════
     
-            <h3>{smart_criteria_title}</h3>
-            <p>{smart_criteria_intro}</p>
+    section_2 = f"""
+        <div class="section" id="acces">
+            <h2>🔓 Accès au Gestionnaire</h2>
             
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>🛡️ {security_backups_title}</h4>
-                    <p><strong>{security_retention_label}</strong> {security_retention_desc}</p>
-                    <p><strong>{security_logic_label}</strong> {security_logic_desc}</p>
+            {generator._get_image_html("06_sauvegardes", "001", 
+                "Bouton Sauvegardes dans l'onglet OUTILS", 
+                "Accès au gestionnaire de sauvegardes depuis l'onglet OUTILS")}
+            
+            <h3>Comment ouvrir le gestionnaire ?</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                
+                <div class="step-box" style="margin: 0;">
+                    <h4>📍 Étape par étape</h4>
+                    <ol>
+                        <li><strong>Clique sur l'onglet OUTILS</strong> (jaune) dans l'interface principale</li>
+                        <li><strong>Clique sur le bouton "💾 Sauvegardes"</strong></li>
+                        <li>Le gestionnaire s'ouvre dans une nouvelle fenêtre</li>
+                    </ol>
                 </div>
                 
-                <div class="feature-card">
-                    <h4>🧹 {cleanup_backups_title}</h4>
-                    <p><strong>{cleanup_retention_label}</strong> {cleanup_retention_desc}</p>
-                    <p><strong>{cleanup_reason_label}</strong> {cleanup_reason_desc}</p>
+                <div class="info-box" style="margin: 0;">
+                    <h4>💡 Bon à savoir</h4>
+                    <p>Le gestionnaire de sauvegardes est une <strong>fenêtre persistante</strong> : quand tu la fermes, elle se cache simplement.</p>
+                    <p>La prochaine fois que tu l'ouvres, elle <strong>réapparaît instantanément</strong> et charge automatiquement les dernières sauvegardes, 
+                    y compris celles créées entre temps !</p>
                 </div>
                 
-                <div class="feature-card">
-                    <h4>📦 {rpa_backups_title}</h4>
-                    <p><strong>{rpa_retention_label}</strong> {rpa_retention_desc}</p>
-                    <p><strong>{rpa_usage_label}</strong> {rpa_usage_desc}</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 3 : TYPES DE SAUVEGARDES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_3 = f"""
+        <div class="section" id="types-sauvegardes">
+            <h2>📊 Comprendre les Types de Sauvegardes</h2>
+            
+            <p>RenExtract crée automatiquement <strong>4 types de sauvegardes</strong> différents selon le contexte. Chaque type a son rôle spécifique :</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>🛡️ Sécurité</h4>
+                    <p><strong>Quand ?</strong> Avant chaque extraction de fichiers</p>
+                    <p><strong>Pourquoi ?</strong> Protection maximale de tes fichiers originaux</p>
+                    <p><strong>À savoir :</strong> Ces sauvegardes sont précieuses, ne les supprime pas trop vite !</p>
                 </div>
                 
-                <div class="feature-card">
-                    <h4>⚡ {realtime_backups_title}</h4>
-                    <p><strong>{realtime_rotation_label}</strong> {realtime_rotation_desc}</p>
-                    <p><strong>{realtime_management_label}</strong> {realtime_management_desc}</p>
+                <div class="info-box" style="margin: 0;">
+                    <h4>🧹 Nettoyage</h4>
+                    <p><strong>Quand ?</strong> Avant chaque opération de nettoyage de projet</p>
+                    <p><strong>Pourquoi ?</strong> Te permet de revenir en arrière si nécessaire</p>
+                    <p><strong>À savoir :</strong> Très utile si un nettoyage supprime quelque chose d'important</p>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>📦 Avant RPA</h4>
+                    <p><strong>Quand ?</strong> Juste avant la construction d'une archive RPA</p>
+                    <p><strong>Pourquoi ?</strong> Garder une trace avant la compression</p>
+                    <p><strong>À savoir :</strong> Protection contre la corruption potentielle des données lors de la construction RPA</p>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>⚡ Édition temps réel</h4>
+                    <p><strong>Quand ?</strong> À chaque modification dans l'éditeur temps réel</p>
+                    <p><strong>Pourquoi ?</strong> Historique de modifications automatique</p>
+                    <p><strong>Rotation ?</strong> ✅ <strong>Max 10 fichiers</strong> (les plus anciens sont supprimés automatiquement)</p>
+                    <p><strong>À savoir :</strong> Ces sauvegardes tournent automatiquement, pas besoin de les gérer !</p>
+                </div>
+                
+            </div>
+            
+            <div class="tip-box">
+                <h4>💡 Astuce : Libérer de l'espace</h4>
+                <p>Les sauvegardes <strong>Édition temps réel</strong> se gèrent toutes seules avec un maximum de 10 fichiers. 
+                Pour libérer de l'espace, concentre-toi sur les sauvegardes des types (Sécurité, Nettoyage, Avant RPA) que tu n'utilises plus.</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 4 : STRUCTURE DE STOCKAGE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_4 = f"""
+        <div class="section" id="structure">
+            <h2>📂 Structure de Stockage</h2>
+            
+            <h3>Organisation hiérarchique</h3>
+            <p>RenExtract organise tes sauvegardes de manière <strong>intelligente et structurée</strong> (arborescence collapsible) :</p>
+            
+            <div style="margin: 1.5rem 0; background: var(--nav-bg); border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div class="arbo-toggle" style="padding: 18px 24px; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s; border-bottom: 1px solid var(--sep);" onclick="window.toggleArborescence()" id="arborescence-title">
+                    <span id="arborescence-toggle" style="font-size: 1.3rem; color: var(--accent); font-weight: bold; transition: all 0.3s;">▶</span>
+                    <span style="font-weight: 600; color: var(--fg);">📁 Cliquez pour voir l'arborescence des sauvegardes</span>
+                </div>
+                <style>
+                .arbo-toggle:hover {{ background: rgba(74, 144, 226, 0.1); padding-left: 30px !important; }}
+                </style>
+                <div id="arborescence-content" style="display: none; margin-top: 15px;">
+                    <pre style="background: var(--bg); padding: 15px; border-radius: 6px; overflow-x: auto; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9em;">
+02_Sauvegardes/                        ← Dossier racine
+├── &lt;Game_Name&gt;/                      ← Nom du jeu
+│   ├── &lt;File_name&gt;/                  ← Nom du fichier (sans extension)
+│   │   ├── security/                ← Sauvegardes de sécurité
+│   │   │   └── file_20250110_143022.rpy
+│   │   ├── cleanup/                 ← Sauvegardes de nettoyage
+│   │   │   └── file_20250110_150030.rpy
+│   │   ├── rpa_build/               ← Sauvegardes avant RPA
+│   │   │   └── file_20250110_160045.rpy
+│   │   └── realtime_edit/           ← Sauvegardes édition (max 10)
+│   │       ├── file_20250110_170001.rpy
+│   │       ├── file_20250110_170015.rpy
+│   │       └── ... (max 10 fichiers)
+├── backup_metadata.json             ← Métadonnées
+└── backup_cache.pkl                 ← Cache pour performances
+                    </pre>
+                </div>
+                </div>
+                
+            <h3>Avantages de cette structure</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                <div class="tip-box" style="margin: 0;">
+                    <h4>✅ Organisation claire</h4>
+                    <ul>
+                        <li>Un dossier par jeu</li>
+                        <li>Un sous-dossier par fichier</li>
+                        <li>Un type par sous-dossier</li>
+                        <li>Facile à retrouver manuellement</li>
+                    </ul>
+                </div>
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>🚀 Performance optimisée</h4>
+                    <ul>
+                        <li>Cache intelligent (TTL: 60s)</li>
+                        <li>Chargement ultra-rapide</li>
+                        <li>Index des métadonnées</li>
+                        <li>Scan hiérarchique efficace</li>
+                    </ul>
                 </div>
             </div>
-    
-            <h3>{cleanup_process_title}</h3>
-            <ol>
-                <li><strong>{analysis_step_label}</strong> {analysis_step_desc}</li>
-                <li><strong>{criteria_application_step_label}</strong> {criteria_application_step_desc}</li>
-                <li><strong>{file_deletion_step_label}</strong> {file_deletion_step_desc}</li>
-                <li><strong>{metadata_cleanup_step_label}</strong> {metadata_cleanup_step_desc}</li>
-                <li><strong>{empty_folders_step_label}</strong> {empty_folders_step_desc}</li>
-                <li><strong>{final_report_step_label}</strong> {final_report_step_desc}</li>
-            </ol>
             
-            <h3>🎯 {use_cases_title}</h3>
-            <div class="feature-grid">
-                <div class="feature-card">
-                    <h4>🔄 {error_restoration_title}</h4>
-                    <p><strong>{error_context_label}</strong> {error_context_desc}</p>
-                    <p><strong>{error_solution_label}</strong> {error_solution_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>📊 {disk_audit_title}</h4>
-                    <p><strong>{disk_context_label}</strong> {disk_context_desc}</p>
-                    <p><strong>{disk_usage_label}</strong> {disk_usage_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>🎮 {project_change_title}</h4>
-                    <p><strong>{project_context_label}</strong> {project_context_desc}</p>
-                    <p><strong>{project_action_label}</strong> {project_action_desc}</p>
-                </div>
-                
-                <div class="feature-card">
-                    <h4>🧪 {tests_development_title}</h4>
-                    <p><strong>{tests_context_label}</strong> {tests_context_desc}</p>
-                    <p><strong>{tests_workflow_label}</strong> {tests_workflow_desc}</p>
-                </div>
+            <div class="info-box">
+                <h4>📍 Où se trouve ce dossier ?</h4>
+                <p>Le dossier <code>02_Sauvegardes</code> est situé à la racine de ton dossier de travail RenExtract. 
+                Tu peux y accéder manuellement si besoin, mais le gestionnaire intégré est beaucoup plus pratique !</p>
             </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 5 : FILTRER LES SAUVEGARDES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_5 = f"""
+        <div class="section" id="filtres">
+            <h2>🔍 Filtrer les Sauvegardes</h2>
             
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
-                <h4>💡 {best_practices_title}</h4>
+            <p>Quand tu as beaucoup de sauvegardes, les <strong>filtres</strong> sont tes meilleurs amis ! 
+            RenExtract te propose deux filtres complémentaires :</p>
+            
+            <h3>Filtre par jeu</h3>
+            
+            {generator._get_image_html("06_sauvegardes", "004", 
+                "Menu de filtrage par jeu", 
+                "Liste déroulante pour filtrer les sauvegardes par jeu")}
+            
+            <div class="info-box">
+                <h4>🎮 Comment ça marche ?</h4>
+                <p>Clique sur le menu déroulant <strong>"🎮 Filtrer par jeu"</strong> et choisis :</p>
                 <ul>
-                    <li><strong>{regular_monitoring_label}</strong> {regular_monitoring_desc}</li>
-                    <li><strong>{selective_restoration_label}</strong> {selective_restoration_desc}</li>
-                    <li><strong>{test_before_delete_label}</strong> {test_before_delete_desc}</li>
-                    <li><strong>{backup_important_label}</strong> {backup_important_desc}</li>
+                    <li><strong>Tous</strong> : Affiche toutes les sauvegardes (tous jeux confondus)</li>
+                    <li><strong>Un jeu spécifique</strong> : Affiche uniquement les sauvegardes de ce jeu</li>
+                </ul>
+                <p>Le tableau et les statistiques s'adaptent automatiquement !</p>
+            </div>
+            
+            <h3>Filtre par type</h3>
+            
+            {generator._get_image_html("06_sauvegardes", "002", 
+                "Menu de filtrage par type", 
+                "Liste déroulante pour filtrer les sauvegardes par type (Sécurité, Nettoyage, etc.)")}
+            
+            <div class="info-box">
+                <h4>🏷️ Comment ça marche ?</h4>
+                <p>Clique sur le menu déroulant <strong>"🏷️ Filtrer par type"</strong> et choisis :</p>
+                <ul>
+                    <li><strong>Tous</strong> : Affiche tous les types</li>
+                    <li><strong>🛡️ Sécurité</strong> : Uniquement les sauvegardes de sécurité</li>
+                    <li><strong>🧹 Nettoyage</strong> : Uniquement les sauvegardes de nettoyage</li>
+                    <li><strong>📦 Avant RPA</strong> : Uniquement les sauvegardes avant compilation en RPA</li>
+                    <li><strong>⚡ Édition temps réel</strong> : Uniquement les sauvegardes d'édition</li>
+            </ul>
+            </div>
+            
+            <h3>Combiner les filtres</h3>
+            
+            {generator._get_image_html("06_sauvegardes", "008", 
+                "Filtres combinés actifs", 
+                "Exemple de filtrage par jeu ET par type simultanément")}
+            
+            <div class="tip-box">
+                <h4>🎯 Filtrage puissant</h4>
+                <p>Tu peux <strong>combiner les deux filtres</strong> ! Par exemple :</p>
+                <ul>
+                    <li>Jeu = "Game_Name" + Type = "Sécurité" → Affiche uniquement les sauvegardes de sécurité de ce jeu</li>
+                    <li>Les statistiques s'adaptent en temps réel</li>
+                    <li>La barre de statut indique les filtres actifs</li>
+                </ul>
+            </div>
+            
+            <div class="warning-box">
+                <h4>⚠️ Attention au filtre actif</h4>
+                <p>Quand un filtre est actif, tu ne vois qu'une <strong>partie</strong> de tes sauvegardes. 
+                Vérifie bien la barre de statut en bas pour savoir si un filtre est appliqué !</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 6 : GÉRER LES SAUVEGARDES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_6 = f"""
+        <div class="section" id="gestion">
+            <h2>📋 Gérer les Sauvegardes</h2>
+            
+            <h3>Tri des colonnes</h3>
+            
+            {generator._get_image_html("06_sauvegardes", "006", 
+                "Tri par nom de fichier", 
+                "Exemple de tri avec indicateur de direction")}
+            
+            <div class="info-box">
+                <h4>🔄 Trier pour mieux s'y retrouver</h4>
+                <p>Clique sur <strong>n'importe quel en-tête de colonne</strong> pour trier la liste :</p>
+                <ul>
+                    <li><strong>Nom du jeu</strong> : Tri alphabétique des jeux</li>
+                    <li><strong>Nom du fichier</strong> : Tri alphabétique des fichiers</li>
+                    <li><strong>Type backup</strong> : Tri par type de sauvegarde</li>
+                    <li><strong>Date créé</strong> : Tri chronologique (plus récent/ancien)</li>
+                    <li><strong>Taille</strong> : Tri par taille de fichier</li>
+                </ul>
+                <p>Un indicateur (<strong>↑</strong> ou <strong>↓</strong>) apparaît pour montrer l'ordre actuel.</p>
+            </div>
+            
+            <h3>Navigation dans le tableau</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                <div class="tip-box" style="margin: 0;">
+                    <h4>⌨️ Raccourcis clavier</h4>
+                    <ul>
+                        <li><strong>Clic</strong> : Sélectionner une sauvegarde</li>
+                        <li><strong>Clic droit</strong> : Menu contextuel</li>
+                        <li><strong>Flèches ↑↓ ou molette</strong> : Naviguer dans la liste</li>
+                    </ul>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>📊 Colonnes affichées</h4>
+                    <ul>
+                        <li><strong>Nom du jeu</strong> : Jeu concerné</li>
+                        <li><strong>Nom du fichier</strong> : Fichier sauvegardé</li>
+                        <li><strong>Type backup</strong> : Type de sauvegarde</li>
+                        <li><strong>Date créé</strong> : Date et heure</li>
+                        <li><strong>Taille</strong> : Espace utilisé</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="tip-box">
+                <h4>💡 Astuce : Scroll infini</h4>
+                <p>Le tableau supporte le <strong>scroll vertical et horizontal</strong>. Si tu as beaucoup de sauvegardes, 
+                utilise les scrollbars pour naviguer confortablement !</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 7 : RESTAURER UNE SAUVEGARDE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_7 = f"""
+        <div class="section" id="restauration">
+            <h2>💾 Restaurer une Sauvegarde</h2>
+            
+            <p>La restauration te permet de <strong>récupérer une version antérieure</strong> de ton fichier. 
+            RenExtract propose deux modes de restauration :</p>
+            
+            <h3>Actions disponibles</h3>
+            
+            {generator._get_image_html("06_sauvegardes", "005", 
+                "Boutons d'action sur les sauvegardes", 
+                "Boutons Restaurer, Restaurer vers... et Supprimer")}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>💾 Restaurer (normal)</h4>
+                    <p><strong>Ce qui se passe :</strong></p>
+                    <ol>
+                        <li>Sélectionne une sauvegarde dans la liste</li>
+                        <li>Clique sur <strong>"💾 Restaurer"</strong></li>
+                        <li>Confirme la restauration</li>
+                        <li>Le fichier remplace l'original</li>
+                        <li>La sauvegarde est <strong>automatiquement supprimée</strong></li>
+                    </ol>
+                    <p><strong>Avantage :</strong> Restauration rapide au bon endroit</p>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>📄 Restaurer vers... (personnalisé)</h4>
+                    <p><strong>Ce qui se passe :</strong></p>
+                    <ol>
+                        <li>Sélectionne une sauvegarde</li>
+                        <li>Clique sur <strong>"📄 Restaurer vers..."</strong></li>
+                        <li>Choisis le dossier de destination</li>
+                        <li>Le fichier est copié là où tu veux</li>
+                        <li>La sauvegarde reste disponible</li>
+                    </ol>
+                    <p><strong>Avantage :</strong> Tu gardes la sauvegarde et l'original</p>
+                </div>
+                
+            </div>
+            
+            <h3>Confirmation de restauration</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 1.5rem 0; align-items: start;">
+                {generator._get_image_html("06_sauvegardes", "007", 
+                    "Dialogue de confirmation restauration", 
+                    "Fenêtre de confirmation avant restauration d'une sauvegarde")}
+                
+                <div class="warning-box" style="margin: 0;">
+                    <h4>⚠️ Attention : Remplacement du fichier</h4>
+                    <p>Lors d'une restauration normale :</p>
+                    <ul>
+                        <li>Le fichier actuel sera <strong>remplacé</strong> par la sauvegarde</li>
+                        <li>Cette action est <strong>irréversible</strong> (sauf si tu as une autre sauvegarde)</li>
+                        <li>La sauvegarde est supprimée après restauration pour éviter les doublons</li>
+                        <li>Vérifie bien les détails (jeu, fichier, date) avant de confirmer !</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="tip-box">
+                <h4>💡 Astuce : Menu contextuel</h4>
+                <p>Tu peux aussi <strong>cliquer droit</strong> sur une sauvegarde pour accéder rapidement aux actions de restauration !</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 8 : SUPPRIMER UNE SAUVEGARDE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_8 = f"""
+        <div class="section" id="suppression">
+            <h2>🗑️ Supprimer une Sauvegarde</h2>
+            
+            <p>Pour libérer de l'espace disque, tu peux supprimer les sauvegardes dont tu n'as plus besoin.</p>
+            
+            <h3>Comment supprimer ?</h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 1.5rem 0; align-items: start;">
+                <div class="step-box" style="margin: 0;">
+                    <h4>📝 Étapes de suppression</h4>
+                    <ol>
+                        <li>Sélectionne une ou plusieurs sauvegardes dans la liste</li>
+                        <li>Clique sur le bouton <strong>"🗑️ Supprimer"</strong> (rouge)</li>
+                        <li>Lis attentivement les détails affichés dans la confirmation</li>
+                        <li>Confirme en cliquant sur <strong>"Oui"</strong></li>
+                        <li>La sauvegarde est définitivement supprimée</li>
+            </ol>
+                </div>
+                
+                {generator._get_image_html("06_sauvegardes", "009", 
+                    "Dialogue de confirmation suppression", 
+                    "Fenêtre de confirmation avant suppression définitive")}
+            </div>
+            
+            <div class="warning-box">
+                <h4>⚠️ IMPORTANT : Action irréversible</h4>
+                <p><strong>La suppression est DÉFINITIVE</strong> ! Tu ne pourras pas récupérer une sauvegarde supprimée.</p>
+                <p>Avant de supprimer, vérifie bien :</p>
+                <ul>
+                    <li>✅ C'est bien la bonne sauvegarde ?</li>
+                    <li>✅ Tu n'en auras plus besoin ?</li>
+                    <li>✅ Tu as d'autres sauvegardes si nécessaire ?</li>
+                    <li>✅ Le jeu et le fichier correspondent bien ?</li>
+                </ul>
+            </div>
+            
+            <h3>Quelles sauvegardes supprimer ?</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>✅ Supprimer sans risque</h4>
+                    <ul>
+                        <li>Sauvegardes très anciennes (plusieurs semaines/mois)</li>
+                        <li>Sauvegardes de jeux terminés</li>
+                        <li>Doublons ou versions intermédiaires</li>
+                        <li>Sauvegardes de tests ou d'essais</li>
+                    </ul>
+                </div>
+                
+                <div class="warning-box" style="margin: 0;">
+                    <h4>❌ À conserver</h4>
+                    <ul>
+                        <li>Sauvegardes de sécurité récentes</li>
+                        <li>Dernière sauvegarde avant modification importante</li>
+                        <li>Sauvegardes de projets en cours</li>
+                        <li>En cas de doute, garde-les !</li>
+                    </ul>
+                </div>
+                
+            </div>
+            
+            <div class="info-box">
+                <h4>🧹 Nettoyage automatique des dossiers vides</h4>
+                <p>Quand tu supprimes une sauvegarde, RenExtract nettoie automatiquement les dossiers vides. 
+                Pas besoin de t'en soucier !</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 9 : FONCTIONNALITÉS AVANCÉES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_9 = f"""
+        <div class="section" id="avancees">
+            <h2>⚙️ Fonctionnalités Avancées</h2>
+            
+            <p>Le gestionnaire de sauvegardes intègre plusieurs technologies pour optimiser ton expérience :</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>🚀 Cache intelligent</h4>
+                    <p><strong>Problème résolu :</strong> Chargement lent avec beaucoup de sauvegardes</p>
+                    <p><strong>Solution :</strong></p>
+                    <ul>
+                        <li>Cache mémoire avec TTL de 60 secondes</li>
+                        <li>Cache persistant sur disque (entre sessions)</li>
+                        <li>Invalidation automatique lors de modifications</li>
+                        <li>Chargement ultra-rapide (même avec 1000+ sauvegardes)</li>
+                    </ul>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>🪟 Fenêtre persistante</h4>
+                    <p><strong>Avantage :</strong> Réactivité maximale</p>
+                    <p><strong>Comment ça marche :</strong></p>
+                    <ul>
+                        <li>La fenêtre se cache au lieu de se fermer</li>
+                        <li>Réouverture instantanée (pas de rechargement)</li>
+                        <li>Données toujours à jour</li>
+                        <li>Économie de ressources</li>
+                    </ul>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>📊 Index des métadonnées</h4>
+                    <p><strong>Optimisation :</strong> Accès O(1) aux infos</p>
+                    <p><strong>Bénéfices :</strong></p>
+                    <ul>
+                        <li>Recherche ultra-rapide par chemin</li>
+                        <li>Pas de scan complet nécessaire</li>
+                        <li>Métadonnées toujours synchronisées</li>
+                        <li>Performance constante quelle que soit la quantité</li>
+                    </ul>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>🔄 Rotation automatique</h4>
+                    <p><strong>Type concerné :</strong> Édition temps réel uniquement</p>
+                    <p><strong>Fonctionnement :</strong></p>
+                    <ul>
+                        <li>Maximum : 10 fichiers conservés</li>
+                        <li>Suppression automatique des plus anciens</li>
+                        <li>Aucune intervention manuelle nécessaire</li>
+                        <li>Gestion optimale de l'espace disque</li>
+                    </ul>
+                </div>
+                
+            </div>
+            
+            <div class="tip-box">
+                <h4>💡 Pour les curieux : Structure technique</h4>
+                <p>Si tu veux en savoir plus sur la structure technique :</p>
+                <ul>
+                    <li><strong>Singleton Pattern</strong> : Une seule instance du gestionnaire</li>
+                    <li><strong>Métadonnées JSON</strong> : Stockage léger et lisible</li>
+                    <li><strong>Cache Pickle</strong> : Sérialisation Python pour vitesse maximale</li>
+                    <li><strong>Scan hiérarchique</strong> : Parcours optimisé de l'arborescence</li>
                 </ul>
             </div>
         </div>
     """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 10 : ASTUCES ET BONNES PRATIQUES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_10 = """
+        <div class="section" id="astuces-sauvegardes">
+            <h2>💡 Astuces et Bonnes Pratiques</h2>
+            
+            <p>Quelques conseils pour gérer efficacement tes sauvegardes :</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>📅 Vérification régulière</h4>
+                    <ul>
+                        <li>Ouvre le gestionnaire <strong>une fois par semaine</strong></li>
+                        <li>Vérifie l'espace disque utilisé</li>
+                        <li>Supprime les sauvegardes obsolètes</li>
+                        <li>Garde uniquement ce qui est utile</li>
+                    </ul>
+                </div>
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>🎯 Utiliser les filtres</h4>
+                    <ul>
+                        <li>Filtre par jeu pour les projets terminés</li>
+                        <li>Filtre par type pour cibler les sauvegardes lourdes</li>
+                        <li>Combine les filtres pour affiner</li>
+                        <li>Trie par taille pour voir les plus gros fichiers</li>
+                    </ul>
+                </div>
+                
+                <div class="warning-box" style="margin: 0;">
+                    <h4>⚠️ Rotation édition temps réel</h4>
+                    <ul>
+                        <li>Max 10 fichiers : ancien automatiquement supprimé</li>
+                        <li>Pas besoin de gérer manuellement</li>
+                        <li>Restaure rapidement si modification récente</li>
+                        <li>Ne compte pas dessus pour l'archivage long terme</li>
+                    </ul>
+                </div>
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>💾 Sauvegarde externe importante</h4>
+                    <ul>
+                        <li>Les sauvegardes RenExtract sont <strong>locales</strong></li>
+                        <li>Pour les projets importants, fais des sauvegardes externes</li>
+                        <li>Utilise Git, cloud, ou disque externe</li>
+                        <li>Ne compte pas uniquement sur RenExtract</li>
+                    </ul>
+                </div>
+                
+            </div>
+            
+            <div class="info-box">
+                <h4>🔍 Workflow recommandé</h4>
+                <ol>
+                    <li><strong>Avant une opération importante</strong> : Vérifie qu'une sauvegarde de sécurité est créée</li>
+                    <li><strong>Après l'opération</strong> : Si tout va bien, tu peux supprimer l'ancienne sauvegarde</li>
+                    <li><strong>En cas de problème</strong> : Restaure la dernière sauvegarde valide</li>
+                    <li><strong>Nettoyage mensuel</strong> : Supprime les sauvegardes de plus de 30 jours si inutiles</li>
+                </ol>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 11 : CONCLUSION
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_11 = ""
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ASSEMBLAGE FINAL
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    return (
+        navigation +
+        section_1 +
+        section_2 +
+        section_3 +
+        section_4 +
+        section_5 +
+        section_6 +
+        section_7 +
+        section_8 +
+        section_9 +
+        section_10 +
+        section_11
+    )

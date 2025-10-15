@@ -10,6 +10,7 @@ Onglet Chemins d'accès
 """
 
 import os
+import sys
 import tkinter as tk
 from tkinter import ttk, filedialog
 import subprocess
@@ -286,16 +287,16 @@ def _create_custom_editor_section(parent, settings_instance):
     actions_container = tk.Frame(editor_frame, bg=theme["bg"])
     actions_container.pack(fill='x', pady=(10, 0))
     
-    # Bouton Reset
+    # Bouton Reset pour tous les chemins
     reset_btn = tk.Button(
         actions_container,
-        text="🔄 Réinitialiser",
-        command=lambda: _reset_custom_editor_path(settings_instance),
+        text="🔄 Réinitialiser tous les chemins",
+        command=lambda: _reset_all_paths(settings_instance),
         bg=theme["button_tertiary_bg"],
         fg="#000000",
         font=('Segoe UI', 9),
         pady=4,
-        width=15,
+        width=30,
         relief='flat',
         cursor='hand2'
     )
@@ -365,8 +366,31 @@ def _browse_custom_editor_path(settings_instance):
         log_message("ERREUR", f"Erreur sélection chemin éditeur personnalisé: {e}", category="paths_tab")
 
 
+def _reset_all_paths(settings_instance):
+    """Réinitialise tous les chemins (SDK + Éditeur personnalisé)"""
+    try:
+        # Réinitialiser le SDK
+        settings_instance.sdk_path_var.set("")
+        config_manager.set_renpy_sdk_path("")
+        
+        # Réinitialiser l'éditeur personnalisé
+        settings_instance.custom_editor_var.set("")
+        config_manager.set("custom_editor_path", "")
+        
+        _show_toast(settings_instance, "🔄 Tous les chemins ont été réinitialisés", "info")
+        log_message("INFO", "Tous les chemins (SDK + Éditeur) ont été réinitialisés", category="paths_tab")
+        
+        # Mettre à jour la combobox de l'onglet Application
+        if hasattr(settings_instance, 'editor_combo'):
+            from ui.tab_settings.application_tab import _update_editor_combo_values
+            _update_editor_combo_values(settings_instance)
+            
+    except Exception as e:
+        log_message("ERREUR", f"Erreur réinitialisation des chemins: {e}", category="paths_tab")
+
+
 def _reset_custom_editor_path(settings_instance):
-    """Remet le chemin de l'éditeur personnalisé à vide"""
+    """Remet le chemin de l'éditeur personnalisé à vide (fonction conservée pour compatibilité)"""
     try:
         settings_instance.custom_editor_var.set("")
         config_manager.set("custom_editor_path", "")

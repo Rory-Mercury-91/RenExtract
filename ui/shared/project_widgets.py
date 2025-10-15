@@ -488,7 +488,8 @@ class ProjectLanguageSelector:
                 self._set_project_info("📊 Mode projet activé - Spécifiez un dossier projet", fg="#2980B9")
                 return
             
-            self._scan_languages()
+            # CORRECTION: Forcer le rafraîchissement pour détecter les changements manuels
+            self._scan_languages(force_refresh=True)
             self._scan_files()
             
             log_message("INFO", "Scan manuel déclenché", category="project_widgets")
@@ -644,7 +645,7 @@ class ProjectLanguageSelector:
     # MÉTHODES EXISTANTES (Scan langues/fichiers, etc.) - MODE PROJET UNIQUEMENT
     # ============================================================================
     
-    def _scan_languages(self):
+    def _scan_languages(self, force_refresh=False):
         """Scanne les langues disponibles (mode projet uniquement)"""
         if self.current_mode == "single_file":
             return  # Pas de scan en mode fichier unique
@@ -655,7 +656,7 @@ class ProjectLanguageSelector:
                     self.language_status_label.config(text="❌ Aucun projet sélectionné", fg="#ff8379")
                 return
 
-            self.available_languages = scan_project_languages(self.current_project_path)
+            self.available_languages = scan_project_languages(self.current_project_path, force_refresh=force_refresh)
 
             if not self.available_languages:
                 if getattr(self, "language_status_label", None):
@@ -713,6 +714,10 @@ class ProjectLanguageSelector:
         try:
             selected_language = self.selected_language_var.get()
             if not self.current_project_path or not selected_language:
+                # CORRECTION: Nettoyer la liste des fichiers quand pas de langue sélectionnée
+                self.available_files = []
+                self.file_combo['values'] = []
+                self.selected_file_var.set("")
                 self.file_status_label.config(
                     text="📋 Sélectionnez une langue pour voir les fichiers",
                     fg='#666666'
@@ -722,7 +727,8 @@ class ProjectLanguageSelector:
             self.available_files = scan_language_files(
                 self.current_project_path,
                 selected_language,
-                self.exclusions
+                self.exclusions,
+                force_refresh=True  # ✅ AJOUT : Forcer le refresh pour détecter les nouveaux fichiers
             )
             
             if not self.available_files:
@@ -739,7 +745,14 @@ class ProjectLanguageSelector:
             file_options.extend([f['name'] for f in self.available_files])
             
             self.file_combo['values'] = file_options
-            self.selected_file_var.set("Tous les fichiers")  # Par défaut
+            
+            # ✅ CORRECTION : Sélectionner "Tous les fichiers" par défaut pour activer la navigation
+            if len(self.available_files) > 0:
+                # Sélectionner "Tous les fichiers" pour permettre la navigation entre fichiers
+                self.selected_file_var.set("Tous les fichiers")
+            else:
+                # Fallback vers "Tous les fichiers" si aucun fichier individuel
+                self.selected_file_var.set("Tous les fichiers")
             
             # Mettre à jour le statut
             self.file_status_label.config(

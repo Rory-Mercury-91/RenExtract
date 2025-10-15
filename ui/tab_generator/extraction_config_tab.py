@@ -4,7 +4,6 @@
 
 """
 Onglet de configuration pour l'extraction des textes oubliés par le SDK
-- Sélection du mode de détection (Simple/Optimisé)
 - Configuration des exclusions de fichiers
 - Sélection de la langue de référence via COMBOBOX
 - Validation et lancement de l'analyse
@@ -485,7 +484,7 @@ def _show_exclusions_help(main_interface):
         
         ("🔧 ", "blue"), ("Exclusions automatiques :", "bold"), ("\n", "normal"),
         ("Le système exclut automatiquement ses propres fichiers générés :\n", "normal"),
-        ("• ", "blue"), ("99_Z_LangSelect.rpy", "italic"), (" (sélecteur de langue)\n", "normal"),
+        ("• ", "blue"), ("99_Z_ScreenPreferences.rpy", "italic"), (" (sélecteur de langue)\n", "normal"),
         ("• ", "blue"), ("99_Z_Console.rpy", "italic"), (" (console développeur)\n", "normal"),
         ("Ces fichiers n'apparaîtront jamais dans les résultats d'extraction.\n\n", "normal"),
 
@@ -641,6 +640,27 @@ def _load_custom_patterns(main_interface):
         
         # Charger depuis la configuration
         patterns = config_manager.get_custom_extraction_patterns()
+        
+        # Ajouter l'exemple par défaut s'il n'existe pas déjà
+        example_exists = any(p.get('name') == "Exemple Regex" for p in patterns)
+        if not example_exists:
+            example_pattern = {
+                'name': 'Exemple Regex',
+                'pattern': '"QID_[^"]+"\\s*:\\s*\\[\\s*"([^"]+)"\\s*,\\s*"([^"]+)"\\s*,\\s*[\\s\\S]*?\\["hint",\\s*"([^"]+)"',
+                'flags': 'gms',
+                'description': 'Ceci est un exemple montrant comme fonctionne le système pour capturer de multiple groupes',
+                'enabled': True,
+                'test_text': '''"QID_MAIN_WAYHOME1": [
+        "Find A Way Home",
+        "Make your way to the Jumpgate to start your journey home...",
+        "'map talk' in tris.done",
+        "'SSIDArellarti' in GAME.mc.done", ["hint", "The Jumpgates might provide a way home eventually. Make sure you are well armed before you enter and explore other Star Systems.", "Q_MAIN"]
+    ],''',
+                'is_example': True  # Marquer comme exemple
+            }
+            patterns.insert(0, example_pattern)  # Ajouter en premier
+        
+        # Afficher tous les patterns
         for i, pattern in enumerate(patterns):
             enabled_text = "✅" if pattern.get('enabled', False) else "❌"
             main_interface.custom_patterns_tree.insert('', 'end', values=(
@@ -657,7 +677,7 @@ def _load_custom_patterns(main_interface):
         log_message("ERREUR", f"Erreur chargement patterns personnalisés: {e}", category="extraction_config")
 
 def _add_custom_pattern(main_interface):
-    """Ajoute un nouveau pattern personnalisé"""
+    """Ajoute un nouveau pattern personnalisé - ouvre la fenêtre vierge"""
     _show_pattern_dialog(main_interface, None)
 
 def _edit_custom_pattern(main_interface):
@@ -755,7 +775,7 @@ def _show_pattern_dialog(main_interface, pattern_index=None):
     enabled_var = tk.BooleanVar()
     
     # Charger les données si modification
-    saved_test_text = '$ sms.msg("[V]", "[mc.name]... That was incredibly dangerous.", False)'
+    saved_test_text = ''  # Zone vierge par défaut pour nouveaux patterns
     if pattern_index is not None:
         patterns = config_manager.get_custom_extraction_patterns()
         if 0 <= pattern_index < len(patterns):
@@ -765,74 +785,87 @@ def _show_pattern_dialog(main_interface, pattern_index=None):
             flags_var.set(pattern.get('flags', ''))
             description_var.set(pattern.get('description', ''))
             enabled_var.set(pattern.get('enabled', False))
-            saved_test_text = pattern.get('test_text', saved_test_text)
+            saved_test_text = pattern.get('test_text', '')
+    else:
+        # Nouveaux patterns : zones vierges
+        pass
     
-    # Interface principale avec Canvas et Scrollbar
-    main_canvas = tk.Canvas(dialog, bg=theme["bg"], highlightthickness=0)
-    scrollbar = tk.Scrollbar(dialog, orient="vertical", command=main_canvas.yview)
-    main_frame = tk.Frame(main_canvas, bg=theme["bg"])
+    # Interface principale
+    main_frame = tk.Frame(dialog, bg=theme["bg"])
+    main_frame.pack(fill="both", expand=True, padx=10, pady=15)
     
-    main_frame.bind(
-        "<Configure>",
-        lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
-    )
+    # Titre de la fenêtre centré en bleu accent
+    title_frame = tk.Frame(main_frame, bg=theme["bg"])
+    title_frame.pack(fill='x', pady=(0, 20))
     
-    canvas_window = main_canvas.create_window((0, 0), window=main_frame, anchor="nw")
-    main_canvas.configure(yscrollcommand=scrollbar.set)
-    
-    # Faire en sorte que le main_frame prenne toute la largeur du canvas
-    def on_canvas_configure(event):
-        main_canvas.itemconfig(canvas_window, width=event.width)
-    main_canvas.bind('<Configure>', on_canvas_configure)
-    
-    main_canvas.pack(side="left", fill="both", expand=True, padx=10, pady=15)
-    scrollbar.pack(side="right", fill="y")
+    tk.Label(title_frame, text="Pattern Regex Personnalisé", 
+             font=('Segoe UI', 14, 'bold'), bg=theme["bg"], fg=theme["accent"]).pack()
     
     # ===== SECTION 1: CONFIGURATION DU PATTERN =====
-    config_section = tk.LabelFrame(
-        main_frame,
-        text="⚙️ Configuration du Pattern",
-        font=('Segoe UI', 10, 'bold'),
-        bg=theme["frame_bg"],
-        fg=theme["fg"],
-        padx=15,
-        pady=10
-    )
+    config_section = tk.Frame(main_frame, bg=theme["bg"])
     config_section.pack(fill='x', pady=(0, 15))
     
-    # Nom
-    tk.Label(config_section, text="Nom:", bg=theme["frame_bg"], fg=theme["fg"], 
+    # Titre de la section
+    tk.Label(config_section, text="⚙️ Configuration du Pattern", 
+             font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 10))
+    
+    # Grille 2x2 pour les champs
+    grid_frame = tk.Frame(config_section, bg=theme["bg"])
+    grid_frame.pack(fill='x', pady=(0, 10))
+    
+    # Ligne 1 : Nom | Description
+    # Colonne 1 : Nom
+    name_frame = tk.Frame(grid_frame, bg=theme["bg"])
+    name_frame.pack(side='left', fill='x', expand=True, padx=(0, 5))
+    
+    tk.Label(name_frame, text="Nom:", bg=theme["bg"], fg=theme["fg"], 
              font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-    name_entry = tk.Entry(config_section, textvariable=name_var, font=('Segoe UI', 10), 
+    name_entry = tk.Entry(name_frame, textvariable=name_var, font=('Segoe UI', 9), 
                           bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"])
-    name_entry.pack(fill='x', pady=(2, 10))
+    name_entry.pack(fill='x', pady=(2, 0), ipady=3)
     
-    # Pattern
-    tk.Label(config_section, text="Pattern Regex:", bg=theme["frame_bg"], fg=theme["fg"], 
+    # Colonne 2 : Description
+    desc_frame = tk.Frame(grid_frame, bg=theme["bg"])
+    desc_frame.pack(side='right', fill='x', expand=True, padx=(5, 0))
+    
+    tk.Label(desc_frame, text="Description:", bg=theme["bg"], fg=theme["fg"], 
              font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-    pattern_entry = tk.Entry(config_section, textvariable=pattern_var, font=('Consolas', 10),
-                            bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"])
-    pattern_entry.pack(fill='x', pady=(2, 10))
-    
-    # Flags avec exemples
-    flags_frame = tk.Frame(config_section, bg=theme["frame_bg"])
-    flags_frame.pack(fill='x', pady=(0, 10))
-    
-    tk.Label(flags_frame, text="Flags:", bg=theme["frame_bg"], fg=theme["fg"], 
-             font=('Segoe UI', 9, 'bold')).pack(side='left')
-    flags_entry = tk.Entry(flags_frame, textvariable=flags_var, font=('Segoe UI', 10), width=10,
-                          bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"])
-    flags_entry.pack(side='left', padx=(5, 10))
-    tk.Label(flags_frame, text="i=insensible  m=multiligne  s=dotall  g=global", 
-             bg=theme["frame_bg"], fg='#888888', font=('Segoe UI', 8, 'italic')).pack(side='left')
-    
-    # Description
-    tk.Label(config_section, text="Description:", bg=theme["frame_bg"], fg=theme["fg"], 
-             font=('Segoe UI', 9, 'bold')).pack(anchor='w')
-    description_text = tk.Text(config_section, height=3, font=('Segoe UI', 9), 
-                              bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"])
-    description_text.pack(fill='x', pady=(2, 10))
+    description_text = tk.Text(desc_frame, height=1, font=('Segoe UI', 9), 
+                              bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"],
+                              wrap=tk.WORD)
+    description_text.pack(fill='x', pady=(2, 0), ipady=3, anchor='s')
     description_text.insert('1.0', description_var.get())
+    
+    # Ligne 2 : Labels Flags | Pattern Regex
+    labels_frame = tk.Frame(config_section, bg=theme["bg"])
+    labels_frame.pack(fill='x', pady=(0, 5))
+    
+    tk.Label(labels_frame, text="Flags:", bg=theme["bg"], fg=theme["fg"], 
+             font=('Segoe UI', 9, 'bold')).pack(side='left')
+    tk.Label(labels_frame, text="Pattern Regex:", bg=theme["bg"], fg=theme["fg"], 
+             font=('Segoe UI', 9, 'bold')).pack(side='left', padx=(50, 0))
+    
+    # Ligne 3 : Champs Flags | Pattern Regex
+    fields_frame = tk.Frame(config_section, bg=theme["bg"])
+    fields_frame.pack(fill='x', pady=(0, 5))
+    
+    flags_entry = tk.Entry(fields_frame, textvariable=flags_var, font=('Segoe UI', 10), width=10,
+                              bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"])
+    flags_entry.pack(side='left', ipady=3)
+    
+    # Champ Pattern Regex avec coloration syntaxique
+    pattern_text = tk.Text(fields_frame, height=1, font=('Consolas', 10),
+                          bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"],
+                          wrap=tk.NONE, relief='solid', borderwidth=1)
+    pattern_text.pack(side='right', fill='x', expand=True, padx=(10, 0), ipady=3)
+    pattern_text.insert('1.0', pattern_var.get())
+    
+    # Ligne 4 : Aide pour les flags
+    help_frame = tk.Frame(config_section, bg=theme["bg"])
+    help_frame.pack(fill='x')
+    
+    tk.Label(help_frame, text="i=insensible  m=multiligne  s=dotall  g=global", 
+             bg=theme["bg"], fg='#888888', font=('Segoe UI', 8, 'italic')).pack(anchor='w')
     
     # Bouton d'activation avec émote (au lieu de checkbox)
     def toggle_enabled():
@@ -856,180 +889,404 @@ def _show_pattern_dialog(main_interface, pattern_index=None):
         """Met à jour l'apparence du bouton selon l'état"""
         if enabled_var.get():
             enabled_toggle_btn.config(
-                text="✅ Pattern activé pour l'extraction",
-                bg="#90EE90",  # Vert clair
-                fg="#006400"   # Vert foncé
+                text="✅ Pattern activé",
+                bg="#4ade80" if theme["bg"] == '#1a202c' else "#90EE90",  # Vert adapté au thème
+                fg="#000000"   # Texte noir pour contraste
             )
         else:
             enabled_toggle_btn.config(
                 text="❌ Pattern désactivé",
-                bg="#FFB6C1",  # Rouge clair
-                fg="#8B0000"   # Rouge foncé
+                bg="#f87171" if theme["bg"] == '#1a202c' else "#FFB6C1",  # Rouge adapté au thème
+                fg="#000000"   # Texte noir pour contraste
             )
     
-    enabled_toggle_btn = tk.Button(
-        config_section,
-        command=toggle_enabled,
-        font=('Segoe UI', 9, 'bold'),
-        relief='raised',
-        borderwidth=2,
-        pady=5,
-        cursor='hand2'
-    )
-    enabled_toggle_btn.pack(fill='x', pady=(5, 0))
+    # Le bouton sera déplacé dans la section des boutons d'action
     
-    # Initialiser l'apparence du bouton
-    update_enabled_button()
+    # ===== FONCTIONS DE COLORATION SYNTAXIQUE REGEX =====
+    def highlight_regex_pattern():
+        """Colore la regex en temps réel comme Regex101"""
+        try:
+            import re
+            pattern_content = pattern_text.get('1.0', 'end-1c')
+            
+            # Supprimer tous les anciens tags
+            pattern_text.tag_remove('group1', '1.0', 'end')
+            pattern_text.tag_remove('group2', '1.0', 'end')
+            pattern_text.tag_remove('group3', '1.0', 'end')
+            pattern_text.tag_remove('metachar', '1.0', 'end')
+            pattern_text.tag_remove('quantifier', '1.0', 'end')
+            pattern_text.tag_remove('character_class', '1.0', 'end')
+            pattern_text.tag_remove('escape', '1.0', 'end')
+            pattern_text.tag_remove('error', '1.0', 'end')
+            
+            # Configuration des couleurs des tags
+            pattern_text.tag_configure('group1', foreground='#4ade80', font=('Consolas', 10, 'bold'))  # Vert
+            pattern_text.tag_configure('group2', foreground='#60a5fa', font=('Consolas', 10, 'bold'))  # Bleu
+            pattern_text.tag_configure('group3', foreground='#fbbf24', font=('Consolas', 10, 'bold'))  # Orange
+            pattern_text.tag_configure('metachar', foreground='#a78bfa', font=('Consolas', 10, 'bold'))  # Violet
+            pattern_text.tag_configure('quantifier', foreground='#fb7185', font=('Consolas', 10, 'bold'))  # Rose
+            pattern_text.tag_configure('character_class', foreground='#34d399', font=('Consolas', 10, 'bold'))  # Vert clair
+            pattern_text.tag_configure('escape', foreground='#f59e0b', font=('Consolas', 10, 'bold'))  # Ambre
+            pattern_text.tag_configure('error', foreground='#ef4444', font=('Consolas', 10, 'bold'))  # Rouge
+            
+            # Test de validité de la regex
+            try:
+                re.compile(pattern_content)
+                is_valid = True
+            except re.error:
+                is_valid = False
+                # Marquer toute la regex en rouge si invalide
+                pattern_text.tag_add('error', '1.0', 'end')
+                return
+            
+            if not pattern_content:
+                return
+            
+            # Détecter les groupes de capture
+            group_count = 0
+            i = 0
+            while i < len(pattern_content):
+                char = pattern_content[i]
+                
+                # Groupes de capture ()
+                if char == '(' and (i == 0 or pattern_content[i-1] != '\\'):
+                    # Vérifier si c'est un groupe non-capturant (?:)
+                    if i + 1 < len(pattern_content) and pattern_content[i+1] == '?':
+                        i += 2
+                        continue
+                    
+                    group_count += 1
+                    # Trouver la parenthèse fermante correspondante
+                    paren_count = 1
+                    j = i + 1
+                    while j < len(pattern_content) and paren_count > 0:
+                        if pattern_content[j] == '(' and (j == 0 or pattern_content[j-1] != '\\'):
+                            paren_count += 1
+                        elif pattern_content[j] == ')' and (j == 0 or pattern_content[j-1] != '\\'):
+                            paren_count -= 1
+                        j += 1
+                    
+                    if paren_count == 0:
+                        # Colorer le groupe
+                        tag_name = f'group{(group_count % 3) + 1}'
+                        pattern_text.tag_add(tag_name, f'1.{i}', f'1.{j}')
+                    
+                    i = j
+                    continue
+                
+                # Classes de caractères []
+                elif char == '[' and (i == 0 or pattern_content[i-1] != '\\'):
+                    # Trouver la parenthèse fermante correspondante
+                    j = i + 1
+                    while j < len(pattern_content):
+                        if pattern_content[j] == ']' and (j == 0 or pattern_content[j-1] != '\\'):
+                            break
+                        j += 1
+                    
+                    if j < len(pattern_content):
+                        pattern_text.tag_add('character_class', f'1.{i}', f'1.{j+1}')
+                        i = j + 1
+                        continue
+                
+                # Quantificateurs
+                elif char in '*+?{':
+                    if char == '{':
+                        # Trouver la parenthèse fermante correspondante
+                        j = i + 1
+                        while j < len(pattern_content) and pattern_content[j] != '}':
+                            j += 1
+                        if j < len(pattern_content):
+                            pattern_text.tag_add('quantifier', f'1.{i}', f'1.{j+1}')
+                            i = j + 1
+                            continue
+                    else:
+                        pattern_text.tag_add('quantifier', f'1.{i}', f'1.{i+1}')
+                
+                # Métacaractères
+                elif char in '.^$|':
+                    pattern_text.tag_add('metachar', f'1.{i}', f'1.{i+1}')
+                
+                # Caractères échappés
+                elif char == '\\' and i + 1 < len(pattern_content):
+                    pattern_text.tag_add('escape', f'1.{i}', f'1.{i+2}')
+                    i += 1
+                
+                i += 1
+            
+            # Mettre à jour la variable pattern_var
+            pattern_var.set(pattern_content)
+            
+        except Exception as e:
+            # En cas d'erreur, ne rien faire pour éviter de casser l'interface
+            pass
+    
+    def on_pattern_change(event):
+        """Callback appelé quand le pattern change"""
+        # Programmer la coloration après un court délai pour éviter les conflits
+        dialog.after(50, highlight_regex_pattern)
+    
+    def on_pattern_focus_out(event):
+        """Callback appelé quand on quitte le champ pattern"""
+        highlight_regex_pattern()
+    
+    # Bindings pour la coloration en temps réel
+    pattern_text.bind('<KeyRelease>', on_pattern_change)
+    pattern_text.bind('<FocusOut>', on_pattern_focus_out)
+    
+    # Coloration initiale
+    dialog.after(100, highlight_regex_pattern)
+    
+    # ===== FONCTION DE SURBRILLANCE EN TEMPS RÉEL =====
+    def highlight_test_text():
+        """Surbrillance en temps réel dans la zone de test comme Regex101"""
+        try:
+            import re
+            pattern_content = pattern_text.get('1.0', 'end-1c').strip()
+            test_content = test_text.get('1.0', 'end-1c')
+            
+            # Supprimer tous les anciens tags de surbrillance
+            test_text.tag_remove('match1', '1.0', 'end')
+            test_text.tag_remove('match2', '1.0', 'end')
+            test_text.tag_remove('match3', '1.0', 'end')
+            test_text.tag_remove('full_match', '1.0', 'end')
+            
+            # Configuration des couleurs de surbrillance - Groupes capturés plus visibles
+            test_text.tag_configure('match1', background='#4ade80', foreground='#000000', font=('Consolas', 9, 'bold'))  # Vert vif
+            test_text.tag_configure('match2', background='#60a5fa', foreground='#000000', font=('Consolas', 9, 'bold'))  # Bleu vif
+            test_text.tag_configure('match3', background='#fbbf24', foreground='#000000', font=('Consolas', 9, 'bold'))  # Orange vif
+            test_text.tag_configure('full_match', background='#34d399', foreground='#000000', font=('Consolas', 9, 'bold'))  # Vert clair
+            
+            if not pattern_content or not test_content:
+                return None
+            
+            # Tester si la regex est valide
+            try:
+                compiled_pattern = re.compile(pattern_content)
+                is_valid = True
+            except re.error:
+                is_valid = False
+                return None
+            
+            # Trouver toutes les correspondances
+            matches = list(compiled_pattern.finditer(test_content))
+            
+            if not matches:
+                return None
+            
+            # Fonction helper pour convertir position index vers position tkinter
+            def index_to_tkinter(index):
+                """Convertit un index de caractère en position tkinter (ligne.colonne)"""
+                lines = test_content[:index].split('\n')
+                line_num = len(lines)
+                col_num = len(lines[-1])
+                return f"{line_num}.{col_num}"
+            
+            # Surbrillancer les correspondances - FOCUS sur les groupes capturés
+            for i, match in enumerate(matches):
+                # Si il y a des groupes capturés, on surbrille seulement les groupes
+                if match.groups():
+                    for group_num, group in enumerate(match.groups(), 1):
+                        if group is not None:
+                            group_start = match.start(group_num)
+                            group_end = match.end(group_num)
+                            if group_start >= 0 and group_end >= 0:
+                                group_start_pos = index_to_tkinter(group_start)
+                                group_end_pos = index_to_tkinter(group_end)
+                                tag_name = f'match{(group_num % 3) + 1}'
+                                test_text.tag_add(tag_name, group_start_pos, group_end_pos)
+                else:
+                    # Si pas de groupes, on surbrille la correspondance complète
+                    start_pos = index_to_tkinter(match.start())
+                    end_pos = index_to_tkinter(match.end())
+                    test_text.tag_add('full_match', start_pos, end_pos)
+            
+            # Retourner tous les groupes capturés pour le message de statut
+            first_match = matches[0]
+            if first_match.groups():
+                # Afficher tous les groupes capturés avec format amélioré
+                groups = [str(g) for g in first_match.groups() if g is not None]
+                formatted_groups = []
+                for i, group in enumerate(groups, 1):
+                    formatted_groups.append(f"                       Groupe {i} => {group}")
+                return "\n".join(formatted_groups)
+            else:
+                # Pas de groupes, retourner la correspondance complète
+                return first_match.group(0)
+            
+        except Exception:
+            return None
+    
+    def update_status_and_highlight():
+        """Met à jour le statut et la surbrillance"""
+        found_text = highlight_test_text()
+        
+        if found_text is not None:
+            # Regex valide avec correspondance
+            update_result_display(f"✅ Regex valide :\n{found_text}", success_color)
+        else:
+            # Regex invalide ou pas de correspondance
+            pattern_content = pattern_text.get('1.0', 'end-1c').strip()
+            if pattern_content:
+                try:
+                    import re
+                    re.compile(pattern_content)
+                    # Regex valide mais pas de correspondance
+                    update_result_display("ℹ️ Regex valide mais aucune correspondance", theme["warning"])
+                except re.error:
+                    # Regex invalide
+                    update_result_display("❌ Regex invalide", error_color)
+            else:
+                # Pas de regex
+                update_result_display("⏳ Tapez une regex pour tester", theme["fg"])
+    
+    # Bindings pour la surbrillance en temps réel
+    def on_pattern_change_with_highlight(event):
+        """Callback combiné : coloration regex + surbrillance test"""
+        dialog.after(50, lambda: (highlight_regex_pattern(), update_status_and_highlight()))
+    
+    def on_test_change(event):
+        """Callback quand le texte de test change"""
+        dialog.after(50, update_status_and_highlight)
+    
+    # Mise à jour des bindings
+    pattern_text.bind('<KeyRelease>', on_pattern_change_with_highlight)
+    pattern_text.bind('<FocusOut>', on_pattern_change_with_highlight)
     
     # ===== SECTION 2: ZONE DE TEST =====
-    test_section = tk.LabelFrame(
-        main_frame,
-        text="🧪 Zone de Test en Temps Réel",
-        font=('Segoe UI', 10, 'bold'),
-        bg=theme["frame_bg"],
-        fg=theme["fg"],
-        padx=15,
-        pady=10
-    )
+    test_section = tk.Frame(main_frame, bg=theme["bg"])
     test_section.pack(fill='both', expand=True, pady=(0, 15))
     
+    # Titre de la section
+    tk.Label(test_section, text="🧪 Zone de Test en Temps Réel", 
+             font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 10))
+    
     # Texte de test
-    test_label_frame = tk.Frame(test_section, bg=theme["frame_bg"])
+    test_label_frame = tk.Frame(test_section, bg=theme["bg"])
     test_label_frame.pack(fill='x', pady=(0, 5))
     
     tk.Label(test_label_frame, text="Texte de test (sera sauvegardé):", 
-             bg=theme["frame_bg"], fg=theme["fg"], font=('Segoe UI', 9, 'bold')).pack(side='left')
+             bg=theme["bg"], fg=theme["fg"], font=('Segoe UI', 9, 'bold')).pack(side='left')
     
     test_text = tk.Text(test_section, height=8, font=('Consolas', 9), 
                        bg=theme["entry_bg"], fg=theme["entry_fg"], insertbackground=theme["entry_fg"],
-                       wrap='word')
+                       wrap='word', relief='solid', borderwidth=1)
     test_text.pack(fill='both', expand=True, pady=(0, 10))
-    test_text.insert('1.0', saved_test_text)
+    # Zone de test vierge pour nouveaux patterns, ou chargée pour modification
+    if pattern_index is not None and saved_test_text:
+        test_text.insert('1.0', saved_test_text)
+    # Sinon, la zone reste vierge pour les nouveaux patterns
     
-    # Scrollbar pour le texte de test
-    test_scroll = tk.Scrollbar(test_text)
-    test_scroll.pack(side='right', fill='y')
-    test_text.config(yscrollcommand=test_scroll.set)
-    test_scroll.config(command=test_text.yview)
+    # Binding pour la surbrillance quand le texte de test change
+    test_text.bind('<KeyRelease>', on_test_change)
     
-    # Bouton Tester
-    test_btn_frame = tk.Frame(test_section, bg=theme["frame_bg"])
-    test_btn_frame.pack(fill='x', pady=(0, 10))
-    
-    test_button = tk.Button(
-        test_btn_frame,
-        text="🔍 Tester le pattern",
-        command=lambda: test_pattern(),
-        bg=theme["button_utility_bg"],
-        fg="#000000",
-        font=('Segoe UI', 10, 'bold'),
-        pady=8
-    )
-    test_button.pack(fill='x')
+    # Plus besoin du bouton tester - feedback en temps réel !
     
     # ===== SECTION 3: RÉSULTATS =====
-    result_section = tk.LabelFrame(
-        main_frame,
-        text="📊 Résultats du Test",
-        font=('Segoe UI', 10, 'bold'),
-        bg=theme["frame_bg"],
-        fg=theme["fg"],
-        padx=15,
-        pady=10
-    )
+    result_section = tk.Frame(main_frame, bg=theme["bg"])
     result_section.pack(fill='both', expand=True, pady=(0, 15))
     
-    # Label de statut
-    result_status_label = tk.Label(
+    # Titre de la section
+    tk.Label(result_section, text="📊 Résultats du Test", 
+             font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 10))
+    
+    # Zone de résultats avec widget Text pour un meilleur contrôle de l'affichage
+    result_text_widget = tk.Text(
         result_section,
-        text="⏳ Cliquez sur 'Tester le pattern' pour voir les résultats",
-        bg=theme["frame_bg"],
-        fg='#888888',
-        font=('Segoe UI', 9, 'italic')
+        height=6,
+        bg=theme["bg"],
+        fg=theme["fg"],
+        font=('Segoe UI', 10, 'bold'),
+        wrap=tk.WORD,
+        relief='flat',
+        borderwidth=0,
+        state='disabled',
+        padx=5,
+        pady=5
     )
-    result_status_label.pack(anchor='w', pady=(0, 5))
+    result_text_widget.pack(anchor='w', fill='x', pady=(10, 10))
     
-    # Zone de résultats
-    result_text = tk.Text(result_section, height=8, font=('Consolas', 9), 
-                         bg='#f0f0f0', fg='#000000', wrap='word', state='disabled')
-    result_text.pack(fill='both', expand=True)
+    # Fonction pour mettre à jour le texte des résultats
+    def update_result_display(text, color=None):
+        result_text_widget.config(state='normal')
+        result_text_widget.delete('1.0', 'end')
+        result_text_widget.insert('1.0', text)
+        if color:
+            result_text_widget.config(fg=color)
+        result_text_widget.config(state='disabled')
     
-    # Scrollbar pour les résultats
-    result_scroll = tk.Scrollbar(result_text)
-    result_scroll.pack(side='right', fill='y')
-    result_text.config(yscrollcommand=result_scroll.set)
-    result_scroll.config(command=result_text.yview)
+    # Configuration des couleurs pour le statut
+    success_color = '#4ade80' if theme["bg"] == '#1a202c' else '#00aa00'  # Vert adapté au thème
+    error_color = '#f87171' if theme["bg"] == '#1a202c' else '#ff0000'    # Rouge adapté au thème
     
-    # Configuration des tags pour coloration
-    result_text.tag_configure('success', foreground='#00aa00', font=('Consolas', 9, 'bold'))
-    result_text.tag_configure('error', foreground='#ff0000', font=('Consolas', 9, 'bold'))
-    result_text.tag_configure('match', foreground='#0066cc', font=('Consolas', 9))
+    # ===== BOUTON D'AIDE =====
+    help_frame = tk.Frame(main_frame, bg=theme["bg"])
+    help_frame.pack(fill='x', pady=(0, 15))
     
-    def test_pattern():
-        """Teste le pattern avec le texte fourni"""
-        try:
-            import re
-            pattern_str = pattern_var.get().strip()
-            flags_str = flags_var.get().strip()
-            test_content = test_text.get('1.0', 'end-1c')
-            
-            if not pattern_str:
-                result_status_label.config(text="⚠️ Veuillez entrer un pattern regex", fg='#ff8800')
-                return
-            
-            # Convertir les flags
-            regex_flags = 0
-            if 'i' in flags_str:
-                regex_flags |= re.IGNORECASE
-            if 'm' in flags_str:
-                regex_flags |= re.MULTILINE
-            if 's' in flags_str:
-                regex_flags |= re.DOTALL
-            
-            # Tester le pattern
-            compiled_pattern = re.compile(pattern_str, regex_flags)
-            matches = compiled_pattern.findall(test_content)
-            
-            # Afficher les résultats
-            result_text.config(state='normal')
-            result_text.delete('1.0', 'end')
-            
-            if matches:
-                result_status_label.config(
-                    text=f"✅ {len(matches)} correspondance(s) trouvée(s)",
-                    fg='#00aa00'
-                )
-                result_text.insert('1.0', f"✅ {len(matches)} correspondance(s) trouvée(s):\n\n", 'success')
-                for i, match in enumerate(matches, 1):
-                    if isinstance(match, tuple):
-                        match_str = " | ".join(str(m) for m in match)
-                    else:
-                        match_str = str(match)
-                    result_text.insert('end', f"{i}. ", 'success')
-                    result_text.insert('end', f"{match_str}\n", 'match')
-            else:
-                result_status_label.config(text="ℹ️ Aucune correspondance trouvée", fg='#ff8800')
-                result_text.insert('1.0', "ℹ️ Aucune correspondance trouvée.\n\n", 'error')
-                result_text.insert('end', "Vérifiez que:\n")
-                result_text.insert('end', "• Le pattern est correct\n")
-                result_text.insert('end', "• Le texte de test contient des éléments correspondants\n")
-                result_text.insert('end', "• Les flags sont appropriés\n")
-            
-            result_text.config(state='disabled')
-                
-        except re.error as e:
-            result_status_label.config(text="❌ Erreur regex", fg='#ff0000')
-            result_text.config(state='normal')
-            result_text.delete('1.0', 'end')
-            result_text.insert('1.0', f"❌ Erreur regex:\n\n{e}\n\n", 'error')
-            result_text.insert('end', "Vérifiez la syntaxe de votre expression régulière.")
-            result_text.config(state='disabled')
-        except Exception as e:
-            result_status_label.config(text="❌ Erreur", fg='#ff0000')
-            result_text.config(state='normal')
-            result_text.delete('1.0', 'end')
-            result_text.insert('1.0', f"❌ Erreur:\n\n{e}", 'error')
-            result_text.config(state='disabled')
+    def show_pattern_help():
+        """Affiche l'aide pour les patterns regex personnalisés"""
+        help_dialog = tk.Toplevel(dialog)
+        help_dialog.title("Aide - Patterns Regex Personnalisés")
+        help_dialog.geometry("600x500")
+        help_dialog.configure(bg=theme["bg"])
+        help_dialog.resizable(False, False)
+        
+        # Titre
+        title_frame = tk.Frame(help_dialog, bg=theme["bg"])
+        title_frame.pack(fill='x', padx=15, pady=(15, 10))
+        
+        tk.Label(title_frame, text="💡 Aide - Patterns Regex Personnalisés", 
+                 font=('Segoe UI', 14, 'bold'), bg=theme["bg"], fg=theme["accent"]).pack()
+        
+        # Contenu de l'aide
+        content_frame = tk.Frame(help_dialog, bg=theme["bg"])
+        content_frame.pack(fill='both', expand=True, padx=15, pady=(0, 15))
+        
+        help_text = """✨ Approche recommandée :
+• Une regex = Un ou plusieurs éléments à capturer
+• Support des groupes multiples : chaque groupe () crée un bloc old/new séparé
+• Créez des patterns simples et efficaces
+• Chaque pattern peut être activé/désactivé indépendamment
+
+📝 Format des patterns :
+• Groupes de capture : (contenu) pour capturer du texte
+• Classes de caractères : [a-z] pour les lettres, [0-9] pour les chiffres
+• Quantificateurs : * (0 ou plus), + (1 ou plus), ? (0 ou 1)
+• Métacaractères : . (n'importe quel caractère), ^ (début), $ (fin)
+
+🎨 Surbrillance en temps réel :
+• Groupes capturés surlignés avec des couleurs différentes
+• Validation immédiate de la syntaxe regex
+• Feedback visuel instantané dans la zone de test
+
+🔧 Exemples pratiques :
+• Pour capturer du texte entre guillemets : "([^"]+)"
+• Pour capturer plusieurs groupes : (\\w+)\\.(\\w+)\\(\"([^\"]+)\", \"([^\"]+)\"\\)
+• Pour capturer des chiffres : (\\d+)"""
+        
+        help_label = tk.Label(content_frame, text=help_text, 
+                             bg=theme["bg"], fg=theme["fg"], 
+                             font=('Segoe UI', 10),
+                             justify='left',
+                             wraplength=550)
+        help_label.pack(anchor='w', pady=(0, 15))
+        
+        # Bouton fermer
+        close_btn = tk.Button(content_frame, text="✅ Fermer", 
+                             command=help_dialog.destroy,
+                             bg=theme["button_primary_bg"], fg="#000000",
+                             font=('Segoe UI', 10, 'bold'),
+                             pady=8, padx=20)
+        close_btn.pack(pady=(10, 0))
+    
+    # Bouton d'aide
+    help_btn = tk.Button(help_frame, text="❓ Aide", 
+                        command=show_pattern_help,
+                        bg=theme["button_help_bg"], fg="#000000",
+                        font=('Segoe UI', 9, 'bold'),
+                        pady=6, padx=15)
+    help_btn.pack(pady=(0, 10))
+    
+    # Fonction test_pattern supprimée - géré par update_status_and_highlight
     
     # ===== SECTION 4: BOUTONS D'ACTION =====
     buttons_frame = tk.Frame(main_frame, bg=theme["bg"])
@@ -1037,7 +1294,7 @@ def _show_pattern_dialog(main_interface, pattern_index=None):
     
     def save_pattern():
         name = name_var.get().strip()
-        pattern = pattern_var.get().strip()
+        pattern = pattern_text.get('1.0', 'end-1c').strip()
         flags = flags_var.get().strip()
         description = description_text.get('1.0', 'end-1c').strip()
         enabled = enabled_var.get()
@@ -1074,10 +1331,27 @@ def _show_pattern_dialog(main_interface, pattern_index=None):
         command=save_pattern,
         bg=theme["button_primary_bg"],
         fg="#000000",
-        font=('Segoe UI', 10, 'bold'),
-        pady=8,
-        padx=20
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=15
     ).pack(side='right', padx=(5, 0))
+    
+    # Bouton Pattern désactivé au milieu (largeur fixe)
+    enabled_toggle_btn = tk.Button(
+        buttons_frame,
+        command=toggle_enabled,
+        font=('Segoe UI', 9, 'bold'),
+        relief='raised',
+        borderwidth=2,
+        pady=4,
+        padx=15,
+        cursor='hand2',
+        width=16  # Largeur fixe adaptée à "Pattern désactivé"
+    )
+    enabled_toggle_btn.pack(side='right', padx=(5, 5))
+    
+    # Initialiser l'apparence du bouton
+    update_enabled_button()
     
     tk.Button(
         buttons_frame,
@@ -1085,89 +1359,47 @@ def _show_pattern_dialog(main_interface, pattern_index=None):
         command=dialog.destroy,
         bg=theme["button_tertiary_bg"],
         fg="#000000",
-        font=('Segoe UI', 10),
-        pady=8,
-        padx=20
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=15
     ).pack(side='right')
     
-    # Bind pour tester avec Ctrl+Enter
-    def test_on_ctrl_enter(event):
-        test_pattern()
-        return "break"
+    # Plus besoin de Ctrl+Enter - feedback en temps réel !
     
-    pattern_entry.bind('<Control-Return>', test_on_ctrl_enter)
-    test_text.bind('<Control-Return>', test_on_ctrl_enter)
-    
-    # Test automatique au chargement si pattern existe
-    if pattern_var.get():
-        dialog.after(200, test_pattern)
+    # Initialisation de la surbrillance au chargement
+    dialog.after(200, update_status_and_highlight)
 
 def _show_custom_patterns_help(main_interface):
-    """Affiche l'aide pour les patterns personnalisés"""
+    """Affiche l'aide simplifiée pour les patterns personnalisés"""
     message_styled = [
         ("Patterns Regex Personnalisés\n\n", "bold_blue"),
         
         ("Cette fonctionnalité vous permet de définir vos propres patterns regex pour détecter des textes spécifiques dans vos fichiers Ren'Py.\n\n", "normal"),
         
-        ("✨ ", "blue"), ("Approche recommandée :\n", "bold"),
-        ("• ", "green"), ("Une regex = Un ou plusieurs éléments à capturer\n", "bold"),
-        ("• Support des groupes multiples : chaque groupe () crée un bloc old/new séparé\n", "normal"),
-        ("• Créez des patterns simples et efficaces\n", "normal"),
+        ("✨ ", "blue"), ("Fonctionnement :\n", "bold"),
+        ("• Chaque groupe de capture () crée un bloc old/new séparé\n", "normal"),
+        ("• Support des groupes multiples en une seule regex\n", "normal"),
         ("• Chaque pattern peut être activé/désactivé indépendamment\n\n", "normal"),
         
-        ("📝 ", "blue"), ("Format des patterns :\n", "bold"),
-        ("• Utilisez la syntaxe regex standard de Python\n", "normal"),
-        ("• Les ", "normal"), ("groupes de capture ()", "bold"), (" extraient le texte souhaité\n", "normal"),
-        ("• ", "green"), ("NOUVEAU : ", "bold"), ("Chaque groupe () crée un bloc old/new séparé\n", "normal"),
-        ("• Exemple : ", "normal"), ("(groupe1).*(groupe2)", "italic"), (" → 2 blocs old/new\n\n", "normal"),
-        
         ("🏷️ ", "yellow"), ("Flags disponibles :\n", "bold"),
-        ("• ", "normal"), ("i", "bold"), (" = insensible à la casse (ignore majuscules/minuscules)\n", "normal"),
-        ("• ", "normal"), ("m", "bold"), (" = mode multiligne (^ et $ fonctionnent sur chaque ligne)\n", "normal"),
-        ("• ", "normal"), ("s", "bold"), (" = dotall (le point . correspond aux retours à la ligne)\n", "normal"),
-        ("• ", "normal"), ("g", "bold"), (" = global (trouve toutes les occurrences - implicite)\n\n", "normal"),
+        ("• ", "normal"), ("i", "bold"), (" = insensible à la casse\n", "normal"),
+        ("• ", "normal"), ("m", "bold"), (" = mode multiligne\n", "normal"),
+        ("• ", "normal"), ("s", "bold"), (" = dotall (le . matche les retours à la ligne)\n", "normal"),
+        ("• ", "normal"), ("g", "bold"), (" = global (implicite)\n\n", "normal"),
         
-        ("💡 ", "green"), ("Exemples pratiques :\n", "bold"),
+        ("💡 ", "green"), ("Exemple pratique :\n", "bold"),
+        ("Pattern : ", "normal"), (r'"QID_[^"]+"\s*:\s*\[\s*"([^"]+)",\s*"([^"]+)".*\["hint",\s*"([^"]+)"', "italic"), ("\n", "normal"),
+        ("→ Crée 3 blocs : Titre, Description, Hint\n\n", "normal"),
         
-        ("Cas d'usage : Extraire les titres de quêtes\n", "bold_yellow"),
-        ("Pattern : ", "normal"), (r'"QID_[^"]+"\s*:\s*\[\s*"([^"]+)"', "italic"), ("\n", "normal"),
-        ("Capture : ", "normal"), ("Find A Way Home", "green"), ("\n\n", "normal"),
-        
-        ("Cas d'usage : Extraire les descriptions de quêtes\n", "bold_yellow"),
-        ("Pattern : ", "normal"), (r'"QID_[^"]+"\s*:\s*\[\s*"[^"]+",\s*"([^"]+)"', "italic"), ("\n", "normal"),
-        ("Capture : ", "normal"), ("Make your way to the Jumpgate...", "green"), ("\n\n", "normal"),
-        
-        ("Cas d'usage : Extraire les indices (hints)\n", "bold_yellow"),
-        ("Pattern : ", "normal"), (r'\["hint",\s*"([^"]+)"', "italic"), ("\n", "normal"),
-        ("Capture : ", "normal"), ("The Jumpgates might provide a way home...", "green"), ("\n\n", "normal"),
-        
-        ("Cas d'usage : Messages de notification\n", "bold_yellow"),
-        ("Pattern : ", "normal"), (r'\.msg\s*\(\s*"([^"]+)"', "italic"), ("\n", "normal"),
-        ("Flags : ", "normal"), ("gm", "yellow"), ("\n\n", "normal"),
-        
-        ("Cas d'usage : Dialogues personnalisés\n", "bold_yellow"),
-        ("Pattern : ", "normal"), (r'\.say\s*\(\s*"([^"]+)"', "italic"), ("\n", "normal"),
-        ("Flags : ", "normal"), ("gm", "yellow"), ("\n\n", "normal"),
-        
-        ("🎯 ", "blue"), ("Nouvelles possibilités avec groupes multiples :\n", "bold"),
-        ("Maintenant vous pouvez capturer plusieurs éléments en une seule regex :\n", "normal"),
-        ("✅ ", "green"), (r'"QID_[^"]+"\s*:\s*\[\s*"([^"]+)",\s*"([^"]+)".*\["hint",\s*"([^"]+)"', "italic"), ("\n", "normal"),
-        ("→ Crée 3 blocs old/new : Titre, Description, Hint\n\n", "normal"),
-        
-        ("💡 ", "yellow"), ("Ou garder l'approche simple :\n", "bold"),
-        ("✅ Pattern 1 : ", "green"), (r'"QID_[^"]+"\s*:\s*\[\s*"([^"]+)"', "italic"), (" → Titre\n", "normal"),
-        ("✅ Pattern 2 : ", "green"), (r'"QID_[^"]+"\s*:\s*\[\s*"[^"]+",\s*"([^"]+)"', "italic"), (" → Description\n", "normal"),
-        ("✅ Pattern 3 : ", "green"), (r'\["hint",\s*"([^"]+)"', "italic"), (" → Hint\n\n", "normal"),
-        
-        ("🧪 ", "yellow"), ("Astuce :\n", "bold"),
-        ("Utilisez le bouton ", "normal"), ("🔍 Tester le pattern", "bold"), (" pour vérifier vos regex avant de les activer.\n", "normal"),
-        ("Collez un extrait de votre code dans la zone de test et ajustez jusqu'à obtenir le bon résultat !\n\n", "normal"),
+        ("🧪 ", "yellow"), ("Comment utiliser :\n", "bold"),
+        ("• Cliquez sur ", "normal"), ("➕ Ajouter", "bold"), (" pour créer un nouveau pattern\n", "normal"),
+        ("• Utilisez ", "normal"), ("✏️ Modifier", "bold"), (" sur l'exemple pour comprendre le fonctionnement\n", "normal"),
+        ("• Testez vos regex directement dans la fenêtre de modification\n\n", "normal"),
         
         ("⚠️ ", "red"), ("Important :", "bold"), ("\n", "normal"),
-        ("• Les textes extraits sont automatiquement classés en ", "normal"), ("auto_safe", "bold"), ("\n", "normal"),
-        ("• Testez toujours vos patterns avant de les activer\n", "normal"),
-        ("• Les patterns personnalisés analysent ", "normal"), ("game/", "bold"), (" (hors tl/) et vérifient les doublons\n", "normal"),
-        ("• Sauvegardez votre texte de test pour le réutiliser plus tard", "normal")
+        ("• Les textes extraits sont classés en ", "normal"), ("auto_safe", "bold"), ("\n", "normal"),
+        ("• Les patterns analysent ", "normal"), ("game/", "bold"), (" (hors tl/)\n", "normal"),
+        ("• Pour plus de détails, consultez l'aide dans la fenêtre de modification", "normal")
     ]
     
     try:

@@ -14,6 +14,7 @@ Interface graphique unifiÃ©e pour gÃ©rer les sauvegardes de RenExtract
 import tkinter as tk
 from tkinter import ttk, filedialog
 import os
+import shutil
 import datetime
 from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
 from infrastructure.logging.logging import log_message
@@ -23,14 +24,27 @@ from ui.themes import theme_manager
 def show_unified_backup_manager(parent):
     """Affiche l'interface unifiÃ©e de gestion des sauvegardes (persistante)"""
     try:
-        from ui.window_manager import get_window_manager
+        # Vérifier si une instance existe déjà
+        if hasattr(show_unified_backup_manager, '_current_instance'):
+            existing = show_unified_backup_manager._current_instance
+            if existing and hasattr(existing, 'window') and existing.window:
+                try:
+                    if existing.window.winfo_exists():
+                        # Fenêtre existe, la réafficher
+                        existing.window.deiconify()
+                        existing.window.lift()
+                        existing.window.focus_force()
+                        existing.window.grab_set()
+                        existing._load_data()  # Recharger les données
+                        log_message("DEBUG", "Fenêtre backup réaffichée", category="ui_backup")
+                        return
+                except:
+                    # Fenêtre détruite, créer une nouvelle
+                    pass
         
-        window_manager = get_window_manager()
-        window_manager.show_window(
-            'backup_manager',
-            lambda p: UnifiedBackupDialog(p),
-            parent
-        )
+        # Créer la nouvelle fenêtre
+        dialog = UnifiedBackupDialog(parent)
+        
     except Exception as e:
         log_message("ERREUR", f"Erreur ouverture gestionnaire unifiÃ©: {e}", category="ui_backup")
         show_translated_messagebox('error', "Erreur", 
@@ -50,6 +64,9 @@ class UnifiedBackupDialog:
         
         # Enregistrer cette fenêtre dans le système de thème global
         theme_manager.register_window(self)
+        
+        # Créer et afficher la fenêtre
+        self.show()
         
     def show(self):
         """Affiche le dialogue avec style coherence checker (gestion persistance)"""
@@ -78,6 +95,10 @@ class UnifiedBackupDialog:
         self.window.geometry("1200x900")
         self.window.transient(self.parent)
         self.window.grab_set()
+        
+        # Enregistrer la fenêtre dans le window_manager
+        from ui.window_manager import window_manager
+        window_manager.register_window('backup_manager', self.window)
         
         # ✅ MÊME LOGIQUE DE CENTRAGE que coherence checker
         self._center_window()
@@ -335,7 +356,11 @@ class UnifiedBackupDialog:
                     background="#000000",
                     width=1)
         
-        columns = ('game', 'filename', 'type', 'created', 'size')
+        # Dictionnaire pour stocker les items sélectionnés
+        self.selected_items = {}  # {item_id: True/False}
+        self.select_all_var = tk.BooleanVar(value=False)
+        
+        columns = ('select', 'game', 'filename', 'type', 'created', 'size')
         self.tree = ttk.Treeview(list_container, 
                                 columns=columns, 
                                 show='headings', 
@@ -343,6 +368,7 @@ class UnifiedBackupDialog:
         
         # Configuration des colonnes avec en-têtes centrés
         headings_config = [
+            ('select', "☐", 40),  # Colonne de sélection (texte fixe pour éviter décalage)
             ('game', "Nom du jeu", 200),
             ('filename', "Nom du fichier", 150),
             ('type', "Type backup", 120),
@@ -351,11 +377,19 @@ class UnifiedBackupDialog:
         ]
         
         for col_id, col_text, col_width in headings_config:
-            self.tree.heading(col_id, 
-                            text=col_text,
-                            command=lambda c=col_id: self._sort_column(c, False),
-                            anchor='center')  # Centrage explicite
-            self.tree.column(col_id, width=col_width, anchor='w')  # Contenu aligné à gauche
+            if col_id == 'select':
+                # En-tête cliquable pour tout sélectionner/désélectionner
+                self.tree.heading(col_id, 
+                                text=col_text,
+                                command=self._toggle_select_all,
+                                anchor='center')
+                self.tree.column(col_id, width=col_width, anchor='center', stretch=False)
+            else:
+                self.tree.heading(col_id, 
+                                text=col_text,
+                                command=lambda c=col_id: self._sort_column(c, False),
+                                anchor='center')
+                self.tree.column(col_id, width=col_width, anchor='w')
         
         # Variables pour le tri
         self.sort_reverse = {}
@@ -374,6 +408,9 @@ class UnifiedBackupDialog:
         
         list_container.grid_rowconfigure(0, weight=1)
         list_container.grid_columnconfigure(0, weight=1)
+        
+        # Bind pour cliquer sur une ligne et toggle la checkbox
+        self.tree.bind('<Button-1>', self._on_tree_click)
         
         # Menu contextuel
         self._create_context_menu()
@@ -395,7 +432,7 @@ class UnifiedBackupDialog:
                                      command=self._restore_to_path)
         self.context_menu.add_separator()
         self.context_menu.add_command(label="🗑️ Supprimer", 
-                                     command=self._delete_selected)
+                                     command=self._delete_smart)
         
         def show_context_menu(event):
             try:
@@ -424,7 +461,8 @@ class UnifiedBackupDialog:
         buttons_config = [
             ("💾 Restaurer", self.restore_selected, theme["button_primary_bg"]),     # Primaire
             ("📄 Restaurer vers...", self._restore_to_path, theme["button_secondary_bg"]),   # Secondaire
-            ("🗑️ Supprimer", self._delete_selected, theme["button_danger_bg"])      # Négative/Danger
+            ("🗑️ Supprimer", self._delete_smart, theme["button_danger_bg"]),      # Suppression intelligente (sélection ou ligne)
+            ("📁 Ouvrir le Dossier", self._open_backup_folder, theme["button_help_bg"])      # Aide/Info
         ]
 
         for text, command, bg_color in buttons_config:
@@ -437,7 +475,7 @@ class UnifiedBackupDialog:
                 font=('Segoe UI', 9),
                 pady=4,
                 padx=8,
-                width=16
+                width=18
             )
             btn.pack(side='left', padx=(0, 5))
 
@@ -594,6 +632,11 @@ class UnifiedBackupDialog:
         for item in self.tree.get_children():
             self.tree.delete(item)
         
+        # Réinitialiser les sélections
+        self.selected_items = {}
+        self.select_all_var.set(False)
+        self.tree.heading('select', text="☐")
+        
         for backup in self.backups:
             self._add_backup_to_tree(backup)
     
@@ -630,16 +673,184 @@ class UnifiedBackupDialog:
             else:
                 size_display = f"{size_bytes / (1024 * 1024):.1f} MB"
             
+            backup_id = backup.get('id', '')
+            
+            # Initialiser la sélection à False
+            self.selected_items[backup_id] = False
+            
             item = self.tree.insert('', 'end', values=(
+                "☐",  # Checkbox non cochée par défaut
                 game_name,
                 file_name,  # Nom du fichier simple
                 backup_type,
                 created_display,
                 size_display
-            ), tags=(backup.get('id', ''),))
+            ), tags=(backup_id,))
             
         except Exception as e:
             log_message("ATTENTION", f"Erreur ajout backup à l'arbre: {e}", category="ui_backup")
+    
+    def _on_tree_click(self, event):
+        """Gère le clic sur le TreeView pour toggle les checkboxes (clic n'importe où sur la ligne)"""
+        try:
+            # Identifier la région cliquée
+            region = self.tree.identify_region(event.x, event.y)
+            if region != "cell":
+                return
+            
+            # Identifier la ligne cliquée
+            item = self.tree.identify_row(event.y)
+            if not item:
+                return
+            
+            # Récupérer le backup_id depuis les tags
+            item_tags = self.tree.item(item, 'tags')
+            backup_id = item_tags[0] if item_tags else None
+            
+            if not backup_id:
+                return
+            
+            # Toggle la sélection
+            current_state = self.selected_items.get(backup_id, False)
+            new_state = not current_state
+            self.selected_items[backup_id] = new_state
+            
+            # Mettre à jour l'affichage
+            current_values = list(self.tree.item(item, 'values'))
+            current_values[0] = "☑" if new_state else "☐"
+            self.tree.item(item, values=current_values)
+            
+            # Mettre à jour le compteur de sélection
+            self._update_selection_count()
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur toggle checkbox: {e}", category="ui_backup")
+    
+    def _toggle_select_all(self):
+        """Sélectionne ou désélectionne tous les items"""
+        try:
+            # Inverser l'état de sélection globale
+            new_state = not self.select_all_var.get()
+            self.select_all_var.set(new_state)
+            
+            # Mettre à jour toutes les checkboxes
+            for item in self.tree.get_children():
+                item_tags = self.tree.item(item, 'tags')
+                backup_id = item_tags[0] if item_tags else None
+                
+                if backup_id:
+                    self.selected_items[backup_id] = new_state
+                    
+                    # Mettre à jour l'affichage
+                    current_values = list(self.tree.item(item, 'values'))
+                    current_values[0] = "☑" if new_state else "☐"
+                    self.tree.item(item, values=current_values)
+            
+            # Mettre à jour le compteur
+            self._update_selection_count()
+            
+            # L'en-tête garde toujours "☐" pour éviter le décalage visuel
+            # L'état de sélection est visible via les checkboxes individuelles et le compteur
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur toggle select all: {e}", category="ui_backup")
+    
+    def _cleanup_empty_directories(self):
+        """Nettoie les dossiers vides après suppression de sauvegardes (inclut les sous-dossiers)"""
+        try:
+            log_message("DEBUG", "Début nettoyage dossiers vides", category="ui_backup")
+            
+            if not hasattr(self.manager, 'backup_root'):
+                log_message("ATTENTION", "Manager n'a pas d'attribut backup_root", category="ui_backup")
+                return
+            
+            backup_root = self.manager.backup_root
+            log_message("DEBUG", f"Racine des sauvegardes: {backup_root}", category="ui_backup")
+            
+            if not os.path.exists(backup_root):
+                log_message("ATTENTION", f"Racine des sauvegardes n'existe pas: {backup_root}", category="ui_backup")
+                return
+            
+            # Nettoyer récursivement TOUS les dossiers vides (y compris les sous-dossiers)
+            cleaned_dirs = []
+            self._cleanup_empty_dirs_recursive(backup_root, cleaned_dirs)
+            
+            if cleaned_dirs:
+                log_message("INFO", f"Dossiers vides nettoyés: {', '.join(cleaned_dirs)}", category="ui_backup")
+            else:
+                log_message("INFO", "Aucun dossier vide trouvé", category="ui_backup")
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur nettoyage dossiers vides: {e}", category="ui_backup")
+    
+    def _cleanup_empty_dirs_recursive(self, dir_path, cleaned_dirs):
+        """Nettoie récursivement tous les dossiers vides dans un répertoire"""
+        try:
+            if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+                return
+            
+            log_message("DEBUG", f"Vérification dossier: {dir_path}", category="ui_backup")
+            
+            # D'abord, nettoyer récursivement tous les sous-dossiers
+            for item in os.listdir(dir_path):
+                item_path = os.path.join(dir_path, item)
+                if os.path.isdir(item_path):
+                    self._cleanup_empty_dirs_recursive(item_path, cleaned_dirs)
+            
+            # Ensuite, vérifier si ce dossier est maintenant vide (après nettoyage des sous-dossiers)
+            # Skip les fichiers de métadonnées au niveau racine
+            if dir_path == getattr(self.manager, 'backup_root', ''):
+                # Au niveau racine, ne JAMAIS supprimer le dossier racine, même s'il est vide
+                log_message("DEBUG", f"Dossier racine - jamais supprimé: {dir_path}", category="ui_backup")
+                return  # Ne pas supprimer le dossier racine
+            
+            # Dans les sous-dossiers, vérifier tous les éléments
+            items = os.listdir(dir_path)
+            log_message("DEBUG", f"Sous-dossier - éléments: {items}", category="ui_backup")
+            
+            # Si le dossier est vide (ou ne contient que des dossiers vides), le supprimer
+            if not items:
+                try:
+                    relative_path = os.path.relpath(dir_path, getattr(self.manager, 'backup_root', dir_path))
+                    log_message("INFO", f"Suppression dossier vide: {relative_path}", category="ui_backup")
+                    shutil.rmtree(dir_path)
+                    cleaned_dirs.append(relative_path)
+                    log_message("INFO", f"Dossier vide supprimé avec succès: {relative_path}", category="ui_backup")
+                except Exception as e:
+                    log_message("ATTENTION", f"Erreur suppression dossier {dir_path}: {e}", category="ui_backup")
+            else:
+                log_message("DEBUG", f"Dossier non vide, conservé: {dir_path}", category="ui_backup")
+                    
+        except Exception as e:
+            log_message("ERREUR", f"Erreur nettoyage récursif {dir_path}: {e}", category="ui_backup")
+    
+    def _is_directory_empty_recursive(self, dir_path):
+        """Vérifie récursivement si un dossier est vide (ne contient aucun fichier)"""
+        try:
+            for item in os.listdir(dir_path):
+                item_path = os.path.join(dir_path, item)
+                if os.path.isfile(item_path):
+                    return False  # Il y a au moins un fichier
+                elif os.path.isdir(item_path):
+                    if not self._is_directory_empty_recursive(item_path):
+                        return False  # Un sous-dossier n'est pas vide
+            return True  # Le dossier est vide
+        except Exception:
+            return False  # En cas d'erreur, considérer comme non-vide
+    
+    def _update_selection_count(self):
+        """Met à jour l'affichage du nombre d'éléments sélectionnés"""
+        try:
+            selected_count = sum(1 for selected in self.selected_items.values() if selected)
+            
+            if selected_count > 0:
+                self._update_status(f"📌 {selected_count} sauvegarde(s) sélectionnée(s)")
+            else:
+                total = len(self.backups)
+                self._update_status(f"✅ {total} sauvegardes chargées - Prêt")
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur mise à jour compteur sélection: {e}", category="ui_backup")
     
     def _on_filter_changed(self, event=None):
         """Gestionnaire de changement de filtre - GÈRE LES DEUX FILTRES"""
@@ -810,6 +1021,94 @@ class UnifiedBackupDialog:
             show_translated_messagebox('error', "Erreur", 
                                     "Erreur durant la restauration :\n{error}", error=str(e))
     
+    def _delete_smart(self):
+        """Suppression intelligente : sélection multiple si checkboxes cochées, sinon ligne sélectionnée"""
+        try:
+            # Vérifier s'il y a des checkboxes cochées
+            selected_backups = [
+                backup for backup in self.backups 
+                if self.selected_items.get(backup.get('id'), False)
+            ]
+            
+            if selected_backups:
+                # Il y a des checkboxes cochées → suppression par lot
+                self._delete_selected_batch()
+            else:
+                # Pas de checkbox cochée → suppression de la ligne sélectionnée
+                self._delete_selected()
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur suppression intelligente: {e}", category="ui_backup")
+    
+    def _delete_selected_batch(self):
+        """Supprime toutes les sauvegardes sélectionnées (par lot)"""
+        try:
+            # Récupérer tous les backups sélectionnés
+            selected_backups = [
+                backup for backup in self.backups 
+                if self.selected_items.get(backup.get('id'), False)
+            ]
+            
+            if not selected_backups:
+                self._update_status("⚠️ Aucune sauvegarde sélectionnée")
+                return
+            
+            # Calculer les statistiques pour la confirmation
+            total_selected = len(selected_backups)
+            total_size = sum(b.get('size', 0) for b in selected_backups) / (1024 * 1024)
+            
+            # Demander confirmation
+            result = show_translated_messagebox(
+                'askyesno',
+                "Confirmer la Suppression par Lot",
+                f"Supprimer {total_selected} sauvegarde(s) ?\n\n• Nombre : {total_selected} sauvegardes\n• Taille totale : {total_size:.1f} MB\n\n⚠️ Cette action est irréversible !"
+            )
+            
+            if not result:
+                return
+            
+            # Supprimer toutes les sauvegardes sélectionnées
+            deleted_count = 0
+            errors = []
+            
+            for backup in selected_backups:
+                try:
+                    os.remove(backup['backup_path'])
+                    
+                    # Nettoyer les métadonnées
+                    if hasattr(self.manager, 'metadata') and backup.get('id') in self.manager.metadata:
+                        del self.manager.metadata[backup['id']]
+                    
+                    deleted_count += 1
+                    
+                except Exception as e:
+                    errors.append(f"{backup.get('source_filename', 'inconnu')}: {e}")
+                    log_message("ERREUR", f"Erreur suppression backup {backup.get('id')}: {e}", category="ui_backup")
+            
+            # Sauvegarder les métadonnées
+            if hasattr(self.manager, '_save_metadata'):
+                self.manager._save_metadata()
+            
+            # Invalider le cache
+            if hasattr(self.manager, '_invalidate_cache'):
+                self.manager._invalidate_cache()
+            
+            # Nettoyer les dossiers vides
+            self._cleanup_empty_directories()
+            
+            # Afficher le résultat
+            if errors:
+                self._update_status(f"⚠️ {deleted_count}/{total_selected} sauvegardes supprimées ({len(errors)} erreurs)")
+            else:
+                self._update_status(f"✅ {deleted_count} sauvegarde(s) supprimée(s) avec succès")
+            
+            # Recharger les données
+            self._load_data()
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur suppression par lot: {e}", category="ui_backup")
+            self._update_status("❌ Erreur lors de la suppression par lot")
+    
     def _delete_selected(self):
         """Supprime la sauvegarde sélectionnée"""
         backup = self._get_selected_backup()
@@ -849,6 +1148,9 @@ class UnifiedBackupDialog:
                 # Invalider le cache après suppression
                 if hasattr(self.manager, '_invalidate_cache'):
                     self.manager._invalidate_cache()
+                
+                # Nettoyer les dossiers vides
+                self._cleanup_empty_directories()
                 
                 # Pas de popup de confirmation - juste le statut
                 self._load_data()  # Recharger les données
@@ -1022,6 +1324,34 @@ class UnifiedBackupDialog:
             
         except Exception as e:
             log_message("ATTENTION", f"Erreur gestion instance unique backup: {e}", category="ui_backup")
+
+    def _open_backup_folder(self):
+        """Ouvre le dossier de sauvegardes dans l'explorateur"""
+        try:
+            from infrastructure.helpers.file_utils import open_folder_in_explorer, get_backup_folder_path
+            
+            backup_folder = get_backup_folder_path()
+            
+            if open_folder_in_explorer(backup_folder):
+                log_message("INFO", f"Dossier de sauvegardes ouvert: {backup_folder}", category="ui_backup")
+            else:
+                from infrastructure.helpers.unified_functions import show_translated_messagebox
+                show_translated_messagebox(
+                    'warning',
+                    "Dossier Inaccessible",
+                    f"Impossible d'ouvrir le dossier de sauvegardes.\n\nChemin: {backup_folder}",
+                    parent=self.window
+                )
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur ouverture dossier sauvegardes: {e}", category="ui_backup")
+            from infrastructure.helpers.unified_functions import show_translated_messagebox
+            show_translated_messagebox(
+                'error',
+                "Erreur",
+                f"Erreur lors de l'ouverture du dossier:\n{e}",
+                parent=self.window
+            )
 
     def _on_close(self):
         """Gestion de la fermeture de la fenêtre (cacher pour persistance)"""

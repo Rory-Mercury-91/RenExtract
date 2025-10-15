@@ -35,10 +35,8 @@ class TextExtractionConfigBusiness:
         # Ces fichiers sont TOUJOURS exclus automatiquement
         self.system_generated_exclusions = [
             '99_Z_Console.rpy',              # Console développeur
-            '99_Z_LangSelect.rpy',           # Sélecteur de langue
-            '99_Z_LangSelect_FontSize.rpy',  # Sélecteur + polices
-            '99_Z_FontSize.rpy',            # Polices uniquement
-            '0-font-system.rpy'              # Polices uniquement
+            '99_Z_ScreenPreferences.rpy',    # Fichier unifié (sélecteur langue + polices + textbox)
+            '99_Z_FontSystem.rpy'            # Polices GUI individuelles
         ]
         
         log_message("INFO", f"TextExtractionConfigBusiness initialisé - {len(self.system_generated_exclusions)} exclusions système", category="extraction_config")

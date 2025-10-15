@@ -551,16 +551,6 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
     # FORCER LA MISE À JOUR INITIALE DU SCROLL
     parent_frame.after(100, lambda: canvas.configure(scrollregion=canvas.bbox("all")))
 
-def _ensure_scrollbar_visibility(canvas, scrollbar):
-    """S'assure que la scrollbar est visible en forçant une mise à jour"""
-    try:
-        # Forcer la mise à jour de la région de scroll
-        canvas.configure(scrollregion=canvas.bbox("all"))
-        # Forcer la mise à jour de la scrollbar
-        scrollbar.set(*canvas.yview())
-        canvas.yview_moveto(0)  # Remettre en haut
-    except:
-        pass
 
 def _toggle_extraction_text_selection(main_interface, text):
     """Bascule la sélection d'un texte d'extraction"""

@@ -104,7 +104,7 @@ class UnifiedSettingsInterface:
             self.dark_mode_var = tk.BooleanVar(value=True)
             self.show_output_path_var = tk.BooleanVar(value=False)
             self.current_language_var = tk.StringVar(value="Français")
-            self.project_sync_var = tk.BooleanVar(value=True)
+            # self.project_sync_var supprimée - synchronisation toujours active via ProjectManager
             self.notification_mode_var = tk.StringVar(value="Statut seulement")
             self.debug_mode_var = tk.BooleanVar(value=False)
             
@@ -316,7 +316,7 @@ class UnifiedSettingsInterface:
             self.auto_open_folders_var.set(config_manager.get('auto_open_folders', True))
             self.auto_open_coherence_report_var.set(config_manager.get('auto_open_coherence_report', True))
             self.show_output_path_var.set(config_manager.get('show_output_path', False))
-            self.project_sync_var.set(config_manager.get('project_sync', True))
+            # project_sync_var supprimée - synchronisation toujours active
             
             # Mode sombre - Synchroniser avec le ThemeManager
             dark_mode = config_manager.get('dark_mode', True)
@@ -384,7 +384,7 @@ class UnifiedSettingsInterface:
             config_manager.set('auto_open_folders', self.auto_open_folders_var.get())
             config_manager.set('auto_open_coherence_report', self.auto_open_coherence_report_var.get())
             config_manager.set('show_output_path', self.show_output_path_var.get())
-            config_manager.set('project_sync', self.project_sync_var.get())
+            # project_sync toujours True - géré par ProjectManager
             config_manager.set('dark_mode', self.dark_mode_var.get())
             config_manager.set('debug_mode', self.debug_mode_var.get())
             config_manager.set('editor_choice', self.editor_choice_var.get())
@@ -497,7 +497,7 @@ class UnifiedSettingsInterface:
                 self.auto_open_folders_var.set(True)
                 self.auto_open_coherence_report_var.set(True)
                 self.show_output_path_var.set(False)
-                self.project_sync_var.set(True)
+                # project_sync toujours True par défaut
                 self.dark_mode_var.set(True)
                 self.debug_mode_var.set(False)
                 self.editor_choice_var.set("Défaut Windows")
@@ -959,9 +959,9 @@ Si vous n'avez pas le SDK :
                     self._show_toast(f"✅ {editor_name} : Chemin valide (timeout OK)", "success")
                 except Exception:
                     # Si --version échoue, on considère que le fichier existe = OK
-                    self._show_toast(f"✅ {editor_name} : Fichier trouvé", "success")
+                    self._show_toast(f"✅ {editor_name} : Chemin valide", "success")
             else:
-                self._show_toast(f"❌ {editor_name} : Fichier non trouvé", "error")
+                self._show_toast(f"❌ {editor_name} : Chemin non valide", "error")
                 
         except Exception as e:
             log_message("ERREUR", f"Erreur test chemin {editor_name}: {e}", category="ui_settings")
@@ -1146,7 +1146,7 @@ Configuration :
             config_manager.set('auto_open_folders', self.auto_open_folders_var.get())
             config_manager.set('auto_open_coherence_report', self.auto_open_coherence_report_var.get())
             config_manager.set('show_output_path', self.show_output_path_var.get())
-            config_manager.set('project_sync', self.project_sync_var.get())
+            # project_sync toujours True - géré par ProjectManager
             
             # Mettre à jour l'affichage du champ de sortie dans l'interface principale
             if self.app_controller and hasattr(self.app_controller, 'main_window'):
@@ -1205,8 +1205,22 @@ Configuration :
         try:
             debug_mode = self.debug_mode_var.get()
             config_manager.set('debug_mode', debug_mode)
+            config_manager.set('debug_level', 5 if debug_mode else 3)  # ✅ AJOUT : Sauvegarder aussi le niveau
+            config_manager.save_config()  # ✅ CORRECTION : Sauvegarder la config
+            
+            # Appliquer le changement au logger immédiatement
+            try:
+                from infrastructure.logging.logging import get_logger
+                logger_instance = get_logger()
+                if debug_mode:
+                    logger_instance.set_debug(True, 5)
+                else:
+                    logger_instance.set_debug(False, 3)
+            except Exception as logger_error:
+                log_message("DEBUG", f"Impossible d'appliquer le mode debug au logger: {logger_error}", category="ui_settings")
             
             self._show_toast("🐛 Mode debug " + ("activé" if debug_mode else "désactivé"))
+            log_message("INFO", f"Mode debug {'activé' if debug_mode else 'désactivé'} et sauvegardé", category="ui_settings")
             
         except Exception as e:
             log_message("ERREUR", f"Erreur changement mode debug: {e}", category="ui_settings")

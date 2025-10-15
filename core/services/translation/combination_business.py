@@ -209,10 +209,8 @@ class CombinationBusiness:
                 'screens.rpy', 
                 'options.rpy',
                 '99_Z_Console.rpy',
-                '99_Z_LangSelect.rpy',
-                '99_Z_LangSelect_FontSize.rpy',
-                '99_Z_FontSize.rpy',
-                '0-font-system.rpy',
+                '99_Z_ScreenPreferences.rpy',
+                '99_Z_FontSystem.rpy',
                 'traduction.rpy'
             ]
 

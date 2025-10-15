@@ -248,7 +248,8 @@ try:
     health_status = calculate_health_status(loaded_modules, failed_modules, modules_list)
     
     # Gestion du mode debug automatique
-    manage_debug_mode(health_status)
+    # ✅ DÉSACTIVÉ : On laisse l'utilisateur gérer le mode debug via les paramètres
+    # manage_debug_mode(health_status)
     
     # Log unique du mode debug conservé (si activé)
     try:

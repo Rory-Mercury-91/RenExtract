@@ -377,6 +377,18 @@ class MainWindow:
             
         except Exception as e:
             log_message("ERREUR", f"Erreur recréation interface: {e}", category="ui_main")
+    
+    def force_refresh_project_languages(self):
+        """Force le refresh des langues du projet (utile après génération)"""
+        try:
+            info_frame = self.components.get('info')
+            if info_frame and hasattr(info_frame, 'force_refresh_languages'):
+                info_frame.force_refresh_languages()
+                log_message("INFO", "Refresh des langues demandé depuis MainWindow", category="ui_main")
+            else:
+                log_message("ATTENTION", "InfoFrame non disponible pour refresh des langues", category="ui_main")
+        except Exception as e:
+            log_message("ERREUR", f"Erreur refresh des langues: {e}", category="ui_main")
 
     def center_window(self):
         """Centre la fenêtre sur l'écran"""

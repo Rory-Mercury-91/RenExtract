@@ -259,12 +259,38 @@ def _create_color_customization_section(parent, settings_instance):
                 height=1,
                 relief='solid',
                 borderwidth=2,
+                cursor='hand2',
                 command=lambda key=color_key: settings_instance._change_color(key)
             )
             color_btn.pack(side='right', padx=(5, 0))
             
+            # Ajouter effet hover pour montrer que c'est cliquable
+            _add_hover_effect(color_btn)
+            
             settings_instance.color_buttons[color_key] = color_btn
     
+def _add_hover_effect(button):
+    """Ajoute un effet hover au bouton pour montrer qu'il est cliquable"""
+    original_config = {
+        'borderwidth': button.cget('borderwidth'),
+        'relief': button.cget('relief')
+    }
+    
+    def on_enter(event):
+        """Au survol : bordure plus épaisse et relief raised"""
+        button.config(borderwidth=3, relief='raised')
+    
+    def on_leave(event):
+        """En sortie : retour à l'état normal"""
+        button.config(
+            borderwidth=original_config['borderwidth'],
+            relief=original_config['relief']
+        )
+    
+    button.bind('<Enter>', on_enter)
+    button.bind('<Leave>', on_leave)
+
+
 def _get_example_button_text(color_key):
     """Retourne un texte d'exemple pour chaque type de bouton"""
     examples = {

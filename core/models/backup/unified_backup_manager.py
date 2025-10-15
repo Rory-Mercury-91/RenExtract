@@ -30,6 +30,7 @@ class BackupType:
     CLEANUP = "cleanup"
     RPA_BUILD = "rpa_build"
     REALTIME_EDIT = "realtime_edit"
+    BEFORE_COMBINATION = "before_combination"
 
 class UnifiedBackupManager:
     """Gestionnaire unifié avec structure hiérarchique et cache mémoire (Singleton)"""
@@ -40,7 +41,8 @@ class UnifiedBackupManager:
         BackupType.SECURITY: "🛡️ Sécurité",
         BackupType.CLEANUP: "🧹 Nettoyage",
         BackupType.RPA_BUILD: "📦 Avant RPA",
-        BackupType.REALTIME_EDIT: "⚡ Édition temps réel"
+        BackupType.REALTIME_EDIT: "⚡ Édition temps réel",
+        BackupType.BEFORE_COMBINATION: "🔗 Avant combinaison"
     }
     
     # Configuration de rotation par type
@@ -208,8 +210,17 @@ class UnifiedBackupManager:
             log_message("ERREUR", f"Erreur suppression cache persistant: {e}", category="backup_cache")
     
     def create_backup(self, source_path: str, backup_type: str = BackupType.SECURITY,
-                    description: str = None) -> Dict[str, any]:
-        """Crée une sauvegarde avec la nouvelle structure hiérarchique"""
+                    description: str = None, override_game_name: str = None, 
+                    override_file_name: str = None) -> Dict[str, any]:
+        """Crée une sauvegarde avec la nouvelle structure hiérarchique
+        
+        Args:
+            source_path: Chemin du fichier source à sauvegarder
+            backup_type: Type de sauvegarde (BackupType.*)
+            description: Description optionnelle
+            override_game_name: Nom de jeu à utiliser au lieu de l'extraction automatique
+            override_file_name: Nom de fichier à utiliser au lieu de l'extraction automatique
+        """
         result = {
             'success': False,
             'backup_path': None,
@@ -234,9 +245,9 @@ class UnifiedBackupManager:
                 result['message'] = "Fichier virtuel - pas de sauvegarde nécessaire"
                 return result
         
-            # Extraire le nom du jeu et du fichier
-            game_name = extract_game_name(source_path)
-            file_name = Path(source_path).stem  # Nom sans extension
+            # Extraire le nom du jeu et du fichier (avec override si fourni)
+            game_name = override_game_name if override_game_name else extract_game_name(source_path)
+            file_name = override_file_name if override_file_name else Path(source_path).stem  # Nom sans extension
             
             # Créer la structure hiérarchique: Game_name/file_name/backup_type/
             backup_folder = os.path.join(self.backup_root, game_name, file_name, backup_type)

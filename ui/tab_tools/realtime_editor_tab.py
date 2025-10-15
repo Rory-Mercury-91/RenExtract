@@ -31,6 +31,10 @@ try:
 except Exception:
     from ui.shared.editor_manager_server import set_focus_callback as set_dialogue_callback
 
+# Constantes pour les dimensions fixes des zones de texte
+TEXT_WIDGET_HEIGHT = 120  # Hauteur fixe en pixels
+TEXT_WIDGET_WIDTH = 400   # Largeur fixe en pixels
+
 def create_realtime_editor_tab(parent_notebook, main_interface):
     """Crée l'onglet d'édition temps réel avec interface optimisée."""
     theme = theme_manager.get_theme()
@@ -282,6 +286,87 @@ def _build_editor_controls(parent_container, main_interface, is_detached=False):
         bg=theme["bg"], fg=theme["fg"]
     )
     font_size_label.pack(side='right')
+    
+    # === AJOUT: Sélecteur de traducteur ===
+    from ui.shared.translator_utils import get_default_translator, set_default_translator
+    
+    # Initialiser le traducteur par défaut si pas déjà fait
+    if not hasattr(main_interface, 'current_translator'):
+        main_interface.current_translator = get_default_translator()
+    
+    # Sélecteur de traducteur
+    translator_var = tk.StringVar(value=main_interface.current_translator)
+    translator_combo = ttk.Combobox(
+        interface_controls_frame,
+        textvariable=translator_var,
+        values=["Google", "Yandex", "DeepL", "Microsoft", "Groq AI"],
+        state="readonly",
+        width=10,
+        font=('Segoe UI', 9)
+    )
+    translator_combo.pack(side='right', padx=(0, 10))
+    def on_translator_changed(event=None):
+        new_translator = translator_var.get()
+        set_default_translator(new_translator)
+        main_interface.current_translator = new_translator
+        log_message("INFO", f"Traducteur changé vers: {new_translator}", category="realtime_editor")
+    
+    translator_combo.bind('<<ComboboxSelected>>', on_translator_changed)
+    
+    tk.Label(
+        interface_controls_frame, 
+        text="Traducteur :", 
+        font=('Segoe UI', 9, 'normal'),
+        bg=theme["bg"], 
+        fg=theme["fg"]
+    ).pack(side='right', padx=(0, 5))
+    
+    # === AJOUT: Sélecteur de ton (pour Groq AI) ===
+    # Initialiser le ton par défaut si pas déjà fait
+    if not hasattr(main_interface, 'translation_tone'):
+        main_interface.translation_tone = "informel"  # Par défaut informel (tutoiement)
+    
+    # Sélecteur de ton
+    tone_var = tk.StringVar(value=main_interface.translation_tone.capitalize())
+    tone_combo = ttk.Combobox(
+        interface_controls_frame,
+        textvariable=tone_var,
+        values=["Informel", "Formel", "Neutre"],
+        state="readonly",
+        width=8,
+        font=('Segoe UI', 9)
+    )
+    tone_combo.pack(side='right', padx=(0, 10))
+    
+    def on_tone_changed(event=None):
+        new_tone = tone_var.get().lower()
+        main_interface.translation_tone = new_tone
+        log_message("INFO", f"Ton de traduction changé vers: {new_tone}", category="realtime_editor")
+    
+    tone_combo.bind('<<ComboboxSelected>>', on_tone_changed)
+    
+    tk.Label(
+        interface_controls_frame, 
+        text="Ton :", 
+        font=('Segoe UI', 9, 'normal'),
+        bg=theme["bg"], 
+        fg=theme["fg"]
+    ).pack(side='right', padx=(0, 5))
+    
+    # === AJOUT: Bouton paramétrage Groq AI ===
+    groq_settings_btn = tk.Button(
+        interface_controls_frame,
+        text="⚙️ Paramétrer Groq AI",
+        command=lambda: _show_groq_prompt_customizer(main_interface),
+        bg=theme["button_feature_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9, 'bold'),
+        pady=4,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    groq_settings_btn.pack(side='right', padx=(0, 15))
 
 
 def open_deepl_website(main_interface):
@@ -337,7 +422,8 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
         editor_font = ('Segoe UI', current_font_size)
         
         # Hauteurs adaptées selon le mode (réduite pour compenser le header)
-        TEXT_AREA_HEIGHT = 200
+        # Ajusté pour être cohérent avec les dimensions fixes des widgets Text (8 lignes ≈ 160px)
+        TEXT_AREA_HEIGHT = 160
 
         edit_main = tk.Frame(parent_container, bg=theme["bg"])
 
@@ -455,7 +541,7 @@ def _create_normal_vo_interface_with_grid(main_interface):
     for widget in main_interface.vo_content_container.winfo_children():
         widget.destroy()
 
-    # ✅ MODIFIÉ : Application du thème sombre
+    # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
     vo_text = tk.Text(
         main_interface.vo_content_container,
         wrap='word',
@@ -465,7 +551,9 @@ def _create_normal_vo_interface_with_grid(main_interface):
         state='disabled',
         relief='solid',
         borderwidth=1,
-        highlightbackground='#666666'
+        highlightbackground='#666666',
+        height=7,  # Hauteur fixe en lignes (ajustée pour container de 160px)
+        width=50   # Largeur fixe en caractères
     )
     vo_text.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
     main_interface.vo_text_widget = vo_text
@@ -481,19 +569,12 @@ def _create_normal_vo_interface_with_grid(main_interface):
     ).pack(side='left', padx=(0, 5))
 
     tk.Button(
-        vo_buttons_frame, text="DeepL",
-        command=lambda: deepl_vo_text_simple(main_interface),
+        vo_buttons_frame, text="Traduire en ligne",
+        command=lambda: copy_and_open_translator(main_interface, main_interface.vo_text_widget.get('1.0', tk.END).strip(), "VO simple"),
         bg=theme["button_tertiary_bg"], fg="#000000",
         font=('Segoe UI', 9, 'normal'), pady=4, padx=8
     ).pack(side='left', padx=(0, 5))
 
-    # 👉 NOUVEAU : bouton Google, à côté de DeepL (utilise le texte VO affiché)
-    tk.Button(
-        vo_buttons_frame, text="Google",
-        command=lambda: _open_google_with_text(main_interface, main_interface.vo_text_widget.get('1.0', tk.END)),
-        bg=theme.get("button_google_bg", theme["button_tertiary_bg"]), fg="#000000",
-        font=('Segoe UI', 9, 'normal'), pady=4, padx=8
-    ).pack(side='left')
 
     main_interface.vo_split_mode = False
 
@@ -506,10 +587,13 @@ def _create_normal_vf_interface_with_grid_and_buttons(main_interface):
     for widget in main_interface.vf_content_container.winfo_children():
         widget.destroy()
 
-    # ✅ MODIFIÉ : Application du thème sombre
+    # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
     vf_text = tk.Text(main_interface.vf_content_container, wrap='word', font=editor_font,
                      bg=theme["entry_bg"], fg=theme["accent"], relief='solid', borderwidth=1,
-                     insertbackground='#1976d2', highlightbackground='#666666')
+                     insertbackground='#1976d2', highlightbackground='#666666',
+                     height=7,  # Hauteur fixe en lignes (ajustée pour container de 160px)
+                     width=50   # Largeur fixe en caractères
+                     )
     vf_text.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
     main_interface.vf_text_widget = vf_text
     main_interface.vf_text_widget_2 = None
@@ -573,7 +657,9 @@ def _create_split_vf_interface_with_grid_and_buttons(main_interface, part1_text=
         borderwidth=2 if is_part1_active else 1,
         highlightbackground=soft_active_border if is_part1_active else normal_border,
         highlightcolor=soft_active_border if is_part1_active else normal_border,
-        insertbackground='#1976d2'
+        insertbackground='#1976d2',
+        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
+        width=45   # Largeur fixe en caractères
     )
     txt1.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     txt1.insert('1.0', part1_text)
@@ -601,7 +687,9 @@ def _create_split_vf_interface_with_grid_and_buttons(main_interface, part1_text=
         borderwidth=2 if is_part2_active else 1,
         highlightbackground=soft_active_border if is_part2_active else normal_border,
         highlightcolor=soft_active_border if is_part2_active else normal_border,
-        insertbackground='#1976d2'
+        insertbackground='#1976d2',
+        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
+        width=45   # Largeur fixe en caractères
     )
     txt2.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     txt2.insert('1.0', part2_text)
@@ -640,7 +728,7 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         speaker_container = tk.Frame(main_interface.vo_content_container, bg=theme["bg"]); speaker_container.grid(row=0, column=0, sticky='nsew', padx=(0, 2))
         speaker_container.grid_rowconfigure(0, weight=0); speaker_container.grid_rowconfigure(1, weight=1); speaker_container.grid_rowconfigure(2, weight=0); speaker_container.grid_columnconfigure(0, weight=1)
         tk.Label(speaker_container, text="Locuteur Original", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).grid(row=0, column=0, sticky='w', pady=(0, 2))
-        # ✅ MODIFIÉ : Application du thème sombre
+        # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
         speaker_widget = tk.Text(
             speaker_container,
             wrap='word',
@@ -650,7 +738,9 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
             relief='solid',
             borderwidth=1,
             state='disabled',
-            highlightbackground='#666666'
+            highlightbackground='#666666',
+            height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
+            width=40   # Largeur fixe en caractères
         )
         speaker_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
         speaker_widget.config(state='normal'); speaker_widget.insert('1.0', speaker_text); speaker_widget.config(state='disabled')
@@ -664,25 +754,17 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         ).pack(side='left', padx=(0, 5))
 
         tk.Button(
-            speaker_buttons_frame, text="DeepL",
-            command=lambda: deepl_vo_speaker_text(main_interface),
+            speaker_buttons_frame, text="Traduire en ligne",
+            command=lambda: copy_and_open_translator(main_interface, speaker_widget.get('1.0', tk.END).strip(), "locuteur VO"),
             bg=theme["button_tertiary_bg"], fg="#000000", font=('Segoe UI', 9), pady=4, padx=8
         ).pack(side='left', padx=(0, 5))
-
-        # 👉 NOUVEAU
-        tk.Button(
-            speaker_buttons_frame, text="Google",
-            command=lambda: _open_google_with_text(main_interface, speaker_widget.get('1.0', tk.END)),
-            bg=theme.get("button_google_bg", theme["button_tertiary_bg"]), fg="#000000",
-            font=('Segoe UI', 9), pady=4, padx=8
-        ).pack(side='left')
 
 
         # --- Widget Dialogue (VO) ---
         dialogue_container = tk.Frame(main_interface.vo_content_container, bg=theme["bg"]); dialogue_container.grid(row=0, column=1, sticky='nsew', padx=(2, 0))
         dialogue_container.grid_rowconfigure(0, weight=0); dialogue_container.grid_rowconfigure(1, weight=1); dialogue_container.grid_rowconfigure(2, weight=0); dialogue_container.grid_columnconfigure(0, weight=1)
         tk.Label(dialogue_container, text="Dialogue Original", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).grid(row=0, column=0, sticky='w', pady=(0, 2))
-        # ✅ MODIFIÉ : Application du thème sombre
+        # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
         dialogue_widget = tk.Text(
             dialogue_container,
             wrap='word',
@@ -692,7 +774,9 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
             relief='solid',
             borderwidth=1,
             state='disabled',
-            highlightbackground='#666666'
+            highlightbackground='#666666',
+            height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
+            width=40   # Largeur fixe en caractères
         )
         dialogue_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
         dialogue_widget.config(state='normal'); dialogue_widget.insert('1.0', dialogue_text); dialogue_widget.config(state='disabled')
@@ -706,18 +790,10 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         ).pack(side='left', padx=(0, 5))
 
         tk.Button(
-            dialogue_buttons_frame, text="DeepL",
-            command=lambda: deepl_vo_dialogue_text(main_interface),
+            dialogue_buttons_frame, text="Traduire en ligne",
+            command=lambda: copy_and_open_translator(main_interface, dialogue_widget.get('1.0', tk.END).strip(), "dialogue VO"),
             bg=theme["button_tertiary_bg"], fg="#000000", font=('Segoe UI', 9), pady=4, padx=8
         ).pack(side='left', padx=(0, 5))
-
-        # 👉 NOUVEAU
-        tk.Button(
-            dialogue_buttons_frame, text="Google",
-            command=lambda: _open_google_with_text(main_interface, dialogue_widget.get('1.0', tk.END)),
-            bg=theme.get("button_google_bg", theme["button_tertiary_bg"]), fg="#000000",
-            font=('Segoe UI', 9), pady=4, padx=8
-        ).pack(side='left')
 
 
         # Pointeurs conservés à l’identique
@@ -776,7 +852,9 @@ def _create_split_vf_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         borderwidth=1,
         insertbackground='#1976d2',
         highlightbackground=normal_border,
-        highlightcolor=normal_border
+        highlightcolor=normal_border,
+        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
+        width=40   # Largeur fixe en caractères
     )
     vf_speaker_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     vf_speaker_widget.insert('1.0', part1_text)
@@ -818,7 +896,9 @@ def _create_split_vf_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         borderwidth=2,
         insertbackground='#1976d2',
         highlightbackground=soft_active_border,
-        highlightcolor=soft_active_border
+        highlightcolor=soft_active_border,
+        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
+        width=40   # Largeur fixe en caractères
     )
     vf_dialogue_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     vf_dialogue_widget.insert('1.0', part2_text)
@@ -855,7 +935,7 @@ def deepl_vo_text_simple(main_interface):
     """Copie le texte VO simple et ouvre DeepL"""
     try:
         vo_text = main_interface.vo_text_widget.get('1.0', tk.END).strip()
-        copy_and_open_deepl(main_interface, vo_text, "VO simple")
+        copy_and_open_translator(main_interface, vo_text, "VO simple")
     except Exception as e:
         log_message("ERREUR", f"Erreur DeepL VO simple: {e}", category="realtime_editor")
 
@@ -908,7 +988,7 @@ def deepl_vo_speaker_text(main_interface):
     try:
         if hasattr(main_interface, 'vo_speaker_widget') and main_interface.vo_speaker_widget:
             speaker_text = main_interface.vo_speaker_widget.get('1.0', tk.END).strip()
-            copy_and_open_deepl(main_interface, speaker_text, "locuteur VO")
+            copy_and_open_translator(main_interface, speaker_text, "locuteur VO")
     except Exception as e:
         log_message("ERREUR", f"Erreur DeepL locuteur VO: {e}", category="realtime_editor")
 
@@ -926,7 +1006,7 @@ def deepl_vo_dialogue_text(main_interface):
     """Copie le texte du dialogue VO et ouvre DeepL"""
     try:
         vo_text = main_interface.vo_text_widget.get('1.0', tk.END).strip()
-        copy_and_open_deepl(main_interface, vo_text, "dialogue VO")
+        copy_and_open_translator(main_interface, vo_text, "dialogue VO")
     except Exception as e:
         log_message("ERREUR", f"Erreur DeepL dialogue VO: {e}", category="realtime_editor")
 
@@ -1010,18 +1090,10 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
         ).pack(side='left', padx=(0, 5))
 
         tk.Button(
-            vo_buttons_multiple_frame, text="DeepL",
-            command=lambda idx=i: deepl_multiple_vo_text(main_interface, idx),
+            vo_buttons_multiple_frame, text="Traduire en ligne",
+            command=lambda idx=i: copy_and_open_translator(main_interface, main_interface.multiple_vo_widgets[idx].get('1.0', tk.END).strip(), f"original {idx + 1}"),
             bg=theme["button_tertiary_bg"], fg="#000000", font=('Segoe UI', 9), pady=4, padx=8
         ).pack(side='left', padx=(0, 5))
-
-        # 👉 NOUVEAU : Google à côté de DeepL
-        tk.Button(
-            vo_buttons_multiple_frame, text="Google",
-            command=lambda idx=i: _open_google_with_text(main_interface, main_interface.multiple_vo_widgets[idx].get('1.0', tk.END)),
-            bg=theme.get("button_google_bg", theme["button_tertiary_bg"]), fg="#000000",
-            font=('Segoe UI', 9), pady=4, padx=8
-        ).pack(side='left')
         vo_widget.dialogue_info = vo_dialogues[i] if i < len(vo_dialogues) else {}; vo_widget.dialogue_index = i
         main_interface.multiple_vo_widgets.append(vo_widget)
 
@@ -1094,7 +1166,7 @@ def deepl_multiple_vo_text(main_interface, widget_index):
             vo_widget = main_interface.multiple_vo_widgets[widget_index]
             if vo_widget and vo_widget.winfo_exists():
                 vo_text = vo_widget.get('1.0', tk.END).strip()
-                copy_and_open_deepl(main_interface, vo_text, f"original {widget_index + 1}")
+                copy_and_open_translator(main_interface, vo_text, f"original {widget_index + 1}")
     except Exception as e:
         log_message("ERREUR", f"Erreur DeepL VO multiple {widget_index}: {e}", category="realtime_editor")
 
@@ -1216,14 +1288,49 @@ def install_monitoring_module(main_interface):
         if not language:
             main_interface._show_notification("Veuillez spécifier une langue cible", "warning"); return
         
+        # Version manuelle désactivée - utilisation de la détection automatique uniquement
+        manual_version = None
+        
         main_interface._update_status("Installation du module de surveillance...")
         biz = main_interface._get_realtime_editor_business()
-        result = biz.generate_monitoring_module(project_path=main_interface.current_project_path, language=language)
+        result = biz.generate_monitoring_module(
+            project_path=main_interface.current_project_path, 
+            language=language,
+            manual_version=manual_version
+        )
         
         if result.get('success'):
             module_path = result.get('module_path', '')
-            main_interface._update_status(f"Module installé avec succès pour '{language}'")
-            log_message("INFO", f"Module de surveillance installé: {module_path}", category="realtime_editor")
+            module_version = result.get('module_version', 'v1')
+            
+            # Message de succès avec infos sur la version
+            success_msg = f"Module {module_version} installé avec succès pour '{language}'"
+            main_interface._update_status(success_msg)
+            log_message("INFO", f"Module de surveillance installé: {module_path} (version {module_version})", category="realtime_editor")
+            
+            # Feedback si version inconnue
+            if result.get('warnings'):
+                from infrastructure.helpers.unified_functions import show_custom_messagebox
+                from ui.themes import theme_manager
+                
+                detected_version = result.get('renpy_version_detected')
+                warning_message = [
+                    ("⚠️ Version Ren'Py inconnue détectée\n\n", "bold"),
+                    (f"Version détectée : ", "normal"),
+                    (f"{detected_version}\n\n", "bold_blue"),
+                    ("Le module v1 (compatible 8.1.2 et 8.2.1) sera utilisé par défaut.\n\n", "normal"),
+                    ("Si le module ne fonctionne pas correctement, merci de signaler cette version pour qu'un module adapté soit créé.\n\n", "normal"),
+                    ("📧 Contact : ", "bold"),
+                    ("Rapportez cette version sur GitHub ou par email.", "normal")
+                ]
+                
+                show_custom_messagebox(
+                    "Version Ren'Py inconnue",
+                    warning_message,
+                    theme_manager.get_theme(),
+                    parent=main_interface.window,
+                    type_box="warning"
+                )
         else:
             error_message = " / ".join(result.get('errors', ["Erreur inconnue"]))
             main_interface._update_status("Erreur installation module")
@@ -1547,18 +1654,10 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         ).pack(side='left', padx=(0, 5))
 
         tk.Button(
-            vo_buttons, text="DeepL",
-            command=lambda idx=i: deepl_menu_choice_vo(main_interface, idx),
+            vo_buttons, text="Traduire en ligne",
+            command=lambda idx=i: copy_and_open_translator(main_interface, main_interface.menu_vo_widgets[idx].get('1.0', tk.END).strip(), f"choix {idx + 1}"),
             bg=theme["button_tertiary_bg"], fg="#000000", font=('Segoe UI', 9), pady=4, padx=8
         ).pack(side='left', padx=(0, 5))
-
-        # 👉 NOUVEAU : Google à côté de DeepL
-        tk.Button(
-            vo_buttons, text="Google",
-            command=lambda idx=i: _open_google_with_text(main_interface, main_interface.menu_vo_widgets[idx].get('1.0', tk.END)),
-            bg=theme.get("button_google_bg", theme["button_tertiary_bg"]), fg="#000000",
-            font=('Segoe UI', 9), pady=4, padx=8
-        ).pack(side='left')
 
         # VF
         vf_container = tk.Frame(vf_grid_container, bg=theme["bg"])
@@ -1605,7 +1704,7 @@ def deepl_menu_choice_vo(main_interface, index):
     try:
         if index < len(main_interface.menu_vo_widgets):
             vo_text = main_interface.menu_vo_widgets[index].get('1.0', tk.END).strip()
-            copy_and_open_deepl(main_interface, vo_text, f"choix {index + 1}")
+            copy_and_open_translator(main_interface, vo_text, f"choix {index + 1}")
     except Exception as e:
         log_message("ERREUR", f"Erreur DeepL choix: {e}", category="realtime_editor")
 
@@ -2160,11 +2259,18 @@ def update_vf_label_text(main_interface):
 
 def _open_google_with_text(main_interface, text: str):
     """
-    Ouvre Google Translate avec le texte fourni.
+    Ouvre Google Translate avec le texte fourni (avec encodage correct des balises Ren'Py).
     Cible la langue de l'interface temps réel si disponible.
     """
     try:
         import webbrowser, urllib.parse
+        
+        # Nettoyer le texte
+        clean_text = (text or "").strip()
+        if not clean_text:
+            main_interface._show_notification("Aucun texte à traduire", "warning")
+            return False
+        
         # Langue cible d'après ton sélecteur d'onglet (fallback 'fr')
         tl = 'fr'
         try:
@@ -2172,61 +2278,254 @@ def _open_google_with_text(main_interface, text: str):
         except Exception:
             pass
 
+        # Limiter la longueur pour éviter les URLs trop longues
+        max_length = 400
+        if len(clean_text) > max_length:
+            clean_text = clean_text[:max_length] + "..."
+            main_interface._show_notification(f"Texte tronqué à {max_length} caractères", "info")
+
+        # Encoder TOUS les caractères spéciaux (y compris {, }, [, ], \, etc.)
+        # urllib.parse.quote avec safe='' encode TOUT sauf les caractères alphanumériques
+        encoded_text = urllib.parse.quote(clean_text, safe='')
+
         url = "https://translate.google.com/?sl=auto&tl={}&text={}&op=translate".format(
-            urllib.parse.quote(tl), urllib.parse.quote(text or "")
+            urllib.parse.quote(tl, safe=''), encoded_text
         )
         webbrowser.open(url)
+        main_interface._update_status("Google Translate ouvert")
         return True
     except Exception as e:
         log_message("ATTENTION", f"Impossible d'ouvrir Google Translate: {e}", category="realtime_editor")
         return False
 
-def copy_and_open_deepl(main_interface, text, context=""):
+def _fill_translation_area(main_interface, translation_text, context=""):
     """
-    Copie le texte dans le presse-papier et ouvre DeepL avec le texte pré-rempli.
+    Remplit automatiquement la zone de traduction avec le texte traduit
+    """
+    import tkinter as tk  # ✅ CORRECTION : Import au début de la fonction
+    try:
+        # ✅ AMÉLIORATION : Chercher toutes les zones de traduction possibles
+        vf_widgets = []
+        
+        # Zones VF de l'éditeur temps réel (noms corrects)
+        if hasattr(main_interface, 'vf_text_widget') and main_interface.vf_text_widget:
+            vf_widgets.append(('vf_text_widget', main_interface.vf_text_widget))
+        
+        # Zone VF split (deuxième widget)
+        if hasattr(main_interface, 'vf_text_widget_2') and main_interface.vf_text_widget_2:
+            vf_widgets.append(('vf_text_widget_2', main_interface.vf_text_widget_2))
+        
+        # Zones VF avec noms alternatifs (pour compatibilité)
+        if hasattr(main_interface, 'vf_text') and main_interface.vf_text:
+            vf_widgets.append(('vf_text', main_interface.vf_text))
+        
+        if hasattr(main_interface, 'txt2') and main_interface.txt2:
+            vf_widgets.append(('txt2', main_interface.txt2))
+        
+        if hasattr(main_interface, 'vf_dialogue_widget') and main_interface.vf_dialogue_widget:
+            vf_widgets.append(('vf_dialogue_widget', main_interface.vf_dialogue_widget))
+        
+        if hasattr(main_interface, 'vf_multiple_widget') and main_interface.vf_multiple_widget:
+            vf_widgets.append(('vf_multiple_widget', main_interface.vf_multiple_widget))
+        
+        if hasattr(main_interface, 'vf_choice_widget') and main_interface.vf_choice_widget:
+            vf_widgets.append(('vf_choice_widget', main_interface.vf_choice_widget))
+        
+        # ✅ AJOUT : Recherche dynamique dans tous les widgets Text de l'interface
+        if not vf_widgets:
+            log_message("DEBUG", "Recherche dynamique des zones VF...", category="realtime_editor")
+            
+            # Essayer d'abord avec main_interface
+            vf_widgets = _find_vf_widgets_recursively(main_interface)
+            
+            # Si pas de widgets trouvés et main_interface a une fenêtre, chercher dans la fenêtre
+            if not vf_widgets and hasattr(main_interface, 'window') and main_interface.window:
+                log_message("DEBUG", "Recherche dans la fenêtre principale...", category="realtime_editor")
+                vf_widgets = _find_vf_widgets_recursively(main_interface.window)
+            
+            # Si toujours pas de widgets trouvés, chercher dans toutes les fenêtres Tkinter
+            if not vf_widgets:
+                log_message("DEBUG", "Recherche dans toutes les fenêtres Tkinter...", category="realtime_editor")
+                for window in tk._default_root.winfo_children() if tk._default_root else []:
+                    window_widgets = _find_vf_widgets_recursively(window)
+                    vf_widgets.extend(window_widgets)
+                    if vf_widgets:  # Arrêter dès qu'on trouve des widgets
+                        break
+        
+        # Remplir la première zone VF trouvée
+        for widget_name, widget in vf_widgets:
+            try:
+                widget.delete('1.0', tk.END)
+                widget.insert('1.0', translation_text)
+                log_message("INFO", f"Zone de traduction remplie ({widget_name}){' (' + context + ')' if context else ''}", category="realtime_editor")
+                return True
+            except Exception as e:
+                log_message("ATTENTION", f"Erreur remplissage {widget_name}: {e}", category="realtime_editor")
+                continue
+        
+        # Aucune zone trouvée
+        log_message("ATTENTION", f"Aucune zone de traduction trouvée. Zones disponibles: {[name for name, _ in vf_widgets]}", category="realtime_editor")
+        return False
+        
+    except Exception as e:
+        log_message("ERREUR", f"Erreur remplissage zone traduction: {e}", category="realtime_editor")
+        return False
+
+
+def _find_vf_widgets_recursively(parent_widget, depth=0):
+    """
+    Recherche récursive de tous les widgets Text qui pourraient être des zones VF
+    """
+    vf_widgets = []
+    
+    if depth > 10:  # Limiter la profondeur pour éviter les boucles infinies
+        return vf_widgets
+    
+    try:
+        # ✅ CORRECTION : Vérifier que l'objet parent est un widget Tkinter
+        if not hasattr(parent_widget, 'winfo_children'):
+            log_message("DEBUG", f"Objet parent n'est pas un widget Tkinter: {type(parent_widget)}", category="realtime_editor")
+            return vf_widgets
+        
+        # Parcourir tous les enfants du widget
+        for child in parent_widget.winfo_children():
+            try:
+                # Vérifier si c'est un widget Text
+                if isinstance(child, tk.Text):
+                    # Vérifier si le widget semble être une zone VF
+                    widget_info = child.winfo_class()
+                    widget_name = getattr(child, '_name', f"Text_{id(child)}")
+                    
+                    # Critères pour identifier une zone VF :
+                    # - Widget Text existant
+                    # - Pas de contenu ou contenu court (zone de traduction vide)
+                    current_content = child.get('1.0', tk.END).strip()
+                    
+                    if len(current_content) < 100:  # Zone probablement vide ou avec peu de contenu
+                        vf_widgets.append((f"dynamic_{widget_name}", child))
+                        log_message("DEBUG", f"Zone VF potentielle trouvée: {widget_name} (contenu: {len(current_content)} chars)", category="realtime_editor")
+                
+                # Rechercher récursivement dans les enfants
+                child_vf_widgets = _find_vf_widgets_recursively(child, depth + 1)
+                vf_widgets.extend(child_vf_widgets)
+                
+            except Exception as e:
+                # Ignorer les erreurs sur les widgets spécifiques
+                continue
+                
+    except Exception as e:
+        log_message("DEBUG", f"Erreur recherche récursive: {e}", category="realtime_editor")
+    
+    return vf_widgets
+
+# Exporter la fonction pour qu'elle soit accessible depuis translator_utils
+def fill_translation_area(main_interface, translation_text, context=""):
+    return _fill_translation_area(main_interface, translation_text, context)
+
+def copy_and_open_translator(main_interface, text, context=""):
+    """
+    Ouvre le traducteur sélectionné avec le texte pré-rempli.
     
     Args:
         main_interface: Interface principale pour accéder au clipboard et aux notifications
-        text: Texte à copier et envoyer à DeepL
+        text: Texte à copier (avec balises Ren'Py préservées)
         context: Contexte pour les logs (optionnel)
     """
     try:
-        # Nettoyer et limiter le texte
-        clean_text = text.strip()
+        from ui.shared.translator_utils import open_translator, get_default_translator
+        
+        # Utiliser le traducteur sélectionné ou le défaut
+        translator = getattr(main_interface, 'current_translator', get_default_translator())
+        
+        # Nettoyer le texte
+        clean_text = (text or "").strip()
         if not clean_text:
             main_interface._show_notification("Aucun texte à traduire", "warning")
             return
         
-        # Limiter la longueur pour éviter les URLs trop longues
-        max_length = 500
-        if len(clean_text) > max_length:
-            clean_text = clean_text[:max_length] + "..."
-            main_interface._show_notification(f"Texte tronqué à {max_length} caractères", "info")
+        # Récupérer la langue cible depuis l'interface
+        target_lang = "fr"  # Par défaut français
+        if hasattr(main_interface, 'realtime_language_var'):
+            language_var = main_interface.realtime_language_var.get()
+            # Convertir "french" -> "fr", "english" -> "en", etc.
+            lang_map = {
+                "french": "fr",
+                "english": "en", 
+                "spanish": "es",
+                "german": "de",
+                "italian": "it",
+                "portuguese": "pt",
+                "russian": "ru",
+                "japanese": "ja",
+                "chinese": "zh"
+            }
+            target_lang = lang_map.get(language_var, "fr")
         
-        # Copier dans le presse-papier
-        main_interface.window.clipboard_clear()
-        main_interface.window.clipboard_append(clean_text)
+        # Récupérer le ton de traduction
+        tone = getattr(main_interface, 'translation_tone', 'informel')
         
-        # Encoder le texte pour l'URL en préservant les antislashs
-        encoded_text = urllib.parse.quote(clean_text, safe='\\')
+        # ✅ NOUVEAU : Récupérer le contexte enrichi pour Groq AI
+        speaker = None
+        previous_dialogue = None
+        characters_def = None
         
-        # Construire l'URL DeepL (anglais vers français par défaut)
-        # Format: https://www.deepl.com/translator#en/fr/texte
-        deepl_url = f"https://www.deepl.com/translator#en/fr/{encoded_text}"
+        # Uniquement pour Groq AI
+        if translator == "Groq AI":
+            # Extraire le locuteur du dialogue actuel
+            if hasattr(main_interface, 'current_dialogue_info') and main_interface.current_dialogue_info:
+                dialogue_info = main_interface.current_dialogue_info
+                
+                # Récupérer le business pour extraire le locuteur
+                try:
+                    biz = main_interface._get_realtime_editor_business()
+                    
+                    # Essayer d'extraire le locuteur depuis le fichier de traduction
+                    tl_file = dialogue_info.get('tl_file')
+                    tl_line = dialogue_info.get('tl_line', 0)
+                    
+                    if tl_file and tl_line > 0:
+                        import os
+                        tl_file_path = os.path.join(main_interface.current_project_path, tl_file)
+                        if not os.path.exists(tl_file_path):
+                            tl_file_path = os.path.join(main_interface.current_project_path, "game", tl_file)
+                        
+                        if os.path.exists(tl_file_path):
+                            with open(tl_file_path, 'r', encoding='utf-8') as f:
+                                lines = f.readlines()
+                            
+                            target_index = tl_line - 1
+                            if 0 <= target_index < len(lines):
+                                current_line = lines[target_index].strip()
+                                speaker = biz._extract_speaker_from_line(current_line)
+                    
+                    # Récupérer le dialogue précédent
+                    previous_dialogue = biz.get_previous_dialogue(dialogue_info)
+                    
+                except Exception as e:
+                    log_message("ATTENTION", f"Erreur extraction contexte: {e}", category="realtime_editor")
+            
+            # Récupérer les définitions de personnages
+            from infrastructure.config.config import config_manager
+            characters_def = config_manager.get('groq_characters_definitions', {})
         
-        # Ouvrir DeepL
-        webbrowser.open(deepl_url)
+        # Ouvrir le traducteur sélectionné avec contexte enrichi
+        success = open_translator(
+            translator, clean_text, context, main_interface, 
+            target_lang=target_lang, tone=tone,
+            speaker=speaker, previous_dialogue=previous_dialogue, characters_def=characters_def
+        )
         
-        # Message de statut
-        status_msg = f"DeepL ouvert avec le texte{' ' + context if context else ''}"
-        main_interface._update_status(status_msg)
-        
-        log_message("INFO", f"Texte envoyé à DeepL{' (' + context + ')' if context else ''}: {len(clean_text)} caractères", category="realtime_editor")
+        if success:
+            # Message de statut
+            status_msg = f"{translator} ouvert{' avec ' + context if context else ''}"
+            main_interface._update_status(status_msg)
+            
+            log_message("INFO", f"Texte envoyé à {translator}{' (' + context + ')' if context else ''}: {len(clean_text)} caractères", category="realtime_editor")
         
     except Exception as e:
-        error_msg = f"Erreur ouverture DeepL: {e}"
+        error_msg = f"Erreur ouverture traducteur: {e}"
         main_interface._show_notification(error_msg, "error")
-        log_message("ERREUR", f"Erreur DeepL{' (' + context + ')' if context else ''}: {e}", category="realtime_editor")
+        log_message("ERREUR", f"Erreur traducteur{' (' + context + ')' if context else ''}: {e}", category="realtime_editor")
 
 def open_modified_file(main_interface):
     """Ouvre le fichier modifié dans l'éditeur par défaut à la ligne correspondante"""
@@ -2562,6 +2861,1053 @@ def _bring_realtime_editor_to_front(main_interface):
         log_message("ATTENTION", f"Focus editor fail: {e}", category="realtime_editor")
 
 
+def _show_groq_prompt_customizer(main_interface):
+    """Affiche la fenêtre de personnalisation complète du prompt Groq AI"""
+    from ui.window_manager import window_manager
+    
+    # Vérifier si la fenêtre est déjà ouverte
+    window_id = "groq_prompt_customizer"
+    if window_manager.is_window_open(window_id):
+        window_manager.bring_to_front(window_id)
+        return
+    
+    theme = theme_manager.get_theme()
+    
+    # Déterminer la fenêtre parente (détachée si elle existe, sinon principale)
+    parent_window = main_interface.window  # Par défaut, fenêtre principale
+    if hasattr(main_interface, 'detached_editor_window') and main_interface.detached_editor_window and main_interface.detached_editor_window.winfo_exists():
+        parent_window = main_interface.detached_editor_window
+    
+    # Créer la fenêtre (agrandie pour inclure personnages et profils)
+    dialog = tk.Toplevel(parent_window)
+    dialog.title("⚙️ Personnalisation Groq AI")
+    dialog.geometry("950x750")
+    dialog.configure(bg=theme["bg"])
+    dialog.transient(parent_window)
+    # Ne PAS utiliser grab_set() pour ne pas bloquer toute l'application
+    
+    # Enregistrer la fenêtre dans le gestionnaire
+    window_manager.register_window(window_id, dialog)
+    
+    # Centrer la fenêtre
+    dialog.update_idletasks()
+    x = (dialog.winfo_screenwidth() // 2) - (950 // 2)
+    y = (dialog.winfo_screenheight() // 2) - (750 // 2)
+    dialog.geometry(f"950x750+{x}+{y}")
+    
+    # Frame principal avec scrollbar
+    main_frame = tk.Frame(dialog, bg=theme["bg"])
+    main_frame.pack(fill="both", expand=True, padx=15, pady=15)
+    
+    # Titre centré
+    title_frame = tk.Frame(main_frame, bg=theme["bg"])
+    title_frame.pack(fill='x', pady=(0, 20))
+    
+    tk.Label(title_frame, text="🤖 Personnalisation Complète de Groq AI", 
+             font=('Segoe UI', 14, 'bold'), bg=theme["bg"], fg=theme["accent"]).pack()
+    
+    tk.Label(title_frame, text="Configurez le comportement de la traduction IA selon vos besoins", 
+             font=('Segoe UI', 9, 'italic'), bg=theme["bg"], fg=theme["fg"]).pack(pady=(5, 0))
+    
+    # ===== NOUVEAU : SYSTÈME DE PROFILS =====
+    profiles_frame = tk.Frame(main_frame, bg=theme["bg"], relief='solid', borderwidth=1)
+    profiles_frame.pack(fill='x', pady=(0, 15))
+    
+    # Header profils
+    profiles_header = tk.Frame(profiles_frame, bg=theme["accent"])
+    profiles_header.pack(fill='x')
+    tk.Label(profiles_header, text="📁 Profils de prompts", font=('Segoe UI', 10, 'bold'), 
+             bg=theme["accent"], fg="#FFFFFF", padx=10, pady=5).pack(side='left')
+    
+    # Contenu profils
+    profiles_content = tk.Frame(profiles_frame, bg=theme["bg"])
+    profiles_content.pack(fill='x', padx=10, pady=10)
+    
+    # Charger les profils existants
+    saved_profiles = config_manager.get('groq_prompt_profiles', {})
+    profile_names = list(saved_profiles.keys()) if saved_profiles else []
+    
+    tk.Label(profiles_content, text="Profil actif :", font=('Segoe UI', 9, 'bold'),
+             bg=theme["bg"], fg=theme["fg"]).pack(side='left', padx=(0, 5))
+    
+    current_profile_var = tk.StringVar(value=config_manager.get('groq_current_profile', 'Par défaut'))
+    profile_combo = ttk.Combobox(profiles_content, textvariable=current_profile_var,
+                                values=['Par défaut'] + profile_names, state="readonly", width=25,
+                                font=('Segoe UI', 9))
+    profile_combo.pack(side='left', padx=(0, 10))
+    
+    # Charger automatiquement quand on sélectionne un profil
+    profile_combo.bind('<<ComboboxSelected>>', lambda e: load_profile())
+    
+    def load_profile():
+        """Charge un profil sauvegardé"""
+        profile_name = current_profile_var.get()
+        
+        if profile_name == 'Par défaut':
+            # Réinitialiser aux valeurs par défaut
+            instructions_text.delete('1.0', 'end')
+            tone_var.set('Informel')
+            style_var.set('Naturel')
+            context_var.set('Général')
+            creativity_var.set(0.3)
+            
+            # Vider la liste des personnages
+            if hasattr(dialog, 'character_frames'):
+                for frame in dialog.character_frames:
+                    frame.destroy()
+                dialog.character_frames = []
+                dialog.characters_list_data = {}
+            
+            config_manager.set('groq_current_profile', 'Par défaut')
+            log_message("INFO", "Profil réinitialisé aux valeurs par défaut", category="realtime_editor")
+            
+            # Mettre à jour l'aperçu
+            if hasattr(dialog, 'update_prompt_preview_func'):
+                dialog.update_prompt_preview_func()
+            return
+        
+        if profile_name in saved_profiles:
+            profile_data = saved_profiles[profile_name]
+            
+            # Charger les données dans l'interface
+            instructions_text.delete('1.0', 'end')
+            instructions_text.insert('1.0', profile_data.get('custom_instructions', ''))
+            
+            tone_var.set(profile_data.get('tone', 'Informel'))
+            style_var.set(profile_data.get('style', 'Naturel'))
+            context_var.set(profile_data.get('game_context', 'Général'))
+            creativity_var.set(profile_data.get('temperature', 0.3))
+            
+            # Charger les personnages (fonction sera créée plus tard dans le code)
+            characters_data = profile_data.get('characters', {})
+            # Stocker temporairement pour charger après création de l'interface personnages
+            if hasattr(dialog, 'load_characters_func'):
+                dialog.load_characters_func(characters_data)
+            else:
+                # Pas encore créé, on stocke pour plus tard
+                dialog.characters_to_load = characters_data
+            
+            config_manager.set('groq_current_profile', profile_name)
+            log_message("INFO", f"Profil '{profile_name}' chargé", category="realtime_editor")
+            
+            # Mettre à jour l'aperçu
+            if hasattr(dialog, 'update_prompt_preview_func'):
+                dialog.update_prompt_preview_func()
+            else:
+                # Fonction pas encore créée, on l'appellera plus tard
+                pass
+    
+    def save_profile():
+        """Sauvegarde le profil actuel"""
+        # Toujours demander le nom (permet de créer des variantes)
+        from infrastructure.helpers.unified_functions import show_custom_input_dialog
+        from ui.themes import theme_manager
+        
+        current_name = current_profile_var.get()
+        initial_value = current_name if current_name != 'Par défaut' else ""
+        
+        profile_name = show_custom_input_dialog(
+            "💾 Sauvegarder le profil",
+            "Nom du profil à sauvegarder :",
+            theme_manager.get_theme(),
+            parent=dialog,
+            initial_value=initial_value
+        )
+        if not profile_name:
+            return
+        
+        # Collecter toutes les données actuelles
+        profile_data = {
+            'custom_instructions': instructions_text.get('1.0', 'end-1c').strip(),
+            'tone': tone_var.get(),
+            'style': style_var.get(),
+            'game_context': context_var.get(),
+            'temperature': creativity_var.get(),
+            'characters': dialog.characters_list_data  # Les données des personnages
+        }
+        
+        saved_profiles[profile_name] = profile_data
+        config_manager.set('groq_prompt_profiles', saved_profiles)
+        config_manager.set('groq_current_profile', profile_name)
+        config_manager.save_config()
+        
+        # Mettre à jour la combo
+        profile_combo['values'] = ['Par défaut'] + list(saved_profiles.keys())
+        current_profile_var.set(profile_name)
+        
+        log_message("INFO", f"Profil '{profile_name}' sauvegardé", category="realtime_editor")
+    
+    def delete_profile():
+        """Supprime le profil actuel"""
+        profile_name = current_profile_var.get()
+        if profile_name == 'Par défaut':
+            return
+        
+        if profile_name in saved_profiles:
+            from infrastructure.helpers.unified_functions import show_custom_askyesno
+            confirm = show_custom_askyesno(
+                "Supprimer le profil",
+                f"Êtes-vous sûr de vouloir supprimer le profil '{profile_name}' ?",
+                theme_manager.get_theme(),
+                parent=dialog
+            )
+            
+            if confirm:
+                del saved_profiles[profile_name]
+                config_manager.set('groq_prompt_profiles', saved_profiles)
+                config_manager.set('groq_current_profile', 'Par défaut')
+                config_manager.save_config()
+                
+                profile_combo['values'] = ['Par défaut'] + list(saved_profiles.keys())
+                current_profile_var.set('Par défaut')
+                
+                log_message("INFO", f"Profil '{profile_name}' supprimé", category="realtime_editor")
+    
+    tk.Button(profiles_content, text="💾 Sauvegarder", command=save_profile,
+             bg=theme["button_primary_bg"], fg="#000000", font=('Segoe UI', 8, 'bold'),
+             pady=2, padx=8, relief='flat', cursor='hand2').pack(side='left', padx=(0, 5))
+    
+    tk.Button(profiles_content, text="🗑️ Supprimer", command=delete_profile,
+             bg=theme["button_danger_bg"], fg="#000000", font=('Segoe UI', 8, 'bold'),
+             pady=2, padx=8, relief='flat', cursor='hand2').pack(side='left')
+    
+    # ===== SECTION 1: INSTRUCTIONS PERSONNALISÉES =====
+    instructions_section = tk.Frame(main_frame, bg=theme["bg"])
+    instructions_section.pack(fill='x', pady=(0, 15))
+    
+    # Header avec titre et bouton d'aide
+    instructions_header = tk.Frame(instructions_section, bg=theme["bg"])
+    instructions_header.pack(fill='x', pady=(0, 5))
+    
+    tk.Label(instructions_header, text="📝 Instructions personnalisées", 
+             font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(side='left')
+    
+    # Bouton d'aide
+    def show_groq_help():
+        """Affiche l'aide complète pour la personnalisation Groq AI"""
+        help_title = "🤖 Aide - Personnalisation Groq AI"
+        help_message = [
+            ("Guide Complet de Personnalisation Groq AI\n\n", "bold"),
+            ("📁 PROFILS DE PROMPTS\n\n", "bold_green"),
+            ("Les profils permettent de sauvegarder et recharger des configurations complètes pour différents jeux.\n\n", "normal"),
+            ("• 📂 Charger : Recharge un profil sauvegardé (instructions, style, personnages, etc.)\n", "normal"),
+            ("• 💾 Sauvegarder : Crée un nouveau profil ou met à jour l'existant\n", "normal"),
+            ("• 🗑️ Supprimer : Supprime le profil actuel (sauf 'Par défaut')\n\n", "normal"),
+            ("📝 INSTRUCTIONS PERSONNALISÉES\n\n", "bold_green"),
+            ("Ajoutez vos propres consignes pour guider la traduction. Exemples :\n\n", "normal"),
+            ("• Expressions idiomatiques : Adapte les expressions au contexte francophone\n", "normal"),
+            ("• Style humoristique : Conserve le style humoristique et les jeux de mots\n", "normal"),
+            ("• Registre soutenu : Utilise un vocabulaire soutenu adapté au contexte médiéval\n", "normal"),
+            ("• Traduction littérale : Traduit de manière très littérale pour garder la précision\n\n", "normal"),
+            ("🎨 STYLE DE TRADUCTION\n\n", "bold_green"),
+            ("• Ton : Informel (tutoiement), Formel (vouvoiement), ou Neutre\n", "normal"),
+            ("• Style : Littéral (structure originale), Naturel (équilibre), ou Créatif (adaptation culturelle)\n", "normal"),
+            ("• Contexte : Général, Romance, Aventure, Horreur, Comédie, Fantaisie, Science-Fiction\n", "normal"),
+            ("• Créativité : 0.0 = Précis (fidèle), 1.0 = Créatif (adaptatif)\n\n", "normal"),
+            ("👥 DÉFINITION DES PERSONNAGES\n\n", "bold_green"),
+            ("Cette fonctionnalité enrichit automatiquement le prompt avec le contexte des personnages :\n\n", "normal"),
+            ("• Locuteur : 1-3 caractères (ex: p, a, n, mc, al)\n", "normal"),
+            ("• Genre : Fille, Garçon, Adolescent, Adolescente, Homme, Femme\n", "normal"),
+            ("• Prénom : Nom du personnage pour un contexte plus précis\n\n", "normal"),
+            ("💡 EXEMPLE D'UTILISATION\n\n", "bold_green"),
+            ("Si vous définissez :\n", "normal"),
+            ("• [p] = Homme, Alex\n", "blue"),
+            ("• [a] = Fille, Andrea\n\n", "blue"),
+            ("Et que le dialogue actuel est :\n", "normal"),
+            ("p \"Noch viel trauriger.\"\n\n", "blue"),
+            ("Le prompt sera enrichi automatiquement avec :\n", "normal"),
+            ("CONTEXTE DES PERSONNAGES :\n", "bold"),
+            ("[p] est un Homme du nom de Alex\n", "blue"),
+            ("[a] est une Fille du nom de Andrea\n\n", "blue"),
+            ("CONTEXTE DE CONVERSATION (dialogue précédent) :\n", "bold"),
+            ("a \"Warst du wirklich so traurig, wie du ausgesehen hast?\"\n\n", "blue"),
+            ("Cela permet à Groq AI de :\n", "normal"),
+            ("• Faire les bons accords grammaticaux (il/elle)\n", "normal"),
+            ("• Adapter le ton selon la relation entre personnages\n", "normal"),
+            ("• Comprendre le contexte émotionnel de la conversation\n", "normal"),
+            ("• Traduire de manière plus cohérente et naturelle\n\n", "normal"),
+            ("👀 APERÇU DU PROMPT\n\n", "bold_green"),
+            ("L'aperçu se met à jour automatiquement et montre le prompt complet qui sera envoyé à Groq AI.\n", "normal"),
+            ("C'est un excellent moyen de vérifier que votre configuration est correcte avant de traduire.\n\n", "normal"),
+            ("🚀 UTILISATION PRATIQUE\n\n", "bold_green"),
+            ("1. Configurez vos personnages une fois par jeu\n", "normal"),
+            ("2. Ajustez le style selon vos préférences\n", "normal"),
+            ("3. Sauvegardez votre profil (ex: 'DasTrio v0.01a')\n", "normal"),
+            ("4. Utilisez Groq AI dans l'éditeur temps réel\n", "normal"),
+            ("5. Le système enrichit automatiquement chaque traduction !\n\n", "normal"),
+            ("Les sections Style et Personnages sont collapsibles (▶/▼) pour une interface plus épurée.", "italic")
+        ]
+        
+        from infrastructure.helpers.unified_functions import show_custom_messagebox
+        from ui.themes import theme_manager
+        show_custom_messagebox(
+            'info',
+            help_title,
+            help_message,
+            theme_manager.get_theme(),
+            parent=dialog
+        )
+    
+    help_btn = tk.Button(instructions_header, text="❓ Aide", 
+                        command=show_groq_help,
+                        bg=theme["button_help_bg"], fg="#000000",
+                        font=('Segoe UI', 9, 'bold'), pady=2, padx=8,
+                        relief='flat', cursor='hand2')
+    help_btn.pack(side='right')
+    
+    tk.Label(instructions_section, text="Ajoutez vos propres consignes pour guider la traduction :", 
+             font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 5))
+    
+    # Container pour le texte et sa scrollbar
+    instructions_text_container = tk.Frame(instructions_section, bg=theme["bg"])
+    instructions_text_container.pack(fill='x', pady=(0, 5))
+    
+    instructions_text = tk.Text(
+        instructions_text_container,
+        height=4,
+        font=('Segoe UI', 9),
+        bg=theme["entry_bg"],
+        fg=theme["entry_fg"],
+        insertbackground=theme["entry_fg"],
+        wrap='word',
+        relief='solid',
+        borderwidth=1
+    )
+    instructions_text.pack(side='left', fill='both', expand=True)
+    
+    # Ajouter scrollbar pour instructions
+    instructions_scrollbar = tk.Scrollbar(instructions_text_container, orient="vertical", command=instructions_text.yview)
+    instructions_text.configure(yscrollcommand=instructions_scrollbar.set)
+    instructions_scrollbar.pack(side='right', fill='y')
+    
+    # Charger les instructions sauvegardées
+    current_instructions = config_manager.get('groq_custom_instructions', '')
+    if current_instructions:
+        instructions_text.insert('1.0', current_instructions)
+    
+    # Exemples cliquables
+    examples_frame = tk.Frame(instructions_section, bg=theme["bg"])
+    examples_frame.pack(fill='x', pady=(5, 0))
+    
+    tk.Label(examples_frame, text="💡 Exemples :", 
+             font=('Segoe UI', 8, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(side='left', padx=(0, 5))
+    
+    def insert_example(text):
+        current = instructions_text.get('1.0', 'end-1c').strip()
+        if current:
+            instructions_text.insert('end', f'\n{text}')
+        else:
+            instructions_text.insert('1.0', text)
+    
+    examples = [
+        ("Expressions idiomatiques", "Adapte les expressions idiomatiques au contexte francophone"),
+        ("Style humoristique", "Conserve le style humoristique et les jeux de mots"),
+        ("Registre soutenu", "Utilise un vocabulaire soutenu adapté à un contexte médiéval"),
+        ("Traduction littérale", "Traduis de manière très littérale pour garder la précision"),
+    ]
+    
+    for label, text in examples:
+        btn = tk.Button(
+            examples_frame,
+            text=label,
+            command=lambda t=text: insert_example(t),
+            bg=theme["button_utility_bg"],
+            fg="#000000",
+            font=('Segoe UI', 7),
+            pady=2,
+            padx=4,
+            relief='flat',
+            cursor='hand2'
+        )
+        btn.pack(side='left', padx=2)
+    
+    # ===== SECTION 2: OPTIONS DE STYLE (COLLAPSIBLE) =====
+    style_section = tk.Frame(main_frame, bg=theme["bg"])
+    style_section.pack(fill='x', pady=(0, 15))
+    
+    # Variable pour tracker l'état (ouvert/fermé) - FERMÉ par défaut
+    style_collapsed = tk.BooleanVar(value=True)
+    
+    # Header cliquable
+    style_header = tk.Frame(style_section, bg=theme["bg"], cursor='hand2')
+    style_header.pack(fill='x')
+    
+    style_collapse_icon = tk.Label(style_header, text="▶", font=('Segoe UI', 10, 'bold'),
+                                  bg=theme["bg"], fg=theme["fg"], cursor='hand2')
+    style_collapse_icon.pack(side='left', padx=(0, 5))
+    
+    style_label = tk.Label(style_header, text="🎨 Style de traduction", 
+                          font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"],
+                          cursor='hand2')
+    style_label.pack(side='left')
+    
+    # Container pour le contenu des options de style (FERMÉ par défaut)
+    style_content = tk.Frame(style_section, bg=theme["bg"])
+    # style_content.pack(fill='x', pady=(10, 0))  # Pas d'affichage initial
+    
+    # Une seule ligne pour les 4 contrôles
+    options_row = tk.Frame(style_content, bg=theme["bg"])
+    options_row.pack(fill='x', pady=(0, 10))
+    
+    # Ton
+    tone_frame = tk.Frame(options_row, bg=theme["bg"])
+    tone_frame.pack(side='left', fill='x', expand=True, padx=(0, 15))
+    tk.Label(tone_frame, text="Ton :", font=('Segoe UI', 9, 'bold'), 
+             bg=theme["bg"], fg=theme["fg"]).pack(anchor='w')
+    tone_var = tk.StringVar(value=getattr(main_interface, 'translation_tone', 'informel').capitalize())
+    tone_combo_dialog = ttk.Combobox(tone_frame, textvariable=tone_var,
+                                    values=["Informel", "Formel", "Neutre"], state="readonly", width=15)
+    tone_combo_dialog.pack(anchor='w', pady=(2, 0))
+    
+    # Style
+    style_frame = tk.Frame(options_row, bg=theme["bg"])
+    style_frame.pack(side='left', fill='x', expand=True, padx=(0, 15))
+    tk.Label(style_frame, text="Style :", font=('Segoe UI', 9, 'bold'), 
+             bg=theme["bg"], fg=theme["fg"]).pack(anchor='w')
+    style_var = tk.StringVar(value=config_manager.get('groq_translation_style', 'Naturel'))
+    style_combo = ttk.Combobox(style_frame, textvariable=style_var,
+                              values=["Littéral", "Naturel", "Créatif"], state="readonly", width=15)
+    style_combo.pack(anchor='w', pady=(2, 0))
+    
+    # Contexte du jeu
+    context_frame = tk.Frame(options_row, bg=theme["bg"])
+    context_frame.pack(side='left', fill='x', expand=True, padx=(0, 15))
+    tk.Label(context_frame, text="Contexte :", font=('Segoe UI', 9, 'bold'), 
+             bg=theme["bg"], fg=theme["fg"]).pack(anchor='w')
+    context_var = tk.StringVar(value=config_manager.get('groq_game_context', 'Général'))
+    context_combo = ttk.Combobox(context_frame, textvariable=context_var,
+                                values=["Général", "Romance", "Aventure", "Horreur", "Comédie", "Fantaisie", "Science-Fiction"], 
+                                state="readonly", width=15)
+    context_combo.pack(anchor='w', pady=(2, 0))
+    
+    # Créativité (température)
+    creativity_frame = tk.Frame(style_content, bg=theme["bg"])
+    creativity_frame.pack(fill='x', pady=(0, 10))
+    tk.Label(creativity_frame, text="Créativité :", font=('Segoe UI', 9, 'bold'), 
+             bg=theme["bg"], fg=theme["fg"]).pack(anchor='w')
+    
+    creativity_var = tk.DoubleVar(value=float(config_manager.get('groq_temperature', 0.3)))
+    creativity_scale = tk.Scale(
+        creativity_frame,
+        from_=0.0,
+        to=1.0,
+        resolution=0.1,
+        orient='horizontal',
+        variable=creativity_var,
+        bg=theme["bg"],
+        fg=theme["fg"],
+        highlightbackground=theme["bg"],
+        troughcolor=theme["entry_bg"],
+        length=120
+    )
+    creativity_scale.pack(anchor='w', pady=(2, 0))
+    
+    tk.Label(creativity_frame, text="0.0 = Précis | 1.0 = Créatif", 
+             font=('Segoe UI', 7, 'italic'), bg=theme["bg"], fg='#888888').pack(anchor='w')
+    
+    # Fonction pour toggle le collapse de la section style
+    def toggle_style_section():
+        if style_collapsed.get():
+            # Afficher
+            style_content.pack(fill='x', pady=(10, 0))
+            style_collapse_icon.config(text="▼")
+            style_collapsed.set(False)
+        else:
+            # Cacher
+            style_content.pack_forget()
+            style_collapse_icon.config(text="▶")
+            style_collapsed.set(True)
+    
+    # Bind du clic sur le header style (tous les éléments)
+    style_header.bind('<Button-1>', lambda e: toggle_style_section())
+    style_collapse_icon.bind('<Button-1>', lambda e: toggle_style_section())
+    style_label.bind('<Button-1>', lambda e: toggle_style_section())
+    
+    # ===== NOUVEAU : SECTION 3: PERSONNAGES (COLLAPSIBLE) =====
+    characters_section = tk.Frame(main_frame, bg=theme["bg"])
+    characters_section.pack(fill='x', pady=(15, 15))
+    
+    # Variable pour tracker l'état (ouvert/fermé) - FERMÉ par défaut
+    characters_collapsed = tk.BooleanVar(value=True)
+    
+    # Header cliquable
+    characters_header = tk.Frame(characters_section, bg=theme["bg"], cursor='hand2')
+    characters_header.pack(fill='x')
+    
+    collapse_icon = tk.Label(characters_header, text="▶", font=('Segoe UI', 10, 'bold'),
+                            bg=theme["bg"], fg=theme["fg"], cursor='hand2')
+    collapse_icon.pack(side='left', padx=(0, 5))
+    
+    characters_label = tk.Label(characters_header, text="👥 Définition des personnages (pour contexte enrichi)", 
+                               font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"],
+                               cursor='hand2')
+    characters_label.pack(side='left')
+    
+    # Bouton Scanner à droite
+    def scan_characters():
+        """Scanne les fichiers .rpy du projet pour détecter les personnages"""
+        try:
+            from infrastructure.helpers.unified_functions import show_custom_messagebox
+            from ui.themes import theme_manager
+            import re
+            import os
+            
+            # Récupérer le chemin du projet actuel depuis main_interface
+            if not hasattr(main_interface, 'current_project_path') or not main_interface.current_project_path:
+                show_custom_messagebox(
+                    'warning',
+                    '⚠️ Aucun projet ouvert',
+                    'Veuillez d\'abord ouvrir un projet Ren\'Py.\n\nUtilisez le bouton "📂 Ouvrir Projet" dans la section Installation & Surveillance.',
+                    theme_manager.get_theme(),
+                    parent=dialog
+                )
+                return
+            
+            game_directory = main_interface.current_project_path
+            if not os.path.exists(game_directory):
+                show_custom_messagebox(
+                    'warning',
+                    '⚠️ Projet introuvable',
+                    f'Le dossier du projet est introuvable :\n{game_directory}',
+                    theme_manager.get_theme(),
+                    parent=dialog
+                )
+                return
+            
+            # Rechercher tous les fichiers .rpy
+            characters_found = {}
+            pattern = re.compile(r'define\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*Character\s*\(\s*[_]*\(\s*["\']([^"\']+)["\']\s*\)|define\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*Character\s*\(\s*["\']([^"\']+)["\']\s*\)')
+            
+            for root, dirs, files in os.walk(game_directory):
+                for file in files:
+                    if file.endswith('.rpy'):
+                        filepath = os.path.join(root, file)
+                        try:
+                            with open(filepath, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                                # Chercher les définitions de personnages
+                                matches = re.finditer(
+                                    r'define\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*Character\s*\(\s*(?:_+\()?\s*["\']([^"\']+)["\']',
+                                    content
+                                )
+                                for match in matches:
+                                    char_key = match.group(1)
+                                    char_name = match.group(2)
+                                    if char_key and char_name:
+                                        characters_found[char_key] = char_name
+                        except Exception:
+                            continue
+            
+            if not characters_found:
+                show_custom_messagebox(
+                    'info',
+                    'ℹ️ Aucun personnage trouvé',
+                    'Aucune définition de personnage trouvée dans les fichiers .rpy du projet.',
+                    theme_manager.get_theme(),
+                    parent=dialog
+                )
+                return
+            
+            # Afficher les résultats et demander confirmation
+            result_message = f"Personnages détectés : {len(characters_found)}\n\n"
+            
+            # Organiser en colonnes (3 colonnes)
+            char_items = list(characters_found.items())
+            max_items = min(15, len(char_items))  # Afficher max 15 personnages
+            
+            # Calculer le nombre de lignes nécessaires
+            cols = 3
+            rows = (max_items + cols - 1) // cols
+            
+            # Créer les colonnes
+            for row in range(rows):
+                line = ""
+                for col in range(cols):
+                    idx = row * cols + col
+                    if idx < max_items:
+                        key, name = char_items[idx]
+                        line += f"[{key}] = {name:<15}"
+                        if col < cols - 1 and idx < max_items - 1:
+                            line += " | "
+                result_message += line + "\n"
+            
+            if len(characters_found) > max_items:
+                result_message += f"\n... et {len(characters_found) - max_items} autres personnages"
+            
+            confirm = show_custom_messagebox(
+                'askyesno',
+                '🔍 Personnages détectés',
+                result_message + "\n\nVoulez-vous importer ces personnages ?",
+                theme_manager.get_theme(),
+                parent=dialog
+            )
+            
+            if confirm:
+                # Vider la liste actuelle
+                for frame in dialog.character_frames:
+                    frame.destroy()
+                dialog.character_frames = []
+                dialog.characters_list_data = {}
+                
+                # Ajouter les personnages trouvés
+                for char_key, char_name in characters_found.items():
+                    add_character_row(char_key, 'Homme', char_name)
+                
+                # Ouvrir la section si elle est fermée
+                if characters_collapsed.get():
+                    toggle_characters_section()
+                
+                log_message("INFO", f"{len(characters_found)} personnages importés", category="groq_customizer")
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur scan personnages: {e}", category="groq_customizer")
+    
+    scan_btn = tk.Button(characters_header, text="🔍 Scanner", 
+                        command=scan_characters,
+                        bg=theme["button_utility_bg"], fg="#000000",
+                        font=('Segoe UI', 9, 'bold'), pady=2, padx=8,
+                        relief='flat', cursor='hand2')
+    scan_btn.pack(side='right')
+    
+    # Container pour le contenu (liste de personnages) - FERMÉ par défaut
+    characters_content = tk.Frame(characters_section, bg=theme["bg"])
+    # characters_content.pack(fill='x', pady=(10, 0))  # Pas d'affichage initial
+    
+    # Initialiser la liste des personnages
+    dialog.characters_list_data = config_manager.get('groq_characters_definitions', {})
+    
+    # Frame scrollable pour les personnages (2 colonnes)
+    characters_list_container = tk.Frame(characters_content, bg=theme["bg"])
+    characters_list_container.pack(fill='both', expand=True, pady=(0, 10))
+    
+    # Canvas pour le scroll
+    characters_canvas = tk.Canvas(characters_list_container, bg=theme["bg"], height=200)
+    characters_canvas.pack(side='left', fill='both', expand=True)
+    
+    # Scrollbar
+    characters_scrollbar = tk.Scrollbar(characters_list_container, orient="vertical", command=characters_canvas.yview)
+    characters_scrollbar.pack(side='right', fill='y')
+    characters_canvas.configure(yscrollcommand=characters_scrollbar.set)
+    
+    # Frame pour le contenu des personnages (2 colonnes)
+    characters_inner_frame = tk.Frame(characters_canvas, bg=theme["bg"])
+    characters_canvas.create_window((0, 0), window=characters_inner_frame, anchor="nw")
+    
+    # Colonnes pour les personnages
+    characters_col1 = tk.Frame(characters_inner_frame, bg=theme["bg"])
+    characters_col2 = tk.Frame(characters_inner_frame, bg=theme["bg"])
+    
+    characters_col1.pack(side='left', fill='both', expand=True, padx=(0, 5))
+    characters_col2.pack(side='right', fill='both', expand=True, padx=(5, 0))
+    
+    # Stocker les frames de personnages pour pouvoir les supprimer
+    dialog.character_frames = []
+    
+    def add_character_row(char_key='', genre='Homme', prenom=''):
+        """Ajoute une ligne de personnage"""
+        # Choisir la colonne (alternance ou basée sur le nombre actuel)
+        target_col = characters_col1 if len(dialog.character_frames) % 2 == 0 else characters_col2
+        
+        char_row = tk.Frame(target_col, bg=theme["bg"])
+        char_row.pack(fill='x', pady=2)
+        
+        # Locuteur
+        tk.Label(char_row, text="[", font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(side='left')
+        
+        locuteur_entry = tk.Entry(char_row, width=3, font=('Segoe UI', 9), 
+                                  bg=theme["entry_bg"], fg=theme["entry_fg"],
+                                  insertbackground=theme["entry_fg"])
+        locuteur_entry.pack(side='left')
+        locuteur_entry.insert(0, char_key)
+        
+        tk.Label(char_row, text="]", font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(side='left', padx=(0, 10))
+        
+        # Genre
+        tk.Label(char_row, text="Genre :", font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(side='left', padx=(0, 5))
+        
+        genre_var = tk.StringVar(value=genre)
+        genre_combo = ttk.Combobox(char_row, textvariable=genre_var,
+                                   values=["Fille", "Garçon", "Adolescent", "Adolescente", "Homme", "Femme"],
+                                   state="readonly", width=12, font=('Segoe UI', 9))
+        genre_combo.pack(side='left', padx=(0, 10))
+        
+        # Prénom
+        tk.Label(char_row, text="Prénom :", font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(side='left', padx=(0, 5))
+        
+        prenom_entry = tk.Entry(char_row, width=20, font=('Segoe UI', 9),
+                               bg=theme["entry_bg"], fg=theme["entry_fg"],
+                               insertbackground=theme["entry_fg"])
+        prenom_entry.pack(side='left', padx=(0, 10))
+        prenom_entry.insert(0, prenom)
+        
+        # Bouton supprimer
+        def remove_this_row():
+            char_row.destroy()
+            if char_row in dialog.character_frames:
+                dialog.character_frames.remove(char_row)
+            update_characters_data()
+            update_scroll_region()
+        
+        tk.Button(char_row, text="✖", command=remove_this_row,
+                 bg=theme["button_danger_bg"], fg="#000000", font=('Segoe UI', 7, 'bold'),
+                 width=2, pady=1, relief='flat', cursor='hand2').pack(side='left')
+        
+        # Stocker les widgets
+        char_row.locuteur_entry = locuteur_entry
+        char_row.genre_var = genre_var
+        char_row.prenom_entry = prenom_entry
+        
+        dialog.character_frames.append(char_row)
+        
+        # Mise à jour auto lors de changements
+        def on_change(*args):
+            update_characters_data()
+            update_scroll_region()
+        
+        locuteur_entry.bind('<KeyRelease>', on_change)
+        prenom_entry.bind('<KeyRelease>', on_change)
+        genre_combo.bind('<<ComboboxSelected>>', on_change)
+        
+        # Mettre à jour la région de scroll
+        update_scroll_region()
+        
+        # Re-lier la molette aux nouveaux widgets
+        _bind_mousewheel_to_children(char_row)
+    
+    def update_scroll_region():
+        """Met à jour la région de scroll du canvas"""
+        characters_canvas.update_idletasks()
+        characters_canvas.configure(scrollregion=characters_canvas.bbox("all"))
+    
+    # Support de la molette de la souris sur toute la zone
+    def _on_mousewheel(event):
+        characters_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+    
+    def _bind_mousewheel_to_children(widget):
+        """Lie la molette de la souris à un widget et tous ses enfants"""
+        widget.bind("<MouseWheel>", _on_mousewheel)
+        for child in widget.winfo_children():
+            _bind_mousewheel_to_children(child)
+    
+    # Lier la molette à toute la zone des personnages
+    _bind_mousewheel_to_children(characters_list_container)
+    
+    def load_characters_from_dict(characters_dict):
+        """Charge les personnages depuis un dictionnaire"""
+        # Vider la liste actuelle
+        for frame in dialog.character_frames:
+            frame.destroy()
+        dialog.character_frames = []
+        
+        # Charger les nouveaux personnages
+        for char_key, char_data in characters_dict.items():
+            if isinstance(char_data, dict):
+                genre = char_data.get('genre', 'Homme')
+                prenom = char_data.get('prenom', '')
+            else:
+                # Format ancien : juste le prénom
+                genre = 'Homme'
+                prenom = char_data
+            
+            add_character_row(char_key, genre, prenom)
+        
+        update_characters_data()
+        update_scroll_region()
+        
+        # Re-lier la molette à tous les nouveaux personnages
+        for frame in dialog.character_frames:
+            _bind_mousewheel_to_children(frame)
+    
+    # Enregistrer la fonction de chargement
+    dialog.load_characters_func = load_characters_from_dict
+    
+    # Charger les personnages en attente si présents
+    if hasattr(dialog, 'characters_to_load'):
+        load_characters_from_dict(dialog.characters_to_load)
+        delattr(dialog, 'characters_to_load')
+    
+    def update_characters_data():
+        """Met à jour les données des personnages dans dialog.characters_list_data"""
+        characters_dict = {}
+        for char_frame in dialog.character_frames:
+            if char_frame.winfo_exists():
+                locuteur = char_frame.locuteur_entry.get().strip()
+                if locuteur:  # Seulement si le locuteur n'est pas vide
+                    characters_dict[locuteur] = {
+                        'genre': char_frame.genre_var.get(),
+                        'prenom': char_frame.prenom_entry.get().strip()
+                    }
+        dialog.characters_list_data = characters_dict
+        config_manager.set('groq_characters_definitions', characters_dict)
+        # Mettre à jour l'aperçu du prompt
+        update_prompt_preview()
+    
+    # Fonction pour charger les personnages (utilisée aussi par load_profile)
+    def load_characters_into_interface(characters_data):
+        """Charge les personnages dans l'interface"""
+        # Supprimer tous les personnages existants
+        for char_frame in list(dialog.character_frames):
+            try:
+                char_frame.destroy()
+            except:
+                pass
+        dialog.character_frames.clear()
+        
+        # Charger les nouveaux personnages
+        for char_key, char_data in characters_data.items():
+            add_character_row(char_key, char_data.get('genre', 'Homme'), char_data.get('prenom', ''))
+        
+        # Mettre à jour les données
+        dialog.characters_list_data = characters_data
+    
+    # Charger les personnages existants
+    for char_key, char_data in dialog.characters_list_data.items():
+        add_character_row(char_key, char_data.get('genre', 'Homme'), char_data.get('prenom', ''))
+    
+    # Stocker la fonction pour l'utiliser dans load_profile
+    dialog.load_characters_func = load_characters_into_interface
+    
+    # Vérifier s'il y a des personnages en attente de chargement (depuis load_profile)
+    if hasattr(dialog, 'characters_to_load') and dialog.characters_to_load:
+        load_characters_into_interface(dialog.characters_to_load)
+        delattr(dialog, 'characters_to_load')
+    
+    # Bouton ajouter
+    add_char_btn = tk.Button(characters_content, text="➕ Ajouter un personnage",
+                            command=lambda: add_character_row(),
+                            bg=theme["button_feature_bg"], fg="#000000",
+                            font=('Segoe UI', 9, 'bold'), pady=4, padx=12,
+                            relief='flat', cursor='hand2')
+    add_char_btn.pack(anchor='w')
+    
+    # Fonction pour toggle le collapse
+    def toggle_characters_section():
+        if characters_collapsed.get():
+            # Afficher
+            characters_content.pack(fill='x', pady=(10, 0))
+            collapse_icon.config(text="▼")
+            characters_collapsed.set(False)
+        else:
+            # Cacher
+            characters_content.pack_forget()
+            collapse_icon.config(text="▶")
+            characters_collapsed.set(True)
+    
+    # Bind du clic sur le header (tous les éléments)
+    characters_header.bind('<Button-1>', lambda e: toggle_characters_section())
+    collapse_icon.bind('<Button-1>', lambda e: toggle_characters_section())
+    characters_label.bind('<Button-1>', lambda e: toggle_characters_section())
+    
+    # ===== SECTION 4: APERÇU DU PROMPT =====
+    preview_section = tk.Frame(main_frame, bg=theme["bg"])
+    preview_section.pack(fill='both', expand=True, pady=(0, 15))
+    
+    tk.Label(preview_section, text="👀 Aperçu du prompt (généré automatiquement)", 
+             font=('Segoe UI', 11, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 10))
+    
+    # Container pour le texte et sa scrollbar
+    preview_text_container = tk.Frame(preview_section, bg=theme["bg"])
+    preview_text_container.pack(fill='both', expand=True)
+    
+    preview_text = tk.Text(
+        preview_text_container,
+        height=4,
+        font=('Segoe UI', 9),
+        bg=theme["entry_bg"],
+        fg=theme["fg"],
+        wrap='word',
+        relief='solid',
+        borderwidth=1,
+        state='disabled'
+    )
+    preview_text.pack(side='left', fill='both', expand=True)
+    
+    # Ajouter scrollbar pour aperçu
+    preview_scrollbar = tk.Scrollbar(preview_text_container, orient="vertical", command=preview_text.yview)
+    preview_text.configure(yscrollcommand=preview_scrollbar.set)
+    preview_scrollbar.pack(side='right', fill='y')
+    
+    def update_prompt_preview():
+        """Met à jour l'aperçu du prompt en temps réel"""
+        try:
+            # Récupérer toutes les valeurs
+            custom_instr = instructions_text.get('1.0', 'end-1c').strip()
+            tone = tone_var.get().lower()
+            style = style_var.get()
+            context = context_var.get()
+            temperature = creativity_var.get()
+            
+            # Construire le prompt
+            tone_instruction = ""
+            if tone == "formel":
+                tone_instruction = "\n4. Utilise un ton FORMEL (vouvoiement, registre soutenu)"
+            elif tone == "neutre":
+                tone_instruction = "\n4. Utilise un ton NEUTRE (ni tutoiement ni vouvoiement)"
+            else:
+                tone_instruction = "\n4. Utilise un ton INFORMEL (tutoiement, registre courant)"
+            
+            style_instruction = ""
+            if style == "Littéral":
+                style_instruction = "\n5. Traduis de manière LITTÉRALE en respectant au maximum la structure originale"
+            elif style == "Créatif":
+                style_instruction = "\n5. Traduis de manière CRÉATIVE en adaptant idiomes et expressions culturelles"
+            else:
+                style_instruction = "\n5. Traduis de manière NATURELLE en équilibrant fidélité et fluidité"
+            
+            context_instruction = ""
+            if context != "Général":
+                context_instruction = f"\n6. Contexte du jeu : {context.upper()} - adapte le vocabulaire en conséquence"
+            
+            custom_instruction = ""
+            if custom_instr:
+                custom_instruction = f"\n7. Instructions supplémentaires : {custom_instr}"
+            
+            # ✅ NOUVEAU : Contexte des personnages
+            characters_context = ""
+            if dialog.characters_list_data and len(dialog.characters_list_data) > 0:
+                chars_lines = []
+                for char_key, char_info in dialog.characters_list_data.items():
+                    genre = char_info.get('genre', 'Neutre')
+                    prenom = char_info.get('prenom', '')
+                    if prenom:
+                        chars_lines.append(f"[{char_key}] est un(e) {genre} du nom de {prenom}")
+                    else:
+                        chars_lines.append(f"[{char_key}] est un(e) {genre}")
+                
+                if chars_lines:
+                    characters_context = "\n\nCONTEXTE DES PERSONNAGES :\n" + "\n".join(chars_lines)
+                    characters_context += "\nNote : Ces lettres entre crochets peuvent aussi apparaître comme variables dans le texte."
+            
+            # ✅ NOUVEAU : Exemple de contexte conversationnel
+            conversation_example = ""
+            if dialog.characters_list_data and len(dialog.characters_list_data) > 0:
+                # Prendre le premier personnage comme exemple
+                first_char = list(dialog.characters_list_data.keys())[0] if dialog.characters_list_data else None
+                if first_char:
+                    conversation_example = f"\n\nCONTEXTE DE CONVERSATION (dialogue précédent - EXEMPLE) :\n{first_char} \"[Dialogue précédent inséré automatiquement]\""
+            
+            # Prompt final enrichi
+            prompt = f"""Tu es un traducteur professionnel pour jeux vidéo Ren'Py. Traduis ce texte du [LANGUE_SOURCE] vers le [LANGUE_CIBLE].
+
+RÈGLES STRICTES :
+1. Préserve TOUTES les balises Ren'Py : {{i}}, {{/i}}, [p], [tooltip], \\", etc.
+2. Retourne UNIQUEMENT la traduction finale, SANS notes, SANS explications, SANS commentaires
+3. Ne modifie que le texte visible, jamais les balises ou la structure{tone_instruction}{style_instruction}{context_instruction}{custom_instruction}{characters_context}{conversation_example}
+
+Texte à traduire :
+[LOCUTEUR] "[TEXTE_A_TRADUIRE]"
+
+Traduction (UNIQUEMENT le texte traduit, sans le locuteur) :"""
+            
+            # Afficher dans l'aperçu
+            preview_text.config(state='normal')
+            preview_text.delete('1.0', 'end')
+            preview_text.insert('1.0', prompt)
+            preview_text.config(state='disabled')
+            
+            # Afficher la température en bas
+            temp_info = f"\n\n💡 Température (créativité) : {temperature:.1f}"
+            preview_text.config(state='normal')
+            preview_text.insert('end', temp_info)
+            preview_text.config(state='disabled')
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur mise à jour aperçu prompt: {e}", category="realtime_editor")
+    
+    # Stocker la fonction pour l'utiliser dans load_profile
+    dialog.update_prompt_preview_func = update_prompt_preview
+    
+    # Bindings pour mise à jour en temps réel
+    instructions_text.bind('<KeyRelease>', lambda e: dialog.after(300, update_prompt_preview))
+    tone_combo_dialog.bind('<<ComboboxSelected>>', lambda e: update_prompt_preview())
+    style_combo.bind('<<ComboboxSelected>>', lambda e: update_prompt_preview())
+    context_combo.bind('<<ComboboxSelected>>', lambda e: update_prompt_preview())
+    creativity_scale.config(command=lambda v: update_prompt_preview())
+    
+    # ===== SECTION 4: BOUTONS D'ACTION =====
+    buttons_frame = tk.Frame(main_frame, bg=theme["bg"])
+    buttons_frame.pack(fill='x', pady=(15, 0))
+    
+    def save_settings():
+        """Sauvegarde toutes les configurations"""
+        try:
+            # Sauvegarder dans config_manager
+            config_manager.set('groq_custom_instructions', instructions_text.get('1.0', 'end-1c').strip())
+            config_manager.set('groq_translation_style', style_var.get())
+            config_manager.set('groq_game_context', context_var.get())
+            config_manager.set('groq_temperature', creativity_var.get())
+            config_manager.save_config()
+            
+            # Mettre à jour le ton dans l'interface principale
+            main_interface.translation_tone = tone_var.get().lower()
+            
+            main_interface._update_status("✅ Configuration Groq AI sauvegardée")
+            log_message("INFO", f"Configuration Groq AI sauvegardée", category="realtime_editor")
+            dialog.destroy()
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur sauvegarde config Groq: {e}", category="realtime_editor")
+            main_interface._update_status("❌ Erreur sauvegarde configuration")
+    
+    def reset_to_default():
+        """Réinitialise aux valeurs par défaut"""
+        instructions_text.delete('1.0', 'end')
+        tone_var.set('Informel')
+        style_var.set('Naturel')
+        context_var.set('Général')
+        creativity_var.set(0.3)
+        update_prompt_preview()
+    
+    # Boutons
+    tk.Button(
+        buttons_frame,
+        text="💾 Sauvegarder",
+        command=save_settings,
+        bg=theme["button_primary_bg"],
+        fg="#000000",
+        font=('Segoe UI', 10, 'bold'),
+        pady=6,
+        padx=20,
+        relief='flat',
+        cursor='hand2'
+    ).pack(side='right', padx=(5, 0))
+    
+    tk.Button(
+        buttons_frame,
+        text="🔄 Réinitialiser",
+        command=reset_to_default,
+        bg=theme["button_tertiary_bg"],
+        fg="#000000",
+        font=('Segoe UI', 10),
+        pady=6,
+        padx=15,
+        relief='flat',
+        cursor='hand2'
+    ).pack(side='right', padx=(5, 0))
+    
+    tk.Button(
+        buttons_frame,
+        text="❌ Annuler",
+        command=dialog.destroy,
+        bg=theme["button_secondary_bg"],
+        fg="#000000",
+        font=('Segoe UI', 10),
+        pady=6,
+        padx=15,
+        relief='flat',
+        cursor='hand2'
+    ).pack(side='right')
+    
+    # Aperçu initial
+    dialog.after(200, update_prompt_preview)
+    
+    # Si un profil est déjà actif, le charger
+    current_active_profile = config_manager.get('groq_current_profile', 'Par défaut')
+    if current_active_profile != 'Par défaut' and current_active_profile in saved_profiles:
+        current_profile_var.set(current_active_profile)
+        dialog.after(300, load_profile)
+
+
 def show_installation_help(parent_window):
     """Affiche l'aide mise à jour et stylée pour l'Éditeur Temps Réel."""
     
@@ -2578,6 +3924,9 @@ def show_installation_help(parent_window):
         ("--------------------------------------------------\n", "normal"),
         ("1.  ", "bold"), ("Pré-requis :", "italic"), (" Sélectionnez votre projet Ren'Py, la langue de traduction et votre ", "normal"),
         ("éditeur de code préféré", "bold"), (" dans les menus de configuration.\n\n", "normal"),
+        ("    ", "normal"), ("Version Ren'Py (optionnel) :", "bold"), (" La version Ren'Py est détectée automatiquement. ", "normal"),
+        ("Si le module ne fonctionne pas correctement, vous pouvez spécifier manuellement la version de Ren'Py (ex: 8.2.1) ", "normal"),
+        ("dans le champ 'Version Ren'Py'. Cela permet d'utiliser le module adapté à votre version.\n\n", "normal"),
         
         ("2.  ", "bold"), ("Installation (une seule fois) :", "italic"), (" Cliquez sur ", "normal"), 
         ("\"Installer le module\"", "yellow"), (". Un fichier sera ajouté au dossier ", "normal"), 

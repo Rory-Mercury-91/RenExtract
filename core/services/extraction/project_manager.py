@@ -11,7 +11,6 @@ import os
 from typing import Optional, Callable, List
 from weakref import WeakMethod, ref
 from infrastructure.logging.logging import log_message
-from infrastructure.config.config import config_manager
 
 class ProjectManager:
     """Gestionnaire centralisé de synchronisation des projets"""
@@ -25,7 +24,16 @@ class ProjectManager:
     
     def is_sync_enabled(self) -> bool:
         """Vérifie si la synchronisation est activée"""
-        return config_manager.get('project_sync_enabled', True)
+        try:
+            from infrastructure.config.config import config_manager
+            # ✅ AJOUT : Vérifier que config_manager n'est pas None
+            if config_manager is None:
+                log_message("ATTENTION", "config_manager est None, synchronisation désactivée", category="project_sync")
+                return False
+            return config_manager.get('project_sync_enabled', True)
+        except Exception as e:
+            log_message("ERREUR", f"Impossible d'accéder à config_manager: {e}", category="project_sync")
+            return True  # Par défaut, activer la synchronisation
     
     def register_listener(self, callback: Callable[[str], None], source_name: str = "unknown"):
         """

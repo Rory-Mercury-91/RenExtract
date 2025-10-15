@@ -183,7 +183,7 @@ def scan_language_files(project_path: str, language: str, exclusions: List[str] 
                     break
            
             # Exclure aussi les fichiers système générés automatiquement
-            system_files = ['99_z_langselect.rpy', '99_z_console.rpy']
+            system_files = ['99_z_screenpreferences.rpy', '99_z_console.rpy']
             if file_name.lower() in [f.lower() for f in system_files]:
                 should_exclude = True
            

@@ -19,6 +19,91 @@ from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
 from ui.shared.common_widgets import PlaceholderEntry
 from core.services.translation.combination_business import CombinationBusiness
+from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
+
+def _create_combination_backup(source_folder, output_file, main_interface):
+    """Crée une sauvegarde automatique du DOSSIER COMPLET avant la combinaison de fichiers"""
+    try:
+        # Obtenir le gestionnaire de backup (singleton)
+        backup_manager = UnifiedBackupManager()
+        
+        # Créer une archive ZIP du dossier source complet
+        import tempfile
+        import shutil
+        from datetime import datetime
+        from infrastructure.helpers.unified_functions import extract_game_name
+        
+        # Extraire le nom du jeu depuis le chemin complet
+        # Ex: D:\...\WastelandGuardians-0.6-pc\game\tl\french → WastelandGuardians-0.6-pc
+        game_name = extract_game_name(source_folder)
+        
+        # Créer le timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Créer un fichier de métadonnées JSON pour stocker le chemin source original
+        metadata_content = {
+            'source_folder': source_folder,
+            'game_name': game_name,
+            'timestamp': timestamp,
+            'files_count': len(os.listdir(source_folder))
+        }
+        
+        # Créer un dossier temporaire pour l'archive avec métadonnées
+        temp_dir = tempfile.mkdtemp()
+        
+        # Créer un fichier de métadonnées dans le dossier temporaire
+        import json
+        metadata_file = os.path.join(temp_dir, '_renextract_restore_info.json')
+        with open(metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(metadata_content, f, indent=2, ensure_ascii=False)
+        
+        # Copier tout le contenu du dossier source vers le temp
+        for item in os.listdir(source_folder):
+            s = os.path.join(source_folder, item)
+            d = os.path.join(temp_dir, item)
+            if os.path.isdir(s):
+                shutil.copytree(s, d)
+            else:
+                shutil.copy2(s, d)
+        
+        # Créer l'archive du dossier temporaire (avec métadonnées)
+        folder_name = os.path.basename(source_folder)
+        zip_name = f"{folder_name}_backup_{timestamp}"
+        temp_zip_base = os.path.join(tempfile.gettempdir(), zip_name)
+        
+        log_message("INFO", f"Création archive complète du dossier: {source_folder}", category="renpy_generator_combine_tl")
+        archive_path = shutil.make_archive(temp_zip_base, 'zip', temp_dir)
+        
+        # Nettoyer le dossier temporaire
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        # Créer la sauvegarde de l'archive avec le nom du jeu correct
+        folder_name = os.path.basename(source_folder)  # "french", "english", etc.
+        result = backup_manager.create_backup(
+            archive_path,
+            backup_type=BackupType.BEFORE_COMBINATION,
+            description=f"Sauvegarde complète du dossier avant combinaison ({metadata_content['files_count']} fichiers)",
+            override_game_name=game_name,  # Ex: "WastelandGuardians-0.6-pc"
+            override_file_name=folder_name  # Ex: "french"
+        )
+        
+        # Nettoyer l'archive temporaire
+        try:
+            os.remove(archive_path)
+        except:
+            pass
+        
+        if result.get('success'):
+            log_message("INFO", f"✅ Sauvegarde complète créée avant combinaison: {result.get('backup_path')}", category="renpy_generator_combine_tl")
+            # Pas de popup de notification, seulement mise à jour du statut
+            main_interface._update_status("Sauvegarde créée, combinaison en cours...")
+        else:
+            error_msg = result.get('error', 'Erreur inconnue')
+            log_message("ATTENTION", f"Échec création sauvegarde avant combinaison: {error_msg}", category="renpy_generator_combine_tl")
+            
+    except Exception as e:
+        log_message("ERREUR", f"Erreur création sauvegarde combinaison: {e}", category="renpy_generator_combine_tl")
+        # Ne pas bloquer la combinaison en cas d'erreur de backup
 
 def create_combination_tab(parent_notebook, main_interface):
     """Crée l'onglet de combinaison/division - VERSION AVEC VARIABLE UNIFIÉE"""
@@ -107,7 +192,7 @@ def create_combination_tab(parent_notebook, main_interface):
     # Note d'exemple
     exclusions_note = tk.Label(
         exclusions_frame,
-        text="💡 Exemple: common.rpy, Z_LangSelect.rpy, 99_Z_LangSelect.rpy",
+        text="💡 Exemple: common.rpy, screens.rpy, menu.rpy",
         font=('Segoe UI', 8, 'italic'),
         bg=theme["bg"],
         fg='#666666'
@@ -358,7 +443,7 @@ def _show_unified_exclusion_help(main_interface):
 
         ("Exemples valides :\n", "bold_green"),
         ("• ", "green"), ("common.rpy, screens.rpy\n", "italic"),
-        ("• ", "green"), ("Z_LangSelect.rpy, 99_Z_LangSelect.rpy\n", "italic"),
+        ("• ", "green"), ("menu.rpy, script.rpy\n", "italic"),
         ("• ", "green"), ("(... et toute autre combinaison de fichiers)\n\n", "italic"),
 
         ("Cas d'usage :\n", "bold_yellow"),
@@ -463,7 +548,7 @@ def select_divide_output(main_interface):
         main_interface._show_notification(f"Erreur sélection dossier: {e}", "error")
 
 def start_combination(main_interface):
-    """Démarre la combinaison de fichiers - VERSION AVEC VARIABLE UNIFIÉE"""
+    """Démarre la combinaison de fichiers - VERSION AVEC SAUVEGARDE AUTOMATIQUE"""
     try:
         source_folder = main_interface.combine_source_var.get().strip()
         
@@ -486,6 +571,9 @@ def start_combination(main_interface):
             output_file = os.path.join(source_folder, "traduction.rpy")
             log_message("INFO", f"Fichier de sortie auto-généré: {output_file}", category="renpy_generator_combine_tl")
         
+        # === SAUVEGARDE AUTOMATIQUE AVANT COMBINAISON ===
+        _create_combination_backup(source_folder, output_file, main_interface)
+        
         # Utiliser le getter pattern pour obtenir le business module
         combination_business = main_interface._get_combination_business()
         
@@ -494,14 +582,27 @@ def start_combination(main_interface):
         
         log_message("INFO", f"Fichiers exclus de la combinaison: {excluded_files if excluded_files else 'Aucun'}", category="renpy_generator_combine_tl")
         
-        # Lancer la combinaison avec callbacks
+        # Wrapper du callback pour rafraîchir les champs après combinaison réussie
+        def combination_completion_callback(success, results):
+            # Appeler le callback standard
+            main_interface._on_operation_complete(success, results)
+            
+            # Si succès, rafraîchir les champs pour détecter traduction.rpy
+            if success and results.get('operation_type') == 'combination':
+                try:
+                    main_interface.window.after(500, lambda: auto_fill_combination_fields(main_interface, silent=True))
+                    log_message("DEBUG", "Rafraîchissement auto des champs après combinaison", category="renpy_generator_combine_tl")
+                except Exception as e:
+                    log_message("DEBUG", f"Erreur rafraîchissement post-combinaison: {e}", category="renpy_generator_combine_tl")
+        
+        # Lancer la combinaison avec callback wrapper
         combination_business.combine_translation_files_threaded(
             source_folder,
             output_file,
             excluded_files,
             progress_callback=main_interface._on_progress_update,
             status_callback=main_interface._update_status,
-            completion_callback=main_interface._on_operation_complete
+            completion_callback=combination_completion_callback
         )
         
         main_interface._set_operation_running(True)

@@ -340,7 +340,7 @@ class ConfigManager:
 
     # --- exclusions Ren'Py ---
     def get_renpy_excluded_files_as_string(self):
-        default = "common.rpy, Z_LangSelect.rpy, Z_label_another_autres.rpy, Z_ajouts_french.rpy, ZZ_patchfr.rpy"
+        default = "common.rpy"
         data = self.config.get("renpy_excluded_files", default)
         return data if isinstance(data, str) else ", ".join(data) if isinstance(data, list) else default
     def get_renpy_excluded_files(self): return [s.strip() for s in self.get_renpy_excluded_files_as_string().split(",") if s.strip()]
@@ -366,15 +366,7 @@ class ConfigManager:
     # --- patterns d'extraction personnalisés ---
     def get_custom_extraction_patterns(self):
         """Récupère la configuration des patterns d'extraction personnalisés"""
-        default = [
-            {
-                "name": "Exemple SMS",
-                "pattern": r'.*,\s*"([^"]+)"',
-                "flags": "gm",
-                "enabled": False,
-                "description": "Extrait le contenu entre guillemets après une virgule"
-            }
-        ]
+        default = []
         return self.get("custom_extraction_patterns", default)
 
     def set_custom_extraction_patterns(self, patterns):
@@ -485,4 +477,23 @@ class ConfigManager:
 
 
 # Instance globale
-config_manager = ConfigManager()
+try:
+    config_manager = ConfigManager()
+except Exception as e:
+    # En cas d'erreur critique, créer une instance par défaut
+    print(f"[CONFIG CRITICAL] Erreur création ConfigManager: {e}")
+    import traceback
+    traceback.print_exc()
+    
+    # Créer une instance minimale pour éviter les crashs
+    class FallbackConfigManager:
+        def __init__(self):
+            self.config = DEFAULT_CONFIG.copy()
+        def get(self, key, default=None):
+            return self.config.get(key, default)
+        def set(self, key, value):
+            self.config[key] = value
+        def save_config(self):
+            pass
+    
+    config_manager = FallbackConfigManager()

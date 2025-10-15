@@ -149,4 +149,11 @@ def run_server(host="127.0.0.1", port=8765):
 
 if __name__ == "__main__":
     # Démarre en frontal si exécuté en script
-    run_server()
+    try:
+        run_server()
+    except KeyboardInterrupt:
+        print("Serveur arrêté par l'utilisateur")
+    except Exception as e:
+        print(f"Erreur serveur: {e}")
+    finally:
+        print("Nettoyage du serveur terminé")

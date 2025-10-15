@@ -17,7 +17,7 @@ class TutorialCache:
     """Cache intelligent pour traductions et images avec persistence"""
     
     def __init__(self, cache_dir: Optional[str] = None):
-        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / '.renextract' / 'tutorial_cache'
+        self.cache_dir = Path(cache_dir) if cache_dir else Path.home() / '.renextract_tools' / 'tutorial_cache'
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Caches en mémoire

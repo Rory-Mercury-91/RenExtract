@@ -36,10 +36,10 @@ class HtmlCleanupReportGenerator:
         return """
         <style>
           :root {
-            --bg: #121212; --fg: #eaeaea; --hdr: #1e1e1e; --sep: #262626;
-            --success: #198754; --warning: #FFC107; --danger: #DC3545; --info: #0D6EFD;
-            --card-bg: #1f1f1f; --hover-bg: rgba(255,255,255,0.06);
-            --button-utility-bg: #6f42c1; --button-copy-success: #198754;
+            --bg: #1a1f29; --fg: #e2e8f0; --hdr: #2d3748; --sep: #4a5568;
+            --success: #48bb78; --warning: #ed8936; --danger: #f56565; --info: #4a90e2;
+            --card-bg: #2d3748; --hover-bg: rgba(255,255,255,0.06); --nav-bg: #1a202c;
+            --button-utility-bg: #6f42c1; --button-copy-success: #48bb78;
           }
           .light {
             --bg: #fafafa; --fg: #222; --hdr: #fff; --sep: #ddd;

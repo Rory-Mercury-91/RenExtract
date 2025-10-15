@@ -174,10 +174,8 @@ class UnifiedCoherenceChecker:
         system_generated_files = [
             'common.rpy',
             '99_Z_Console.rpy',
-            '99_Z_LangSelect.rpy',
-            '99_Z_LangSelect_FontSize.rpy',
-            '0-font-system.rpy',
-            '99_Z_FontSize.rpy'
+            '99_Z_ScreenPreferences.rpy',
+            '99_Z_FontSystem.rpy'
         ]
         
         # Vérifier d'abord les fichiers système
@@ -329,10 +327,17 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_content_coherence(self, old_text, new_text, old_line_num, new_line_num, file_path):
-        """Vérifie la cohérence entre deux contenus textuels"""
+        """
+        Vérifie la cohérence entre deux contenus textuels.
+        
+        LOGIQUE OPTIMISÉE : Une seule erreur par ligne
+        - Priorité aux erreurs critiques (balises, variables)
+        - Dès qu'une erreur est trouvée, on arrête les autres vérifications
+        - Le traducteur corrigera toutes les erreurs en une seule passe
+        """
         issues = []
         
-        # 1. Vérifier les lignes non traduites (si activé)
+        # 1. Vérifier les lignes non traduites (si activé) - PRIORITÉ MAXIMALE
         if self.check_untranslated and self._is_untranslated_line(old_text, new_text):
             issues.append({
                 'line': new_line_num,
@@ -341,74 +346,87 @@ class UnifiedCoherenceChecker:
                 'old_content': old_text,
                 'new_content': new_text
             })
-            return issues  # Pas besoin de vérifier le reste si non traduit
+            return issues  # Arrêt immédiat si non traduit
         
-        # 2. Vérifier les variables (si activé)
-        if self.check_variables:
-            var_issues = self._check_variables_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(var_issues)
-        
-        # 3. Vérifier les balises (si activé)
+        # 2. Vérifier les balises {} (si activé) - PRIORITÉ HAUTE
         if self.check_tags:
             tag_issues = self._check_tags_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(tag_issues)
+            if tag_issues:
+                return tag_issues  # Arrêt dès qu'on trouve une erreur de balise
+        
+        # 3. Vérifier les variables [] (si activé) - PRIORITÉ HAUTE
+        if self.check_variables:
+            var_issues = self._check_variables_coherence(old_text, new_text, old_line_num, new_line_num)
+            if var_issues:
+                return var_issues  # Arrêt dès qu'on trouve une erreur de variable
         
         # 4. Vérifier les placeholders (désactivé - validation redondante)
         if self.check_placeholders:
             placeholder_issues = self._check_placeholders_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(placeholder_issues)
+            if placeholder_issues:
+                return placeholder_issues
         
-        # 5. Vérifier les codes spéciaux (si activé)
-        if self.check_special_codes:
-            special_issues = self._check_special_codes_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(special_issues)
-        
-        # 6. Vérifier les séquences d'échappement (si activé)
+        # 5. Vérifier les séquences d'échappement (si activé) - PRIORITÉ MOYENNE
         if self.check_escape_sequences:
             escape_issues = self._check_escape_sequences_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(escape_issues)
+            if escape_issues:
+                return escape_issues
         
-        # 7. Vérifier les pourcentages (si activé)
+        # 6. Vérifier les pourcentages (si activé) - PRIORITÉ MOYENNE
         if self.check_percentages:
             percent_issues = self._check_percentages_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(percent_issues)
+            if percent_issues:
+                return percent_issues
         
-        # 8. Vérifier les guillemets (si activé)
+        # 7. Vérifier les guillemets (si activé) - PRIORITÉ MOYENNE
         if self.check_quotations:
             quote_issues = self._check_quotations_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(quote_issues)
+            if quote_issues:
+                return quote_issues
         
-        # 9. Vérifier les parenthèses (si activé)
+        # 8. Vérifier les parenthèses (si activé) - PRIORITÉ BASSE
         if self.check_parentheses:
             paren_issues = self._check_parentheses_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(paren_issues)
+            if paren_issues:
+                return paren_issues
         
-        # 10. Vérifier la syntaxe (si activé)
+        # 9. Vérifier la syntaxe (si activé) - PRIORITÉ BASSE
         if self.check_syntax:
             syntax_issues = self._check_syntax_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(syntax_issues)
+            if syntax_issues:
+                return syntax_issues
         
-        # 11. Vérifier les ellipses DeepL (si activé)
+        # 10. Vérifier les ellipses DeepL (si activé) - PRIORITÉ BASSE
         if self.check_deepl_ellipsis:
             deepl_issues = self._check_deepl_ellipsis_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(deepl_issues)
+            if deepl_issues:
+                return deepl_issues
         
-        # 12. Vérifier les pourcentages isolés (si activé)
+        # 11. Vérifier les pourcentages isolés (si activé) - PRIORITÉ BASSE
         if self.check_isolated_percent:
             isolated_issues = self._check_isolated_percent_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(isolated_issues)
+            if isolated_issues:
+                return isolated_issues
         
-        # 13. Vérifier les guillemets français (si activé)
+        # 12. Vérifier les guillemets français (si activé) - PRIORITÉ BASSE
         if self.check_french_quotes:
             french_issues = self._check_french_quotes_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(french_issues)
+            if french_issues:
+                return french_issues
         
-        # 14. Vérifier la structure des lignes (si activé)
+        # 13. Vérifier les codes spéciaux (si activé) - PRIORITÉ BASSE
+        if self.check_special_codes:
+            special_issues = self._check_special_codes_coherence(old_text, new_text, old_line_num, new_line_num)
+            if special_issues:
+                return special_issues
+        
+        # 14. Vérifier la structure des lignes (si activé) - PRIORITÉ TRÈS BASSE
         if self.check_line_structure:
             structure_issues = self._check_line_structure_coherence(old_text, new_text, old_line_num, new_line_num)
-            issues.extend(structure_issues)
+            if structure_issues:
+                return structure_issues
         
-        return issues
+        return issues  # Aucune erreur trouvée
     
     def _is_untranslated_line(self, old_text, new_text):
         """Vérifie si une ligne est probablement non traduite"""
@@ -741,7 +759,7 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_percentages_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des variables de formatage % et %%"""
+        """Vérifie la cohérence des pourcentages % et %% (1 seule erreur fusionnée)"""
         issues = []
         
         try:
@@ -753,20 +771,22 @@ class UnifiedCoherenceChecker:
             old_double_percent = old_text.count('%%')
             new_double_percent = new_text.count('%%')
             
-            if old_format_vars != new_format_vars:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'PERCENTAGE_FORMAT_MISMATCH',
-                    'description': f"Variables de formatage % incohérentes => Attendu: {old_format_vars}, Présent: {new_format_vars}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
+            # Fusionner les vérifications
+            format_mismatch = old_format_vars != new_format_vars
+            double_mismatch = old_double_percent != new_double_percent
             
-            if old_double_percent != new_double_percent:
+            if format_mismatch or double_mismatch:
+                # Construire une description détaillée
+                details = []
+                if format_mismatch:
+                    details.append(f"Variables % (Attendu: {old_format_vars}, Présent: {new_format_vars})")
+                if double_mismatch:
+                    details.append(f"Échappés %% (Attendu: {old_double_percent}, Présent: {new_double_percent})")
+                
                 issues.append({
                     'line': new_line_num,
-                    'type': 'DOUBLE_PERCENT_MISMATCH',
-                    'description': f"Double % échappé %% incohérent => Attendu: {old_double_percent}, Présent: {new_double_percent}",
+                    'type': 'PERCENTAGE_MISMATCH',
+                    'description': f"Pourcentages incohérents => {', '.join(details)}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -777,7 +797,7 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_quotations_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des guillemets et échappements"""
+        """Vérifie la cohérence des guillemets \" et échappés \\\" (1 seule erreur fusionnée)"""
         issues = []
         
         try:
@@ -789,20 +809,22 @@ class UnifiedCoherenceChecker:
             old_unescaped_quotes = len(re.findall(r'(?<!\\)"', old_text))
             new_unescaped_quotes = len(re.findall(r'(?<!\\)"', new_text))
             
-            if old_escaped_quotes != new_escaped_quotes:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'ESCAPED_QUOTES_MISMATCH',
-                    'description': f"Guillemets échappés \\\" incohérents => Attendu: {old_escaped_quotes}, Présent: {new_escaped_quotes}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
+            # Fusionner les vérifications
+            escaped_mismatch = old_escaped_quotes != new_escaped_quotes
+            unescaped_mismatch = old_unescaped_quotes != new_unescaped_quotes
             
-            if old_unescaped_quotes != new_unescaped_quotes:
+            if escaped_mismatch or unescaped_mismatch:
+                # Construire une description détaillée
+                details = []
+                if escaped_mismatch:
+                    details.append(f"Échappés \\\" (Attendu: {old_escaped_quotes}, Présent: {new_escaped_quotes})")
+                if unescaped_mismatch:
+                    details.append(f"Non échappés \" (Attendu: {old_unescaped_quotes}, Présent: {new_unescaped_quotes})")
+                
                 issues.append({
                     'line': new_line_num,
-                    'type': 'UNESCAPED_QUOTES_MISMATCH',
-                    'description': f"Guillemets non échappés \" incohérents => Attendu: {old_unescaped_quotes}, Présent: {new_unescaped_quotes}",
+                    'type': 'QUOTES_MISMATCH',
+                    'description': f"Guillemets incohérents => {', '.join(details)}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -813,7 +835,7 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_parentheses_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des parenthèses et crochets"""
+        """Vérifie la cohérence des parenthèses () et crochets [] (1 seule erreur fusionnée)"""
         issues = []
         
         try:
@@ -823,44 +845,31 @@ class UnifiedCoherenceChecker:
             old_close_parens = old_text.count(')')
             new_close_parens = new_text.count(')')
             
-            # Crochets
+            # Crochets (ne sont vérifiés que si pas de vérification variables activée)
+            # Sinon redondant avec _check_variables_coherence
             old_open_brackets = old_text.count('[')
             new_open_brackets = new_text.count('[')
             old_close_brackets = old_text.count(']')
             new_close_brackets = new_text.count(']')
             
-            if old_open_parens != new_open_parens:
+            # Fusionner toutes les vérifications en une seule erreur
+            parens_mismatch = (old_open_parens != new_open_parens or 
+                               old_close_parens != new_close_parens)
+            brackets_mismatch = (old_open_brackets != new_open_brackets or 
+                                 old_close_brackets != new_close_brackets)
+            
+            if parens_mismatch or brackets_mismatch:
+                # Construire une description détaillée
+                details = []
+                if parens_mismatch:
+                    details.append(f"( ) (Attendu: {old_open_parens}/{old_close_parens}, Présent: {new_open_parens}/{new_close_parens})")
+                if brackets_mismatch:
+                    details.append(f"[ ] (Attendu: {old_open_brackets}/{old_close_brackets}, Présent: {new_open_brackets}/{new_close_brackets})")
+                
                 issues.append({
                     'line': new_line_num,
                     'type': 'PARENTHESES_MISMATCH',
-                    'description': f"Parenthèses ouvrantes ( incohérentes => Attendu: {old_open_parens}, Présent: {new_open_parens}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_close_parens != new_close_parens:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'PARENTHESES_MISMATCH',
-                    'description': f"Parenthèses fermantes ) incohérentes => Attendu: {old_close_parens}, Présent: {new_close_parens}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_open_brackets != new_open_brackets:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'BRACKETS_MISMATCH',
-                    'description': f"Crochets ouvrants [ incohérents => Attendu: {old_open_brackets}, Présent: {new_open_brackets}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_close_brackets != new_close_brackets:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'BRACKETS_MISMATCH',
-                    'description': f"Crochets fermants ] incohérents => Attendu: {old_close_brackets}, Présent: {new_close_brackets}",
+                    'description': f"Parenthèses/Crochets incohérents => {', '.join(details)}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -952,7 +961,7 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_french_quotes_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie les guillemets français «» → \" """
+        """Vérifie les guillemets français «» ou << >> → \" (1 seule erreur fusionnée)"""
         issues = []
         
         try:
@@ -968,38 +977,24 @@ class UnifiedCoherenceChecker:
             old_chevron_close = len(re.findall(r'(?<![<>])>>(?![<>])', old_text))
             new_chevron_close = len(re.findall(r'(?<![<>])>>(?![<>])', new_text))
             
-            if old_french_open != new_french_open:
+            # Fusionner toutes les vérifications en une seule erreur
+            french_mismatch = (old_french_open != new_french_open or 
+                               old_french_close != new_french_close)
+            chevron_mismatch = (old_chevron_open != new_chevron_open or 
+                                old_chevron_close != new_chevron_close)
+            
+            if french_mismatch or chevron_mismatch:
+                # Construire une description détaillée
+                details = []
+                if french_mismatch:
+                    details.append(f"« » (Attendu: {old_french_open}/{old_french_close}, Présent: {new_french_open}/{new_french_close})")
+                if chevron_mismatch:
+                    details.append(f"<< >> (Attendu: {old_chevron_open}/{old_chevron_close}, Présent: {new_chevron_open}/{new_chevron_close})")
+                
                 issues.append({
                     'line': new_line_num,
                     'type': 'FRENCH_QUOTES_MISMATCH',
-                    'description': f"Guillemets français ouvrants « incohérents => Attendu: {old_french_open}, Présent: {new_french_open} (devraient être transformés en \")",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_french_close != new_french_close:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'FRENCH_QUOTES_MISMATCH',
-                    'description': f"Guillemets français fermants » incohérents => Attendu: {old_french_close}, Présent: {new_french_close} (devraient être transformés en \")",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_chevron_open != new_chevron_open:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'CHEVRON_QUOTES_MISMATCH',
-                    'description': f"Chevrons ouvrants << incohérents => Attendu: {old_chevron_open}, Présent: {new_chevron_open} (devraient être transformés en \")",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_chevron_close != new_chevron_close:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'CHEVRON_QUOTES_MISMATCH',
-                    'description': f"Chevrons fermants >> incohérents => Attendu: {old_chevron_close}, Présent: {new_chevron_close} (devraient être transformés en \")",
+                    'description': f"Guillemets français incohérents => {', '.join(details)} (devraient être transformés en \")",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -1312,7 +1307,11 @@ class UnifiedCoherenceChecker:
             "CONTENT_PREFIX_MISMATCH": "Préfixe de contenu incohérent",
             "CONTENT_SUFFIX_MISMATCH": "Suffixe de contenu incohérent",
             "FILE_ERROR": "Erreur de fichier",
-            "ANALYSIS_ERROR": "Erreur d'analyse"
+            "ANALYSIS_ERROR": "Erreur d'analyse",
+            "LENGTH_DISCREPANCY": "Différence de longueur",
+            # Nouveaux types fusionnés
+            "QUOTES_MISMATCH": "Guillemets incohérents",
+            "PERCENTAGE_MISMATCH": "Pourcentages incohérents"
         }
         return type_names.get(issue_type, issue_type)
     

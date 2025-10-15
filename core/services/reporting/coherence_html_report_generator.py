@@ -36,9 +36,9 @@ class HtmlCoherenceReportGenerator:
         return """
         <style>
           :root {
-            --bg: #121212; --fg: #eaeaea; --hdr: #1e1e1e; --sep: #262626;
-            --success: #198754; --warning: #FFC107; --danger: #DC3545; --info: #0D6EFD;
-            --card-bg: #1f1f1f; --hover-bg: rgba(255,255,255,0.06);
+            --bg: #1a1f29; --fg: #e2e8f0; --hdr: #2d3748; --sep: #4a5568;
+            --success: #48bb78; --warning: #ed8936; --danger: #f56565; --info: #4a90e2;
+            --card-bg: #2d3748; --hover-bg: rgba(255,255,255,0.06); --nav-bg: #1a202c;
             --error-variable: #ff6b9d; --error-tag: #ffa726; --error-placeholder: #ab47bc;
             --error-special: #ef5350; --error-untranslated: #ffcc02; --error-other: #78909c;
           }
@@ -990,9 +990,15 @@ class HtmlCoherenceReportGenerator:
             "FILE_ERROR": "Erreur de fichier",
             "ANALYSIS_ERROR": "Erreur d'analyse",
             "LENGTH_DISCREPANCY": "Différence de longueur",
+            # Nouveaux types fusionnés
+            "QUOTES_MISMATCH": "Guillemets incohérents",
+            "PERCENTAGE_MISMATCH": "Pourcentages incohérents",
+            # Anciens types (compatibilité)
             "ESCAPED_QUOTES_MISMATCH": "Guillemets échappés incohérents",
             "QUOTE_BALANCE_ERROR": "Guillemets non équilibrés",
-            "UNESCAPED_QUOTES_MISMATCH": "Guillemets non échappés incohérents"
+            "UNESCAPED_QUOTES_MISMATCH": "Guillemets non échappés incohérents",
+            "PERCENTAGE_FORMAT_MISMATCH": "Variables % incohérentes",
+            "DOUBLE_PERCENT_MISMATCH": "Double % incohérent"
         }
         return type_names.get(error_type, error_type.replace('_', ' ').title())
     
@@ -1013,7 +1019,10 @@ class HtmlCoherenceReportGenerator:
             "CONTENT_PREFIX_MISMATCH": "⬅️",
             "CONTENT_SUFFIX_MISMATCH": "➡️",
             "FILE_ERROR": "💥",
-            "ANALYSIS_ERROR": "🐛"
+            "ANALYSIS_ERROR": "🐛",
+            # Nouveaux types fusionnés
+            "QUOTES_MISMATCH": "\"\"",
+            "PERCENTAGE_MISMATCH": "%%"
         }
         return icons.get(error_type, "⚠️")
     
@@ -1034,7 +1043,10 @@ class HtmlCoherenceReportGenerator:
             "CONTENT_PREFIX_MISMATCH": "badge-other",
             "CONTENT_SUFFIX_MISMATCH": "badge-other",
             "FILE_ERROR": "badge-other",
-            "ANALYSIS_ERROR": "badge-other"
+            "ANALYSIS_ERROR": "badge-other",
+            # Nouveaux types fusionnés
+            "QUOTES_MISMATCH": "badge-special",
+            "PERCENTAGE_MISMATCH": "badge-special"
         }
         return classes.get(error_type, "badge-other")
     

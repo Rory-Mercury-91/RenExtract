@@ -18,7 +18,7 @@ class PersistentCacheManager:
     """Gestionnaire de cache persistant avec invalidation intelligente"""
     
     def __init__(self):
-        self.cache_dir = Path(FOLDERS["cache"]) if "cache" in FOLDERS else Path.home() / '.renextract' / 'cache'
+        self.cache_dir = Path(FOLDERS["cache"]) if "cache" in FOLDERS else Path.home() / '.renextract_tools' / 'cache'
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Cache en mémoire par projet

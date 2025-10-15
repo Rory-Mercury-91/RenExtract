@@ -1,6 +1,6 @@
 """
-Package "tutorial" - Architecture multilingue complète du tutoriel RenExtract
-Structure modulaire avec traduction intégrale du contenu
+Package "tutorial" - Système de guide HTML pour RenExtract
+Structure modulaire optimisée en français uniquement
 Version 2.0.0 avec système de santé automatique
 """
 
@@ -345,17 +345,17 @@ def mark_tutorial_shown():
         log_message("ATTENTION", f"Impossible de marquer le tutoriel: {e}", "init_tutorial")
 
 def show_tutorial(parent=None, language='fr'):
-    # Fonction principale pour afficher le tutoriel HTML multilingue
+    # Fonction principale pour afficher le tutoriel HTML (français uniquement)
     try:
-        log_message("DEBUG", f"Demande d'affichage tutoriel langue: {language}", "init_tutorial")
+        log_message("DEBUG", f"Demande d'affichage tutoriel", "init_tutorial")
         
         # Essayer d'utiliser le générateur importé automatiquement
-        if 'MultilingualTutorialGenerator' in globals():
-            MultilingualTutorialGenerator = globals()['MultilingualTutorialGenerator']
+        if 'TutorialGenerator' in globals():
+            TutorialGenerator = globals()['TutorialGenerator']
             
-            if isinstance(MultilingualTutorialGenerator, type):
-                generator = MultilingualTutorialGenerator()
-                html_path = generator.generate_tutorial_html(VERSION, language)
+            if isinstance(TutorialGenerator, type):
+                generator = TutorialGenerator()
+                html_path = generator.generate_tutorial_html(VERSION)
                 
                 if html_path and os.path.exists(html_path):
                     try:
@@ -405,13 +405,6 @@ class UnifiedTutorialInterface:
 # MÉTADONNÉES / VALIDATION ARCHITECTURE - CONSERVÉES
 # =============================================================================
 
-SUPPORTED_LANGUAGES = ['fr', 'en', 'de']
-DEFAULT_LANGUAGE = 'fr'
-LANGUAGE_FALLBACK = {
-    'en': 'fr',
-    'de': 'en'
-}
-
 CONTENT_MODULES = {
     1: 'tab_01',
     2: 'tab_02',
@@ -428,20 +421,19 @@ def get_version_info():
     # Informations de version enrichies avec santé
     return {
         'version': '2.0.0',
-        'architecture': 'multilingue_modulaire',
-        'supported_languages': SUPPORTED_LANGUAGES,
+        'architecture': 'modulaire_française',
+        'language': 'fr',
         'total_modules': len(CONTENT_MODULES),
         'health_percentage': TUTORIAL_HEALTH_STATUS.get('health_percentage', 0),
         'debug_mode': TUTORIAL_HEALTH_STATUS.get('health_percentage', 100) < 80,
         'features': [
-            'Traduction complète du contenu',
-            'Fallback intelligent entre langues',
+            'Guide français complet',
             'Modules de contenu séparés',
             'Cache optimisé',
-            "Support RTL préparé",
             "Gestion d'erreurs robuste",
             "Système de santé automatique",
-            "Mode debug adaptatif"
+            "Mode debug adaptatif",
+            "Auto-scroll lors du changement d'onglet"
         ]
     }
 
@@ -509,7 +501,8 @@ try:
     health_status = calculate_health_status(loaded_modules, failed_modules, modules_list)
     
     # Gestion du mode debug automatique
-    manage_debug_mode(health_status)
+    # ✅ DÉSACTIVÉ : On laisse l'utilisateur gérer le mode debug via les paramètres
+    # manage_debug_mode(health_status)
     
     # Export des symboles
     export_symbols_to_globals(loaded_modules, globals())
@@ -547,8 +540,6 @@ try:
         'validate_architecture',
         'get_health_report',
         'force_health_check',
-        'SUPPORTED_LANGUAGES',
-        'DEFAULT_LANGUAGE',
         'CONTENT_MODULES',
     ]
     
@@ -589,10 +580,10 @@ try:
     __version__ = VERSION
     __author__ = AUTHOR
     __project__ = PROJECT_NAME
-    __description__ = f"Package tutorial pour {PROJECT_NAME} - Système de tutoriel multilingue avec génération HTML"
+    __description__ = f"Package tutorial pour {PROJECT_NAME} - Système de guide HTML français avec génération optimisée"
 except ImportError:
     # Fallbacks si constants indisponible
     __version__ = "2.0.0"
     __author__ = "Rory Mercury91"
     __project__ = "RenExtract"
-    __description__ = "Package tutorial pour RenExtract - Système de tutoriel multilingue avec génération HTML"
+    __description__ = "Package tutorial pour RenExtract - Système de guide HTML français avec génération optimisée"

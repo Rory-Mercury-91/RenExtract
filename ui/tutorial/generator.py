@@ -1,23 +1,20 @@
 # ui/tutorial/generator.py
 """
-Générateur de tutoriel HTML multilingue pour RenExtract
-Fichier unique avec switch de langue intégré
+Générateur de tutoriel HTML pour RenExtract (version française uniquement)
+Fichier unique optimisé sans système multilingue
 """
 
 import os
 import sys
 import base64
-import json
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from infrastructure.logging.logging import log_message
 from infrastructure.config.constants import FOLDERS
 
 
-class MultilingualTutorialGenerator:
-    SUPPORTED_LANGUAGES = ['fr', 'en', 'de']
-    DEFAULT_LANGUAGE = 'fr'
-    LANGUAGE_FALLBACK = {'en': 'fr', 'de': 'fr'}
+class TutorialGenerator:
+    """Générateur de guide HTML simplifié en français"""
 
     def __init__(self):
         self.tutorial_dir = self._get_tutorial_directory()
@@ -25,7 +22,7 @@ class MultilingualTutorialGenerator:
         self._ensure_directories()
         
         # Import du cache et du monitor de performance
-        from .cache import get_tutorial_cache
+        from .cache import get_tutorial_cache, clear_tutorial_cache
         from .utils import PerformanceMonitor
         self.cache = get_tutorial_cache()
         self.performance_monitor = PerformanceMonitor()
@@ -38,7 +35,7 @@ class MultilingualTutorialGenerator:
             return os.path.join(".", "04_Configs")
 
     def _get_images_directory(self) -> str:
-        """Répertoire des images avec structure multilingue"""
+        """Répertoire des images (structure simplifiée sans multilingue)"""
         try:
             if getattr(sys, 'frozen', False):
                 # Version exécutable
@@ -65,99 +62,34 @@ class MultilingualTutorialGenerator:
         except Exception as e:
             log_message("ATTENTION", f"Erreur configuration répertoires: {e}", category="tutorial_generator")
 
-    def load_translations(self, language: str) -> Dict[str, Any]:
-        """Charge les traductions avec cache et fallback"""
-        import time
-        start = time.time()
-        
-        lang = (language or self.DEFAULT_LANGUAGE).lower()
-        if lang not in self.SUPPORTED_LANGUAGES:
-            lang = self.DEFAULT_LANGUAGE
-
-        # Vérifier le cache d'abord
-        cached = self.cache.get_translation(lang)
-        if cached:
-            self.performance_monitor.cache_stats['cache_hits'] += 1
-            return cached
-
-        self.performance_monitor.cache_stats['cache_misses'] += 1
-
-        def _import_lang(l: str) -> Dict[str, Any]:
-            """Import dynamique d'un fichier de traduction"""
-            try:
-                module_name = f"ui.tutorial.translations.{l}"
-                module = __import__(module_name, fromlist=[l])
-                return getattr(module, 'TRANSLATIONS', {})
-            except ImportError:
-                return {}
-
-        # Tentative de chargement avec fallback
-        translations = _import_lang(lang)
-        
-        if not translations:
-            log_message("ATTENTION", f"Traductions vides pour {lang}, fallback", category="tutorial_generator")
-            fallback_lang = self.LANGUAGE_FALLBACK.get(lang, self.DEFAULT_LANGUAGE)
-            if fallback_lang != lang:
-                translations = _import_lang(fallback_lang)
-                if translations:
-                    lang = fallback_lang
-                    log_message("INFO", f"Fallback réussi vers {fallback_lang}", category="tutorial_generator")
-            
-            # Dernier recours vers FR
-            if not translations and lang != self.DEFAULT_LANGUAGE:
-                translations = _import_lang(self.DEFAULT_LANGUAGE)
-                if translations:
-                    lang = self.DEFAULT_LANGUAGE
-
-        if translations:
-            load_time = time.time() - start
-            self.cache.set_translation(lang, translations)
-            self.performance_monitor.record_translation_load(lang, load_time, len(str(translations)))
-            log_message("INFO", f"Traductions chargées pour {lang}: {len(translations)} entrées en {load_time:.3f}s", 
-                       category="tutorial_generator")
-        else:
-            log_message("ERREUR", f"Impossible de charger les traductions pour {lang}", category="tutorial_generator")
-            # Retourner structure minimale pour éviter les crashes
-            translations = {
-                'ui': {'main_title': 'RenExtract Guide', 'place_image': 'Placez l\'image dans:'},
-                'images': {},
-                'tabs': {},
-                'meta': {'language_name': lang, 'language_code': lang}
-            }
-
-        return translations
-
-    def _get_image_html(self, section: str, image_number: str, language: str, 
+    def _get_image_html(self, section: str, image_number: str, 
                        alt_text: str = "", caption_text: str = "") -> str:
         """Génère le HTML pour une image collapsible"""
         import time
         start_time = time.time()
-
-        # Chargement des traductions pour les placeholders
-        translations = self.load_translations(language)
         
         # Clé de cache unique
-        cache_key = f"{language}_{section}_{image_number}"
+        cache_key = f"{section}_{image_number}"
         
         # Vérifier le cache
         cached_image = self.cache.get_image(cache_key)
         if cached_image:
             self.performance_monitor.cache_stats['cache_hits'] += 1
             return self._generate_collapsible_html(section, image_number, cached_image, 
-                                                 alt_text, caption_text, translations, language)
+                                                 alt_text, caption_text)
 
         self.performance_monitor.cache_stats['cache_misses'] += 1
 
-        # Chercher l'image avec fallback
-        image_path = self._find_image_with_fallback(section, image_number, language)
+        # Chercher l'image
+        image_path = self._find_image(section, image_number)
         
         if not image_path:
-            return self._generate_placeholder_html(section, image_number, alt_text, language, translations)
+            return self._generate_placeholder_html(section, image_number, alt_text)
 
         # Encoder l'image en base64
         base64_data = self._encode_image_to_base64(image_path)
         if not base64_data:
-            return self._generate_placeholder_html(section, image_number, alt_text, language, translations)
+            return self._generate_placeholder_html(section, image_number, alt_text)
 
         # Mettre en cache
         self.cache.set_image(cache_key, base64_data)
@@ -165,24 +97,15 @@ class MultilingualTutorialGenerator:
         self.performance_monitor.record_image_cache(cache_key, encode_time, len(base64_data))
 
         return self._generate_collapsible_html(section, image_number, base64_data, 
-                                             alt_text, caption_text, translations, language)
+                                             alt_text, caption_text)
 
-    def _find_image_with_fallback(self, section: str, image_number: str, language: str) -> Optional[str]:
-        """Cherche une image avec fallback vers FR"""
-        # Format: tutorial_images/fr/01_interface_principale/001.webp
-        
-        # Essayer la langue demandée
-        image_path = os.path.join(self.images_dir, language, section, f"{image_number}.webp")
-        if os.path.exists(image_path):
-            return image_path
-        
-        # Fallback vers FR si différent
-        if language != 'fr':
-            fallback_path = os.path.join(self.images_dir, 'fr', section, f"{image_number}.webp")
-            if os.path.exists(fallback_path):
-                log_message("DEBUG", f"Fallback image fr pour {section}/{image_number}", category="tutorial_generator")
-                return fallback_path
-        
+    def _find_image(self, section: str, image_number: str) -> Optional[str]:
+        """Cherche une image dans le dossier tutorial_images"""
+        # Essayer d'abord .gif, puis .png, puis .webp (pour compatibilité)
+        for ext in ['.gif', '.png', '.webp']:
+            image_path = os.path.join(self.images_dir, section, f"{image_number}{ext}")
+            if os.path.exists(image_path):
+                return image_path
         return None
 
     def _encode_image_to_base64(self, image_path: str) -> Optional[str]:
@@ -190,36 +113,53 @@ class MultilingualTutorialGenerator:
         try:
             with open(image_path, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode('utf-8')
-            return f"data:image/webp;base64,{encoded}"
+            
+            # Déterminer le type MIME selon l'extension
+            ext = os.path.splitext(image_path)[1].lower()
+            if ext == '.gif':
+                mime_type = "image/gif"
+            elif ext == '.png':
+                mime_type = "image/png"
+            elif ext == '.webp':
+                mime_type = "image/webp"
+            else:
+                mime_type = "image/png"  # Fallback
+            
+            return f"data:{mime_type};base64,{encoded}"
         except Exception as e:
             log_message("ERREUR", f"Erreur encodage image {image_path}: {e}", category="tutorial_generator")
             return None
 
-    def _generate_placeholder_html(self, section: str, image_number: str, alt_text: str, 
-                                 language: str, translations: Dict) -> str:
+    def _generate_placeholder_html(self, section: str, image_number: str, alt_text: str) -> str:
         """Génère un placeholder pour image manquante"""
-        place_text = translations.get('ui', {}).get('place_image', "Placez l'image dans:")
-        expected_path = os.path.join(self.images_dir, language, section, f"{image_number}.webp")
+        # Essayer d'abord .gif, puis .png, puis .webp
+        for ext in ['.gif', '.png', '.webp']:
+            expected_path = os.path.join(self.images_dir, section, f"{image_number}{ext}")
+            if not os.path.exists(expected_path):
+                continue
+            break
+        else:
+            # Si aucun fichier n'existe, utiliser .png par défaut
+            expected_path = os.path.join(self.images_dir, section, f"{image_number}.png")
         
         return f'''
-        <div class="image-placeholder" data-lang="{language}">
+        <div class="image-placeholder">
             <div class="placeholder-content">
                 <span class="placeholder-icon">📷</span>
                 <div class="placeholder-text">
                     <strong>[Image: {section}/{image_number}]</strong>
                     <br><small>{alt_text}</small>
-                    <br><small style="opacity: 0.6;">{place_text}<br>{expected_path}</small>
+                    <br><small style="opacity: 0.6;">Placez l'image dans:<br>{expected_path}</small>
                 </div>
             </div>
         </div>
         '''
 
     def _generate_collapsible_html(self, section: str, image_number: str, base64_data: str,
-                                 alt_text: str, caption_text: str, translations: Dict, language: str) -> str:
+                                 alt_text: str, caption_text: str) -> str:
         """Génère le HTML pour une image collapsible"""
         # ID unique pour éviter les conflits
         safe_id = f"{section}_{image_number}".replace('/', '_').replace('-', '_')
-        click_text = translations.get('ui', {}).get('click_to_see', 'Cliquez pour voir')
         
         display_text = caption_text if caption_text else alt_text
         
@@ -227,33 +167,29 @@ class MultilingualTutorialGenerator:
         <div class="image-container collapsible">
             <div class="image-toggle" onclick="toggleImage('{safe_id}')" role="button" tabindex="0" aria-expanded="false">
                 <span class="toggle-icon" id="icon_{safe_id}">▶</span>
-                <span class="toggle-text">{click_text} {display_text}</span>
+                <span class="toggle-text">Cliquez pour voir =>  {display_text}</span>
             </div>
             <div class="tutorial-image" id="img_{safe_id}" style="display: none;">
-                <img src="{base64_data}" alt="{alt_text}" class="responsive-image" />
+                <img src="{base64_data}" alt="{alt_text}" class="responsive-image" onclick="openLightbox(this.src, '{alt_text}')" style="cursor: zoom-in;" title="Cliquer pour agrandir" />
                 {f'<p class="image-caption">{caption_text}</p>' if caption_text else ''}
             </div>
         </div>
         '''
 
-    def generate_tutorial_html(self, version: str = "Unknown", language: str = None) -> Optional[str]:
-        """Génère le fichier HTML unique avec switch de langue intégré"""
+    def generate_tutorial_html(self, version: str = "Unknown") -> Optional[str]:
+        """Génère le fichier HTML du guide (français uniquement)"""
         try:
-            # Ignorer le paramètre language car on génère un fichier unique multilingue
+            # Vider le cache d'images pour forcer le rechargement
+            from .cache import clear_tutorial_cache, get_tutorial_cache
+            clear_tutorial_cache()
+            self.cache = get_tutorial_cache()  # Récupérer la nouvelle instance
+            log_message("DEBUG", "Cache d'images vidé pour génération fraîche", category="tutorial_generator")
+            
             tutorial_name = "renextract_guide_complet.html"
             tutorial_path = os.path.join(self.tutorial_dir, tutorial_name)
-            
-            # Charger toutes les traductions
-            all_translations = {}
-            for lang in self.SUPPORTED_LANGUAGES:
-                all_translations[lang] = self.load_translations(lang)
-            
-            if not any(all_translations.values()):
-                log_message("ERREUR", "Impossible de charger les traductions", category="tutorial_generator")
-                return None
 
             # Générer le contenu HTML
-            html_content = self._generate_complete_html(version, all_translations)
+            html_content = self._generate_complete_html(version)
             
             # Écrire le fichier
             with open(tutorial_path, 'w', encoding='utf-8') as f:
@@ -266,57 +202,35 @@ class MultilingualTutorialGenerator:
             log_message("ERREUR", f"Erreur génération tutoriel HTML: {e}", category="tutorial_generator")
             return None
 
-    def _generate_complete_html(self, version: str, all_translations: Dict[str, Dict]) -> str:
-        """Génère le HTML complet avec toutes les langues - VERSION DEBUG"""
-        log_message("INFO", "=== DÉBUT GÉNÉRATION HTML COMPLET ===", category="tutorial_generator")
+    def _generate_complete_html(self, version: str) -> str:
+        """Génère le HTML complet (français uniquement)"""
+        log_message("INFO", "=== DÉBUT GÉNÉRATION HTML ===", category="tutorial_generator")
         
         try:
-            # Charger les modules de contenu avec debug détaillé
+            # Charger les modules de contenu
             content_modules = {}
             for i in range(1, 10):
-                log_message("DEBUG", f"Tentative chargement module tab_{i:02d}", category="tutorial_generator")
                 try:
                     module_name = f"ui.tutorial.content.tab_{i:02d}"
-                    log_message("DEBUG", f"Import {module_name}", category="tutorial_generator")
                     content_modules[i] = __import__(module_name, fromlist=[f'tab_{i:02d}'])
-                    log_message("INFO", f"✅ Module tab_{i:02d} chargé avec succès", category="tutorial_generator")
+                    log_message("INFO", f"✅ Module tab_{i:02d} chargé", category="tutorial_generator")
                 except ImportError as e:
-                    log_message("ERREUR", f"❌ Module tab_{i:02d} ÉCHEC ImportError: {e}", category="tutorial_generator")
-                    content_modules[i] = None
-                except Exception as e:
-                    log_message("ERREUR", f"❌ Module tab_{i:02d} ÉCHEC Exception: {type(e).__name__}: {e}", category="tutorial_generator")
+                    log_message("ERREUR", f"❌ Module tab_{i:02d} ÉCHEC: {e}", category="tutorial_generator")
                     content_modules[i] = None
 
-            # Debug: État des modules chargés
-            log_message("INFO", f"Modules chargés: {[i for i, m in content_modules.items() if m is not None]}", category="tutorial_generator")
-            log_message("INFO", f"Modules manqués: {[i for i, m in content_modules.items() if m is None]}", category="tutorial_generator")
-
-            # Générer le contenu par onglet et par langue avec debug
+            # Générer le contenu par onglet
             tab_contents = {}
             for tab_num in range(1, 10):
-                log_message("INFO", f"--- Génération contenu onglet {tab_num} ---", category="tutorial_generator")
-                
                 module = content_modules.get(tab_num)
                 if module is None:
-                    log_message("ATTENTION", f"Module {tab_num} manquant, utilisation fallback", category="tutorial_generator")
                     tab_contents[tab_num] = self._get_fallback_tab_content(tab_num)
                 else:
-                    log_message("DEBUG", f"Module {tab_num} trouvé: {module}", category="tutorial_generator")
-                    tab_contents[tab_num] = self._generate_tab_content(tab_num, module, all_translations)
-                
-                # Debug: vérifier la longueur du contenu généré
-                content_length = len(tab_contents[tab_num])
-                log_message("INFO", f"Onglet {tab_num} généré: {content_length} caractères", category="tutorial_generator")
-                
-                if content_length < 100:
-                    log_message("ATTENTION", f"Contenu suspicieusement court pour onglet {tab_num}: {content_length} chars", category="tutorial_generator")
+                    tab_contents[tab_num] = self._generate_tab_content(tab_num, module)
 
             # Générer le logo
-            log_message("DEBUG", "Génération logo HTML", category="tutorial_generator")
             logo_html = self._generate_logo_html()
 
             # Utiliser le template de base
-            log_message("DEBUG", "Récupération template HTML", category="tutorial_generator")
             html_template = self._get_html_template()
             
             # Variables pour le template
@@ -325,136 +239,78 @@ class MultilingualTutorialGenerator:
                 'logo_html': logo_html,
                 'css_styles': self._get_complete_css(),
                 'javascript': self._get_complete_javascript(),
-                'all_translations_json': json.dumps(all_translations, ensure_ascii=False),
             }
 
-            # Ajouter les contenus d'onglets avec debug
+            # Ajouter les contenus d'onglets
             for i in range(1, 10):
-                content = tab_contents.get(i)
-                if content:
-                    template_vars[f'tab_content_{i}'] = content
-                    log_message("DEBUG", f"Template: onglet {i} utilisé (contenu réel)", category="tutorial_generator")
-                else:
-                    template_vars[f'tab_content_{i}'] = self._get_fallback_tab_content(i)
-                    log_message("ATTENTION", f"Template: onglet {i} fallback utilisé", category="tutorial_generator")
-            log_message("DEBUG", "Formation HTML final avec template", category="tutorial_generator")
+                template_vars[f'tab_content_{i}'] = tab_contents.get(i, self._get_fallback_tab_content(i))
+            
             final_html = html_template.format(**template_vars)
             
             log_message("INFO", f"HTML complet généré: {len(final_html)} caractères", category="tutorial_generator")
-            log_message("INFO", "=== FIN GÉNÉRATION HTML COMPLET ===", category="tutorial_generator")
+            log_message("INFO", "=== FIN GÉNÉRATION HTML ===", category="tutorial_generator")
             
             return final_html
 
         except Exception as e:
-            log_message("ERREUR", f"ERREUR CRITIQUE génération HTML complet: {type(e).__name__}: {e}", category="tutorial_generator")
+            log_message("ERREUR", f"ERREUR génération HTML: {type(e).__name__}: {e}", category="tutorial_generator")
             import traceback
-            log_message("ERREUR", f"Traceback complet:\n{traceback.format_exc()}", category="tutorial_generator")
+            log_message("ERREUR", f"Traceback: {traceback.format_exc()}", category="tutorial_generator")
             return self._generate_fallback_html(version)
 
-    def _generate_tab_content(self, tab_num: int, content_module: Any, all_translations: Dict[str, Dict]) -> str:
-        """Génère le contenu d'un onglet pour toutes les langues - VERSION DEBUG"""
-        log_message("DEBUG", f"=== GÉNÉRATION ONGLET {tab_num} DÉBUT ===", category="tutorial_generator")
-        
-        # Debug: Vérifier le module
-        if content_module is None:
-            log_message("ERREUR", f"Module content_module est None pour onglet {tab_num}", category="tutorial_generator")
+    def _generate_tab_content(self, tab_num: int, content_module) -> str:
+        """Génère le contenu d'un onglet (français uniquement)"""
+        if content_module is None or not hasattr(content_module, 'generate_content'):
+            log_message("ERREUR", f"Module onglet {tab_num} invalide", category="tutorial_generator")
             return self._get_fallback_tab_content(tab_num)
         
-        if not hasattr(content_module, 'generate_content'):
-            log_message("ERREUR", f"Module onglet {tab_num} n'a pas de fonction generate_content", category="tutorial_generator")
+        try:
+            content = content_module.generate_content(self)
+            
+            if not content or len(content.strip()) == 0:
+                log_message("ATTENTION", f"Contenu vide pour onglet {tab_num}", category="tutorial_generator")
+                return self._get_fallback_tab_content(tab_num)
+            
+            return content
+            
+        except Exception as e:
+            log_message("ERREUR", f"Exception onglet {tab_num}: {e}", category="tutorial_generator")
+            import traceback
+            log_message("ERREUR", f"Traceback: {traceback.format_exc()}", category="tutorial_generator")
             return self._get_fallback_tab_content(tab_num)
-        
-        log_message("DEBUG", f"Module onglet {tab_num}: {content_module} - fonction trouvée", category="tutorial_generator")
-        
-        lang_panes = []
-        
-        for lang in self.SUPPORTED_LANGUAGES:
-            log_message("DEBUG", f"Génération onglet {tab_num} langue {lang}", category="tutorial_generator")
-            
-            translations = all_translations[lang]
-            
-            # Debug: Vérifier les traductions
-            if not translations:
-                log_message("ATTENTION", f"Traductions vides pour onglet {tab_num} langue {lang}", category="tutorial_generator")
-            else:
-                log_message("DEBUG", f"Traductions onglet {tab_num} langue {lang}: {len(translations)} sections", category="tutorial_generator")
-            
-            try:
-                log_message("DEBUG", f"Appel generate_content pour onglet {tab_num} langue {lang}", category="tutorial_generator")
-                content = content_module.generate_content(self, lang, translations)
-                log_message("DEBUG", f"Contenu généré pour onglet {tab_num} langue {lang}: {len(content)} caractères", category="tutorial_generator")
-                
-                # Debug: Vérifier le contenu généré
-                if not content or len(content.strip()) == 0:
-                    log_message("ATTENTION", f"Contenu vide généré pour onglet {tab_num} langue {lang}", category="tutorial_generator")
-                    content = f"<p>Contenu vide pour onglet {tab_num} ({lang})</p>"
-                
-            except Exception as e:
-                log_message("ERREUR", f"EXCEPTION lors génération onglet {tab_num} langue {lang}: {type(e).__name__}: {e}", category="tutorial_generator")
-                import traceback
-                log_message("ERREUR", f"Traceback complet:\n{traceback.format_exc()}", category="tutorial_generator")
-                content = f"<p>Erreur de génération du contenu de l'onglet {tab_num} ({lang}): {e}</p>"
-            
-            # Chaque langue dans son propre panneau
-            lang_panes.append(f'<div class="lang-pane" data-lang="{lang}">{content}</div>')
-            log_message("DEBUG", f"Panneau langue {lang} ajouté pour onglet {tab_num}", category="tutorial_generator")
-        
-        final_content = '<div class="lang-stack">' + ''.join(lang_panes) + '</div>'
-        log_message("DEBUG", f"=== ONGLET {tab_num} TERMINÉ - {len(final_content)} caractères ===", category="tutorial_generator")
-        return final_content
 
     def _generate_logo_html(self) -> str:
-        """Génère le HTML du logo - CORRIGÉ pour chercher logo_192"""
+        """Génère le HTML du logo (cliquable vers la section contact)"""
         # Essayer différents noms de fichiers pour le logo
         logo_names = ["logo_192", "001", "logo", "main_logo"]
         
         for logo_name in logo_names:
-            logo_path = self._find_image_with_fallback("06_logos", logo_name, "fr")
+            logo_path = self._find_image("Logo", logo_name)
             if logo_path:
                 logo_base64 = self._encode_image_to_base64(logo_path)
                 if logo_base64:
                     log_message("INFO", f"Logo trouvé: {logo_path}", category="tutorial_generator")
-                    return f'<img src="{logo_base64}" alt="RenExtract Logo" class="header-logo">'
+                    return f'''<a href="#support-contact" onclick="switchToTabDirect(8); setTimeout(() => {{ document.getElementById('support-contact').scrollIntoView({{ behavior: 'smooth', block: 'start' }}); }}, 300); return false;" style="cursor: pointer; display: block;" title="📧 Contacter l'équipe de développement">
+                        <img src="{logo_base64}" alt="RenExtract Logo" class="header-logo">
+                    </a>'''
         
-        log_message("ATTENTION", "Aucun logo trouvé, utilisation du placeholder", category="tutorial_generator")
-        return '<div class="logo-placeholder">RenExtract</div>'
+        log_message("ATTENTION", "Aucun logo trouvé, placeholder utilisé", category="tutorial_generator")
+        return '<a href="#support-contact" onclick="switchToTabDirect(8); setTimeout(() => { document.getElementById(\'support-contact\').scrollIntoView({ behavior: \'smooth\', block: \'start\' }); }, 300); return false;" style="cursor: pointer; display: block;" title="📧 Contacter l\'équipe de développement"><div class="logo-placeholder">RenExtract</div></a>'
 
     def _get_fallback_tab_content(self, tab_num: int) -> str:
-        """Contenu de fallback pour un onglet - VERSION DEBUG"""
-        log_message("DEBUG", f"Génération fallback pour onglet {tab_num}", category="tutorial_generator")
-        
-        fallback_content = f'''
-        <div class="lang-stack">
-            <div class="lang-pane" data-lang="fr">
-                <div class="section">
-                    <h2>Onglet {tab_num}</h2>
-                    <p>Contenu en cours de développement.</p>
-                    <p><strong>DEBUG:</strong> Ce contenu est généré par le système de fallback car le module tab_{tab_num:02d}.py n'a pas pu être chargé ou a généré une erreur.</p>
-                </div>
-            </div>
-            <div class="lang-pane" data-lang="en">
-                <div class="section">
-                    <h2>Tab {tab_num}</h2>
-                    <p>Content under development.</p>
-                    <p><strong>DEBUG:</strong> This content is generated by fallback system because tab_{tab_num:02d}.py module could not be loaded or generated an error.</p>
-                </div>
-            </div>
-            <div class="lang-pane" data-lang="de">
-                <div class="section">
-                    <h2>Registerkarte {tab_num}</h2>
-                    <p>Inhalt in Entwicklung.</p>
-                    <p><strong>DEBUG:</strong> Dieser Inhalt wird vom Fallback-System generiert, da das Modul tab_{tab_num:02d}.py nicht geladen werden konnte oder einen Fehler verursacht hat.</p>
-                </div>
-            </div>
+        """Contenu de fallback pour un onglet"""
+        return f'''
+        <div class="section">
+            <h2>Onglet {tab_num}</h2>
+            <p>Contenu en cours de développement.</p>
+            <p><strong>DEBUG:</strong> Le module tab_{tab_num:02d}.py n'a pas pu être chargé ou a généré une erreur.</p>
         </div>
         '''
-        
-        return fallback_content
 
     def _get_html_template(self) -> str:
-        """Template HTML moderne"""
+        """Template HTML simplifié (français uniquement)"""
         return """<!DOCTYPE html>
-<html lang="fr" data-lang="fr" data-theme="dark">
+<html lang="fr" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -466,21 +322,21 @@ class MultilingualTutorialGenerator:
     
     <header class="header">
         <div class="container">
-            <h1 id="main-title">Guide Complet RenExtract</h1>
-            <p id="version-text">Version {version}</p>
+            <h1>Guide Complet RenExtract</h1>
+            <p>Version {version}</p>
         </div>
     </header>
 
     <nav class="nav-tabs">
-        <button class="nav-tab active" data-tab="1" id="tab-btn-1">📋 Sommaire</button>
-        <button class="nav-tab" data-tab="2" id="tab-btn-2">🔄 Workflow</button>
-        <button class="nav-tab" data-tab="3" id="tab-btn-3">🖥️ Interface</button>
-        <button class="nav-tab" data-tab="4" id="tab-btn-4">🎮 Générateur</button>
-        <button class="nav-tab" data-tab="5" id="tab-btn-5">🛠️ Outils</button>
-        <button class="nav-tab" data-tab="6" id="tab-btn-6">💾 Sauvegardes</button>
-        <button class="nav-tab" data-tab="7" id="tab-btn-7">⚙️ Paramètres</button>
-        <button class="nav-tab" data-tab="8" id="tab-btn-8">🔧 Technique</button>
-        <button class="nav-tab" data-tab="9" id="tab-btn-9">❓ FAQ</button>
+        <button class="nav-tab active" data-tab="1">📋 Sommaire</button>
+        <button class="nav-tab" data-tab="2">🔄 Workflow</button>
+        <button class="nav-tab" data-tab="3">🖥️ Interface</button>
+        <button class="nav-tab" data-tab="4">🎮 Générateur</button>
+        <button class="nav-tab" data-tab="5">🛠️ Outils</button>
+        <button class="nav-tab" data-tab="6">💾 Sauvegardes</button>
+        <button class="nav-tab" data-tab="7">⚙️ Paramètres</button>
+        <button class="nav-tab" data-tab="8">🔧 Technique</button>
+        <button class="nav-tab" data-tab="9">❓ FAQ</button>
     </nav>
 
     <main class="container">
@@ -495,13 +351,19 @@ class MultilingualTutorialGenerator:
         <div class="tab-content" id="tab-9">{tab_content_9}</div>
     </main>
 
+    <!-- Lightbox pour agrandir les images -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox(event)">
+        <span class="lightbox-close" onclick="closeLightbox(event)">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" onclick="toggleZoom(event)">
+        <div class="lightbox-caption" id="lightbox-caption"></div>
+    </div>
+
     {javascript}
-    <script>window.ALL_TRANSLATIONS = {all_translations_json};</script>
 </body>
 </html>"""
 
     def _get_complete_css(self) -> str:
-        """CSS complet avec nouveau schéma de couleurs et navigation directe"""
+        """CSS simplifié (français uniquement, sans drapeaux ni sommaire)"""
         return """<style>
 :root {
   --bg: #1a1f29; --fg: #e2e8f0; --hdr: #2d3748; --sep: #4a5568;
@@ -522,7 +384,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   display: flex; flex-direction: column; gap: 12px; transition: top 0.3s ease;
 }
 .floating-controls.scrolled { top: 80px; }
-.theme-toggle, .lang-selector, .nav-home-btn { 
+.theme-toggle { 
   background: var(--card-bg); 
   border: 1px solid var(--sep); 
   border-radius: 12px; 
@@ -530,52 +392,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   cursor: pointer; 
   transition: all 0.2s; 
   box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
-  min-width: 120px; 
+  min-width: 48px; 
   min-height: 48px; 
   display: flex; 
   align-items: center; 
   justify-content: center; 
+  color: var(--accent); 
+  font-size: 1.5em;
 }
-
-.theme-toggle { background: var(--card-bg); color: var(--accent); font-size: 1.5em; min-width: 48px; }
-.nav-home-btn { color: var(--accent); font-size: 1.2em; font-weight: bold; min-width: 48px; }
-
-.flag-container {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.flag-option {
-  font-size: 16px;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  cursor: pointer;
-  opacity: 0.6;
-}
-
-.flag-option.active {
-  opacity: 1;
-  background: rgba(74, 144, 226, 0.2);
-}
-
-.flag-option:hover {
-  opacity: 1;
-  transform: scale(1.1);
-}
-.lang-dropdown { 
-  position: absolute; top: 100%; right: 0; background: var(--card-bg); 
-  border: 1px solid var(--sep); border-radius: 8px; padding: 8px; min-width: 120px; 
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4); opacity: 0; visibility: hidden; 
-  transform: translateY(-10px); transition: all 0.2s; margin-top: 8px; 
-}
-.lang-selector.open .lang-dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
-.lang-option { 
-  display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; 
-  cursor: pointer; transition: background 0.2s; 
-}
-.lang-option:hover, .lang-option.active { background: var(--accent); color: white; }
 
 .back-to-top { 
   position: fixed; bottom: 30px; right: 30px; z-index: 9999; 
@@ -588,11 +412,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .back-to-top:hover { background: var(--success); transform: translateY(-3px); }
 
 .logo-corner { position: fixed; bottom: 30px; left: 30px; z-index: 9999; }
+.logo-corner a { display: block; }
 .logo-corner img { 
   width: 70px; height: 70px; border-radius: 12px; 
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.2s; 
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.3s; 
+  cursor: pointer;
 }
-.logo-corner:hover img { transform: scale(1.1); }
+.logo-corner a:hover img { 
+  transform: scale(1.15) rotate(5deg); 
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.5);
+}
 
 .header { 
   background: linear-gradient(135deg, var(--hdr), var(--nav-bg)); 
@@ -768,13 +597,184 @@ ul {
   .logo-corner img { width: 50px; height: 50px; }
   .feature-grid { grid-template-columns: 1fr; }
 }
+
+/* === Boîtes de contenu spécialisées === */
+.warning-box, .tip-box, .info-box, .step-box {
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  border-left: 4px solid;
+  background: var(--card-bg);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.warning-box {
+  border-left-color: var(--danger);
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(245, 101, 101, 0.05) 100%);
+}
+
+.warning-box strong {
+  color: var(--danger);
+}
+
+.tip-box {
+  border-left-color: var(--success);
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(72, 187, 120, 0.05) 100%);
+}
+
+.tip-box strong {
+  color: var(--success);
+}
+
+.info-box {
+  border-left-color: var(--info);
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(74, 144, 226, 0.05) 100%);
+}
+
+.info-box h3, .info-box h4 {
+  color: var(--info);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.step-box {
+  border-left-color: var(--accent);
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(139, 92, 246, 0.05) 100%);
+  position: relative;
+}
+
+.step-box h4, .step-box h5 {
+  color: var(--accent);
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.warning-box ul, .tip-box ul, .info-box ul, .step-box ul {
+  margin-bottom: 0;
+}
+
+/* === Amélioration des listes === */
+.section ul {
+  line-height: 1.8;
+  margin: 1rem 0;
+}
+
+.section li {
+  margin-bottom: 0.5rem;
+}
+
+.section code {
+  background: rgba(139, 92, 246, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+.section pre {
+  overflow-x: auto;
+}
+
+.section h3 {
+  color: var(--accent);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.4em;
+}
+
+.section h4 {
+  color: var(--fg);
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.2em;
+}
+
+.section h5 {
+  color: var(--fg);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+/* === Lightbox pour agrandir les images === */
+.lightbox {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  padding-top: 60px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.95);
+  animation: fadeIn 0.3s;
+}
+
+.lightbox-content {
+  margin: auto;
+  display: block;
+  max-width: 95%;
+  max-height: 85vh;
+  object-fit: contain;
+  animation: zoomIn 0.3s;
+  transition: transform 0.3s ease;
+  cursor: zoom-in;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 35px;
+  color: #f1f1f1;
+  font-size: 50px;
+  font-weight: bold;
+  transition: 0.3s;
+  cursor: pointer;
+  z-index: 10001;
+}
+
+.lightbox-close:hover,
+.lightbox-close:focus {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.lightbox-caption {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 700px;
+  text-align: center;
+  color: #ccc;
+  padding: 20px 0;
+  font-size: 1.1em;
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Curseur zoom sur les images */
+.responsive-image {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.responsive-image:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
 </style>"""
 
     def _get_complete_javascript(self) -> str:
-        """JavaScript complet avec navigation directe par onglets"""
+        """JavaScript simplifié (français uniquement, avec auto-scroll onglets)"""
         return """<script>
 (function() {
-  let currentLanguage = 'fr', currentTheme = 'dark';
+  let currentTheme = 'dark';
   
   function ready(fn) { if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
   function save(key, value) { try { localStorage.setItem('renextract_' + key, JSON.stringify(value)); } catch(e) {} }
@@ -784,47 +784,14 @@ ul {
     currentTheme = theme;
     document.documentElement.setAttribute('data-theme', theme);
     const btn = document.getElementById('theme-toggle');
-    if (btn) { btn.textContent = theme === 'dark' ? '☀️' : '🌙'; btn.title = theme === 'dark' ? 'Thème clair' : 'Thème sombre'; }
+    if (btn) { 
+      btn.textContent = theme === 'dark' ? '☀️' : '🌙'; 
+      btn.title = theme === 'dark' ? 'Thème clair' : 'Thème sombre'; 
+    }
     save('theme', theme);
     positionFloatingControls();
   }
   
-  function applyLanguage(lang) {
-    currentLanguage = lang;
-    document.querySelectorAll('.lang-pane').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
-    document.querySelectorAll('.lang-pane[data-lang="' + lang + '"]').forEach(p => { p.classList.add('active'); p.style.display = 'block'; });
-    document.documentElement.setAttribute('lang', lang);
-    updateInterfaceTexts(lang);
-    updateLanguageSelector(lang);
-    save('language', lang);
-  }
-
-  function updateLanguageFlags() {
-    document.querySelectorAll('.flag-option').forEach(flag => {
-      flag.classList.toggle('active', flag.getAttribute('data-lang') === currentLanguage);
-    });
-  }  
-
-  function updateInterfaceTexts(lang) {
-    if (window.ALL_TRANSLATIONS && window.ALL_TRANSLATIONS[lang]) {
-      const ui = window.ALL_TRANSLATIONS[lang].ui || {};
-      const title = document.getElementById('main-title');
-      if (title && ui.main_title) title.textContent = ui.main_title;
-      
-      const tabs = { 1: ui.tab_summary || '📋 Sommaire', 2: ui.tab_workflow || '📄 Workflow', 3: ui.tab_interface || '🖥️ Interface', 4: ui.tab_generator || '⚙️ Générateur', 5: ui.tab_tools || '🛠️ Outils', 6: ui.tab_backup || '💾 Sauvegardes', 7: ui.tab_settings || '⚙️ Paramètres', 8: ui.tab_technical || '🔧 Technique', 9: ui.tab_faq || '❓ FAQ' };
-      Object.entries(tabs).forEach(([n, t]) => { const btn = document.getElementById('tab-btn-' + n); if (btn) btn.textContent = t; });
-    }
-  }
-  
-  function updateLanguageSelector(lang) {
-    const flag = document.querySelector('.current-flag');
-    if (flag) { flag.textContent = { fr: '🇫🇷', en: '🇬🇧', de: '🇩🇪' }[lang] || '🇫🇷'; }
-    document.querySelectorAll('.lang-option').forEach(o => o.classList.remove('active'));
-    const active = Array.from(document.querySelectorAll('.lang-option')).find(o => o.querySelector('.flag-emoji').textContent === ({ fr: '🇫🇷', en: '🇬🇧', de: '🇩🇪' }[lang] || '🇫🇷'));
-    if (active) active.classList.add('active');
-  }
-  
-  // Position avec gestion du scroll
   function positionFloatingControls() {
     const controls = document.querySelector('.floating-controls');
     if (!controls) return;
@@ -857,41 +824,16 @@ ul {
     themeBtn.id = 'theme-toggle';
     themeBtn.className = 'theme-toggle';
     themeBtn.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+    themeBtn.title = currentTheme === 'dark' ? 'Thème clair' : 'Thème sombre';
     themeBtn.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
     
-    const langSelector = document.createElement('div');
-    langSelector.className = 'lang-selector';
-    const flagContainer = document.createElement('div');
-    flagContainer.className = 'flag-container';
-    flagContainer.innerHTML = `
-      <span class="flag-option ${currentLanguage === 'fr' ? 'active' : ''}" data-lang="fr">🇫🇷</span>
-      <span class="flag-option ${currentLanguage === 'en' ? 'active' : ''}" data-lang="en">🇬🇧</span>
-      <span class="flag-option ${currentLanguage === 'de' ? 'active' : ''}" data-lang="de">🇩🇪</span>
-    `;
-
-    flagContainer.addEventListener('click', (e) => {
-      const flagSpan = e.target.closest('.flag-option');
-      if (flagSpan) {
-        const lang = flagSpan.getAttribute('data-lang');
-        applyLanguage(lang);
-        updateLanguageFlags();
-      }
-    });
-    
-    langSelector.appendChild(flagContainer);
-    
-    const homeBtn = document.createElement('button');
-    homeBtn.className = 'nav-home-btn';
-    homeBtn.textContent = '📋';
-    homeBtn.title = 'Retour au sommaire';
-    homeBtn.addEventListener('click', () => { const tab = document.querySelector('.nav-tab[data-tab="1"]'); if (tab) tab.click(); });
-    
-    container.append(themeBtn, langSelector, homeBtn);
+    container.appendChild(themeBtn);
     document.body.appendChild(container);
     
     const backBtn = document.createElement('button');
     backBtn.className = 'back-to-top';
     backBtn.textContent = '↑';
+    backBtn.title = 'Remonter en haut';
     backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     window.addEventListener('scroll', () => {
       backBtn.classList.toggle('visible', window.scrollY > 300);
@@ -910,13 +852,19 @@ ul {
         tab.classList.add('active');
         if (contents[i]) contents[i].classList.add('active');
         save('activeTab', i);
+        // AUTO-SCROLL EN HAUT lors du changement d'onglet
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
     const saved = load('activeTab', 0);
-    if (tabs[saved] && contents[saved]) { tabs.forEach(t => t.classList.remove('active')); contents.forEach(c => c.classList.remove('active')); tabs[saved].classList.add('active'); contents[saved].classList.add('active'); }
+    if (tabs[saved] && contents[saved]) { 
+      tabs.forEach(t => t.classList.remove('active')); 
+      contents.forEach(c => c.classList.remove('active')); 
+      tabs[saved].classList.add('active'); 
+      contents[saved].classList.add('active'); 
+    }
   }
   
-  // NOUVELLE FONCTION : Navigation directe par onglets
   function setupDirectNavigation() {
     document.addEventListener('click', function(e) {
       const navBtn = e.target.closest('.nav-link-btn');
@@ -928,13 +876,9 @@ ul {
       const targetTab = parseInt(navBtn.getAttribute('data-target-tab'));
       const targetSection = navBtn.getAttribute('data-target-section');
       
-      console.log(`Navigation vers onglet ${targetTab}, section ${targetSection}`);
-      
       if (targetTab) {
-        // Changer d'onglet immédiatement
         switchToTabDirect(targetTab);
         
-        // Faire défiler vers la section après changement d'onglet
         if (targetSection) {
           setTimeout(() => {
             const targetElement = document.getElementById(targetSection);
@@ -945,7 +889,6 @@ ul {
                 inline: 'nearest'
               });
               
-              // Effet visuel de surbrillance
               targetElement.style.transition = 'all 0.5s ease';
               targetElement.style.backgroundColor = 'rgba(74, 144, 226, 0.2)';
               targetElement.style.transform = 'scale(1.01)';
@@ -954,10 +897,6 @@ ul {
                 targetElement.style.backgroundColor = '';
                 targetElement.style.transform = 'scale(1)';
               }, 1500);
-              
-              console.log(`Scroll vers section ${targetSection} effectué`);
-            } else {
-              console.warn(`Section ${targetSection} non trouvée`);
             }
           }, 200);
         }
@@ -975,10 +914,8 @@ ul {
         targetTab.classList.add('active');
         targetContent.classList.add('active');
         save('activeTab', tabNumber - 1);
-        
-        console.log(`Onglet ${tabNumber} activé`);
-      } else {
-        console.error(`Onglet ${tabNumber} non trouvé`);
+        // AUTO-SCROLL EN HAUT lors de la navigation directe
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   }
@@ -988,32 +925,131 @@ ul {
     const toggle = document.querySelector('.image-toggle[onclick*="' + id + '"]');
     if (!img) return;
     const isHidden = img.style.display === 'none' || img.style.display === '';
-    if (isHidden) { img.style.display = 'block'; img.style.opacity = '0'; img.offsetHeight; img.style.transition = 'opacity 0.3s ease'; img.style.opacity = '1'; } else { img.style.opacity = '0'; setTimeout(() => img.style.display = 'none', 300); }
-    if (toggle) { toggle.classList.toggle('expanded', isHidden); toggle.setAttribute('aria-expanded', isHidden); }
-    const states = load('imageStates', {}); states[id] = isHidden; save('imageStates', states);
+    if (isHidden) { 
+      img.style.display = 'block'; 
+      img.style.opacity = '0'; 
+      img.offsetHeight; 
+      img.style.transition = 'opacity 0.3s ease'; 
+      img.style.opacity = '1'; 
+    } else { 
+      img.style.opacity = '0'; 
+      setTimeout(() => img.style.display = 'none', 300); 
+    }
+    if (toggle) { 
+      toggle.classList.toggle('expanded', isHidden); 
+      toggle.setAttribute('aria-expanded', isHidden); 
+    }
+    const states = load('imageStates', {}); 
+    states[id] = isHidden; 
+    save('imageStates', states);
   };
   
   function initImageToggles() {
     document.querySelectorAll('.image-toggle').forEach(toggle => {
       toggle.setAttribute('role', 'button');
       toggle.setAttribute('tabindex', '0');
-      toggle.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const match = toggle.getAttribute('onclick').match(/toggleImage\\('([^']+)'\\)/); if (match) window.toggleImage(match[1]); } });
+      toggle.addEventListener('keydown', e => { 
+        if (e.key === 'Enter' || e.key === ' ') { 
+          e.preventDefault(); 
+          const match = toggle.getAttribute('onclick').match(/toggleImage\\('([^']+)'\\)/); 
+          if (match) window.toggleImage(match[1]); 
+        } 
+      });
     });
     const states = load('imageStates', {});
-    Object.entries(states).forEach(([id, open]) => { if (open) { const img = document.getElementById('img_' + id); const toggle = document.querySelector('.image-toggle[onclick*="' + id + '"]'); if (img && toggle) { img.style.display = 'block'; toggle.classList.add('expanded'); } } });
+    Object.entries(states).forEach(([id, open]) => { 
+      if (open) { 
+        const img = document.getElementById('img_' + id); 
+        const toggle = document.querySelector('.image-toggle[onclick*="' + id + '"]'); 
+        if (img && toggle) { 
+          img.style.display = 'block'; 
+          toggle.classList.add('expanded'); 
+        } 
+      } 
+    });
   }
   
   ready(() => {
     currentTheme = load('theme', 'dark');
-    currentLanguage = load('language', 'fr');
     applyTheme(currentTheme);
-    applyLanguage(currentLanguage);
     initTabs();
     initImageToggles();
     createFloatingControls();
     positionFloatingControls();
-    setupDirectNavigation(); // AJOUT CRUCIAL
-    console.log('App initialisée avec navigation directe par onglets');
+    setupDirectNavigation();
+    console.log('Guide RenExtract initialisé');
+  });
+
+  // === Fonction pour l'arborescence collapsible ===
+  window.toggleArborescence = function() {
+    const content = document.getElementById('arborescence-content');
+    const toggle = document.getElementById('arborescence-toggle');
+    if (content && toggle) {
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.style.transform = 'rotate(90deg)';
+        toggle.style.color = 'var(--success)';
+      } else {
+        content.style.display = 'none';
+        toggle.style.transform = 'rotate(0deg)';
+        toggle.style.color = 'var(--accent)';
+      }
+    }
+  };
+
+  // === Fonctions Lightbox pour agrandir les images avec zoom ===
+  let currentZoom = 1.0;
+  const maxZoom = 2.0;
+  const zoomStep = 0.5;
+
+  window.openLightbox = function(src, alt) {
+    const lightbox = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    const caption = document.getElementById('lightbox-caption');
+    
+    currentZoom = 1.0;
+    lightbox.style.display = 'block';
+    img.src = src;
+    img.style.transform = 'scale(1)';
+    img.style.cursor = 'zoom-in';
+    caption.textContent = alt + ' - Cliquer pour zoomer';
+    document.body.style.overflow = 'hidden'; // Empêcher le scroll
+  };
+
+  window.closeLightbox = function(event) {
+    // Ne fermer que si on clique sur le fond, pas sur l'image
+    if (event && event.target.id === 'lightbox-img') {
+      return;
+    }
+    const lightbox = document.getElementById('lightbox');
+    lightbox.style.display = 'none';
+    currentZoom = 1.0;
+    document.body.style.overflow = 'auto'; // Réactiver le scroll
+  };
+
+  window.toggleZoom = function(event) {
+    event.stopPropagation(); // Empêcher la fermeture du lightbox
+    const img = document.getElementById('lightbox-img');
+    const caption = document.getElementById('lightbox-caption');
+    
+    currentZoom += zoomStep;
+    if (currentZoom > maxZoom) {
+      currentZoom = 1.0;
+    }
+    
+    img.style.transform = `scale(${currentZoom})`;
+    img.style.cursor = currentZoom >= maxZoom ? 'zoom-out' : 'zoom-in';
+    
+    const zoomPercent = Math.round(currentZoom * 100);
+    const baseText = caption.textContent.split(' - ')[0];
+    caption.textContent = `${baseText} - Zoom ${zoomPercent}%`;
+  };
+
+  // Fermer avec la touche Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeLightbox();
+    }
   });
 })();
 </script>"""

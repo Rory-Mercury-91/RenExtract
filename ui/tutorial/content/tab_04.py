@@ -1,1159 +1,821 @@
-def generate_content(generator, language, translations):
+def generate_content(generator, language=None, translations=None):
     """
     Génère le contenu pour l'onglet 4 : Générateur Ren'Py
     
     Args:
         generator: Instance du générateur avec méthodes utilitaires
-        language: Code langue (fr, en, de)
-        translations: Dictionnaire des traductions
+        language: Code langue (non utilisé, français pur)
+        translations: Dictionnaire des traductions (non utilisé, français pur)
     
     Returns:
         str: HTML généré pour l'onglet générateur
     """
-    # Récupération des traductions pour cette section
-    section_t = translations.get('tabs', {}).get('generateur', {})
-    common_t = translations.get('common', {})
-   
-    def get_text(key, fallback=""):
-        return section_t.get(key) or common_t.get(key) or fallback
-
-    # Navigation rapide
-    quick_nav_title = get_text('quick_nav_title', 'Navigation rapide')
-    nav_extraction_rpa = get_text('nav_extraction_rpa', 'Extraction RPA')
-    nav_extraction_rpa_desc = get_text('nav_extraction_rpa_desc', 'Extraction des archives du jeu')
-    nav_generation = get_text('nav_generation', 'Génération TL')
-    nav_generation_desc = get_text('nav_generation_desc', 'Création arborescence et modules français')
-    nav_extraction_config = get_text('nav_extraction_config', 'Extraction Config')
-    nav_extraction_config_desc = get_text('nav_extraction_config_desc', 'Textes oubliés par le SDK')
-    nav_combinaison = get_text('nav_combinaison', 'Combinaison')
-    nav_combinaison_desc = get_text('nav_combinaison_desc', 'Fusion et division de fichiers')
-
-    # Vue d'ensemble générale
-    title = get_text('title', 'Générateur Ren\'Py - Guide Complet')
-    intro = get_text('intro', 'Interface séparée accessible via Préparation → Générateur Ren\'Py pour la gestion complète du projet. Contrairement à l\'Interface Principale qui traite fichier par fichier, le Générateur gère l\'infrastructure complète du projet.')
-    overview_title = get_text('overview_title', 'Vue d\'ensemble des 4 onglets principaux')
-    extraction_compilation_tab = get_text('extraction_compilation_tab', 'Extraction & Compilation RPA/RPYC')
-    extraction_compilation_desc = get_text('extraction_compilation_desc', 'Gestion des archives du jeu')
-    generation_tab = get_text('generation_tab', 'Génération')
-    generation_desc = get_text('generation_desc', 'Création de l\'arborescence tl/[langue]/ avec modules français')
-    extraction_config_tab = get_text('extraction_config_tab', 'Extraction Config')
-    extraction_config_desc = get_text('extraction_config_desc', 'Textes oubliés par le SDK')
-    extraction_results_tab = get_text('extraction_results_tab', 'Extraction Résultats')
-    extraction_results_desc = get_text('extraction_results_desc', 'Analyse des textes détectés')
-    combination_tab = get_text('combination_tab', 'Combinaison & Division')
-    combination_desc = get_text('combination_desc', 'Fusion/division de fichiers')
-    reorganization_title = get_text('reorganization_title', 'Réorganisation des outils')
-    reorganization_desc = get_text('reorganization_desc', 'Les outils Nettoyage Intelligent et Éditeur Temps Réel ont été déplacés vers l\'onglet Outils de Cohérence pour une meilleure organisation thématique.')
-
-    # Section Extraction RPA
-    extraction_rpa_title = get_text('extraction_rpa_title', 'Extraction & Compilation RPA/RPYC - Guide Complet')
-    extraction_interface_alt = get_text('extraction_interface_alt', 'Générateur - Interface Extraction & Compilation')
-    extraction_interface_caption = get_text('extraction_interface_caption', 'Vue complète avec projet configuré et toutes les options disponibles')
-    extraction_purpose_title = get_text('extraction_purpose_title', 'À quoi ça sert')
-    extraction_purpose_intro = get_text('extraction_purpose_intro', 'Cet onglet orchestre l\'extraction complète des archives du jeu pour accéder aux fichiers source (.rpy). Il gère deux opérations cruciales :')
-    extraction_rpa_rpyc_title = get_text('extraction_rpa_rpyc_title', 'Extraction RPA/RPYC')
-    extraction_rpa_rpyc_desc = get_text('extraction_rpa_rpyc_desc', 'Extrait les archives .rpa et décompile les fichiers .rpyc pour obtenir les scripts source .rpy lisibles et modifiables.')
-    custom_rpa_build_title = get_text('custom_rpa_build_title', 'Construction RPA Personnalisée')
-    custom_rpa_build_desc = get_text('custom_rpa_build_desc', 'Recompile vos traductions en archives .rpa optimisées pour distribution ou test dans le jeu original.')
-    prerequisite_title = get_text('prerequisite_title', 'Prérequis important')
-    prerequisite_desc = get_text('prerequisite_desc', 'Un projet Ren\'Py doit être sélectionné dans la section "Configuration du projet" avant d\'utiliser cet onglet. Les opérations agissent directement sur le dossier du jeu choisi.')
-
-    # Workflow
-    workflow_title = get_text('workflow_title', 'Workflow en 3 phases')
-    auto_preparation_label = get_text('auto_preparation_label', 'Préparation automatique :')
-    auto_preparation_desc = get_text('auto_preparation_desc', 'Téléchargement et configuration des outils (unrpyc v1/v2, rpatool, Python embedded)')
-    smart_extraction_label = get_text('smart_extraction_label', 'Extraction intelligente :')
-    smart_extraction_desc = get_text('smart_extraction_desc', 'Détection automatique de la version Ren\'Py et choix de la méthode optimale')
-    cleanup_finalization_label = get_text('cleanup_finalization_label', 'Nettoyage et finalisation :')
-    cleanup_finalization_desc = get_text('cleanup_finalization_desc', 'Suppression des outils temporaires et options de post-traitement')
-
-    # Section Extraction
-    extraction_section_title = get_text('extraction_section_title', 'Section Extraction RPA/RPYC')
-    advanced_extraction_alt = get_text('advanced_extraction_alt', 'Paramètres d\'extraction avancés')
-    advanced_extraction_caption = get_text('advanced_extraction_caption', 'Configuration des options d\'extraction avec cases à cocher et explications')
-    main_options_title = get_text('main_options_title', 'Options principales :')
-    delete_rpa_option = get_text('delete_rpa_option', 'Case "Supprimer les fichiers RPA après extraction" :')
-    delete_rpa_desc = get_text('delete_rpa_desc', 'Économise l\'espace disque en supprimant automatiquement les archives sources après extraction réussie')
-    start_extraction_button = get_text('start_extraction_button', 'Bouton "Démarrer l\'extraction" :')
-    start_extraction_desc = get_text('start_extraction_desc', 'Lance le processus complet avec détection automatique des outils nécessaires')
-    path_help_button = get_text('path_help_button', 'Aide chemins ⚠️ :')
-    path_help_desc = get_text('path_help_desc', 'Popup d\'information sur les limitations des chemins contenant des crochets [ ]')
-
-    # Détection intelligente
-    smart_detection_title = get_text('smart_detection_title', 'Détection intelligente automatique :')
-    renpy_version_title = get_text('renpy_version_title', 'Version Ren\'Py')
-    method_label = get_text('method_label', 'Méthode :')
-    renpy_version_method = get_text('renpy_version_method', 'Analyse de script_version.txt puis fallback sur analyse binaire des .rpyc')
-    auto_choice_label = get_text('auto_choice_label', 'Choix automatique :')
-    renpy_version_choice = get_text('renpy_version_choice', 'unrpyc v1 (Ren\'Py 6/7) ou v2 (Ren\'Py 8+)')
-    compatible_python_title = get_text('compatible_python_title', 'Python Compatible')
-    v1_label = get_text('v1_label', 'v1 :')
-    python_v1_desc = get_text('python_v1_desc', 'Python 2.7 embedded pour les anciens jeux')
-    v2_label = get_text('v2_label', 'v2 :')
-    python_v2_desc = get_text('python_v2_desc', 'Python 3.11 embedded pour les jeux récents')
-    fallback_strategy_title = get_text('fallback_strategy_title', 'Stratégie Fallback')
-    fallback_strategy_desc = get_text('fallback_strategy_desc', 'Si la première tentative échoue massivement, essai automatique avec l\'autre version d\'unrpyc')
-
-    # Limitations
-    important_limitations_title = get_text('important_limitations_title', 'Limitations importantes :')
-    path_limitations_alt = get_text('path_limitations_alt', 'Aide sur les limitations de chemins')
-    path_limitations_caption = get_text('path_limitations_caption', 'Popup explicatif sur les problèmes avec les crochets dans les noms de dossiers')
-    unsupported_paths_title = get_text('unsupported_paths_title', 'Chemins non supportés')
-    unsupported_paths_desc = get_text('unsupported_paths_desc', 'Les chemins contenant des crochets [ ] ne sont pas supportés par les outils d\'extraction.')
-    problematic_examples_label = get_text('problematic_examples_label', 'Exemples problématiques :')
-    solutions_label = get_text('solutions_label', 'Solutions :')
-    solutions_desc = get_text('solutions_desc', 'Renommez le dossier ou déplacez le projet vers un chemin sans caractères spéciaux.')
-
-    # Construction RPA
-    custom_rpa_section_title = get_text('custom_rpa_section_title', 'Section Construction RPA Personnalisée')
-    rpa_build_config_alt = get_text('rpa_build_config_alt', 'Configuration construction RPA')
-    rpa_build_config_caption = get_text('rpa_build_config_caption', 'Interface de paramétrage pour créer une archive RPA personnalisée')
-    advanced_config_title = get_text('advanced_config_title', 'Configuration avancée :')
-    language_selection_title = get_text('language_selection_title', 'Sélection de langue :')
-    scan_languages_button = get_text('scan_languages_button', 'Bouton "Scanner les langues" :')
-    scan_languages_desc = get_text('scan_languages_desc', 'Détecte automatiquement les dossiers tl/ disponibles dans le projet')
-    smart_priority_label = get_text('smart_priority_label', 'Priorité intelligente :')
-    smart_priority_desc = get_text('smart_priority_desc', '"french" apparaît en premier s\'il existe, sinon tri alphabétique')
-    validation_label = get_text('validation_label', 'Validation :')
-    validation_desc = get_text('validation_desc', 'Seuls les dossiers contenant des fichiers exploitables sont listés')
-
-    # Types de fichiers
-    file_types_title = get_text('file_types_title', 'Types de fichiers inclus automatiquement :')
-    scripts_type_title = get_text('scripts_type_title', 'Scripts')
-    scripts_type_desc = get_text('scripts_type_desc', '.rpy (source), .rpyc (binaire)')
-    images_type_title = get_text('images_type_title', 'Images')
-    images_type_desc = get_text('images_type_desc', '.jpg, .png, .webp')
-    audio_type_title = get_text('audio_type_title', 'Audio')
-    audio_type_desc = get_text('audio_type_desc', '.ogg, .mp3')
-    fonts_type_title = get_text('fonts_type_title', 'Polices')
-    fonts_type_desc = get_text('fonts_type_desc', '.ttf, .otf')
-
-    # Déroulement des opérations
-    operations_flow_title = get_text('operations_flow_title', 'Déroulement des opérations')
-    extraction_in_progress_alt = get_text('extraction_in_progress_alt', 'Extraction en cours')
-    extraction_in_progress_caption = get_text('extraction_in_progress_caption', 'Interface pendant l\'extraction avec barre de progression et statut détaillé')
-    extraction_phase_title = get_text('extraction_phase_title', 'Phase d\'extraction :')
-    initialization_step = get_text('initialization_step', 'Initialisation (0-10%) :')
-    initialization_desc = get_text('initialization_desc', 'Téléchargement automatique des outils si nécessaire')
-    rpa_extraction_step = get_text('rpa_extraction_step', 'Extraction RPA (10-35%) :')
-    rpa_extraction_desc = get_text('rpa_extraction_desc', 'Décompression des archives avec rpatool')
-    version_detection_step = get_text('version_detection_step', 'Détection version (35-40%) :')
-    version_detection_desc = get_text('version_detection_desc', 'Analyse intelligente pour choisir unrpyc v1 ou v2')
-    rpyc_decompilation_step = get_text('rpyc_decompilation_step', 'Décompilation RPYC (40-85%) :')
-    rpyc_decompilation_desc = get_text('rpyc_decompilation_desc', 'Conversion des binaires en source avec fallback automatique')
-    cleanup_step = get_text('cleanup_step', 'Nettoyage (85-100%) :')
-    cleanup_desc = get_text('cleanup_desc', 'Suppression des outils temporaires et finalisation')
-
-    # Résultats et rapports
-    results_reports_title = get_text('results_reports_title', 'Résultats et rapports')
-    detailed_results_alt = get_text('detailed_results_alt', 'Popup de résultats détaillé')
-    detailed_results_caption = get_text('detailed_results_caption', 'Fenêtre de résultats après extraction avec statistiques et temps d\'exécution')
-    interactive_results_title = get_text('interactive_results_title', 'Popup de résultats interactif :')
-    interactive_results_intro = get_text('interactive_results_intro', 'À la fin de chaque opération, une fenêtre détaillée affiche :')
-    successful_extraction_title = get_text('successful_extraction_title', 'Extraction réussie')
-    successful_extraction_1 = get_text('successful_extraction_1', 'Nombre d\'archives RPA extraites')
-    successful_extraction_2 = get_text('successful_extraction_2', 'Fichiers RPYC convertis/ignorés/échoués')
-    successful_extraction_3 = get_text('successful_extraction_3', 'Temps total d\'exécution')
-    successful_extraction_4 = get_text('successful_extraction_4', 'Statistiques de fallback si applicable')
-    failure_management_title = get_text('failure_management_title', 'Gestion d\'échecs')
-    failure_management_1 = get_text('failure_management_1', 'Lien vers la méthode alternative (UnRen.bat)')
-    failure_management_2 = get_text('failure_management_2', 'Détail des erreurs rencontrées')
-    failure_management_3 = get_text('failure_management_3', 'Suggestions de résolution')
-
-    # Section Génération TL
-    generation_tl_title = get_text('generation_tl_title', 'Génération TL - Guide Détaillé')
-    generation_overview_alt = get_text('generation_overview_alt', 'Onglet Génération - Vue complète')
-    generation_overview_caption = get_text('generation_overview_caption', 'Interface complète avec configuration langue, options et polices GUI')
-    generation_purpose_title = get_text('generation_purpose_title', 'À quoi ça sert')
-    generation_purpose_intro = get_text('generation_purpose_intro', 'L\'onglet Génération est votre centre de contrôle pour créer l\'arborescence de traduction complète (dossier tl/[langue]/) avec tous les fichiers nécessaires. Il combine la génération de base avec des modules optionnels pour une expérience française optimisée.')
-    basic_config_step = get_text('basic_config_step', 'Configuration de base')
-    basic_config_desc = get_text('basic_config_desc', 'Langue cible et options générales')
-    advanced_customization_step = get_text('advanced_customization_step', 'Personnalisation avancée')
-    advanced_customization_desc = get_text('advanced_customization_desc', 'Polices GUI et modules français')
-    targeted_generation_step = get_text('targeted_generation_step', 'Génération ciblée')
-    targeted_generation_desc = get_text('targeted_generation_desc', 'Choix du niveau de traitement selon vos besoins')
-
-    # Interface utilisateur génération
-    user_interface_title = get_text('user_interface_title', 'Ce que voit l\'utilisateur')
-    basic_config_section_title = get_text('basic_config_section_title', 'Section Configuration de base :')
-    target_language_title = get_text('target_language_title', 'Langue cible avec assistance :')
-    input_field_label = get_text('input_field_label', 'Champ de saisie :')
-    input_field_desc = get_text('input_field_desc', 'Tapez le code de langue souhaité (ex: "french", "spanish")')
-    help_button_label = get_text('help_button_label', 'Bouton d\'aide "?" :')
-    help_button_desc = get_text('help_button_desc', 'Popup avec exemples de codes de langues supportés')
-    smart_autocomplete_label = get_text('smart_autocomplete_label', 'Auto-complétion intelligente :')
-    smart_autocomplete_desc = get_text('smart_autocomplete_desc', 'Synchronisation automatique avec l\'onglet Combinaison')
-
-    # Options grille
-    options_grid_title = get_text('options_grid_title', 'Grille d\'options 2x4 :')
-    integration_options_alt = get_text('integration_options_alt', 'Options d\'intégration')
-    integration_options_caption = get_text('integration_options_caption', 'Grille avec cases à cocher et boutons d\'aide alignés')
-    language_selector_option_title = get_text('language_selector_option_title', 'Sélecteur de langue')
-    checkbox_label = get_text('checkbox_label', 'Case :')
-    language_selector_checkbox = get_text('language_selector_checkbox', '"Ajouter sélecteur de langue"')
-    action_label = get_text('action_label', 'Action :')
-    language_selector_action = get_text('language_selector_action', 'Intègre automatiquement votre langue dans le menu Preferences du jeu')
-    help_label = get_text('help_label', 'Aide :')
-    language_selector_help = get_text('language_selector_help', 'Explique l\'injection intelligente dans screens.rpy')
-    common_rpy_option_title = get_text('common_rpy_option_title', 'Common.rpy français')
-    common_rpy_checkbox = get_text('common_rpy_checkbox', '"Ajouter le common.rpy"')
-    common_rpy_action = get_text('common_rpy_action', 'Interface Ren\'Py de base en français (disponible uniquement pour "french")')
-    common_rpy_help = get_text('common_rpy_help', 'Détail du contenu inclus (menus, messages système)')
-    dev_console_option_title = get_text('dev_console_option_title', 'Console développeur')
-    dev_console_checkbox = get_text('dev_console_checkbox', '"Activer la console développeur"')
-    dev_console_action = get_text('dev_console_action', 'Active config.developer et config.console pour la langue')
-    dev_console_help = get_text('dev_console_help', 'Code exact inséré et avantages pour le debug')
-    screen_rpy_option_title = get_text('screen_rpy_option_title', 'Screen.rpy français')
-    screen_rpy_checkbox = get_text('screen_rpy_checkbox', '"Ajouter le screen.rpy"')
-    screen_rpy_action = get_text('screen_rpy_action', 'Écrans d\'interface traduits (disponible uniquement pour "french")')
-    screen_rpy_help = get_text('screen_rpy_help', 'Structure et éléments visuels inclus')
-
-    # Section polices GUI
-    gui_fonts_section_title = get_text('gui_fonts_section_title', 'Section Polices GUI (facultative) :')
-    font_preview_title = get_text('font_preview_title', 'Aperçu des polices :')
-    font_preview_alt = get_text('font_preview_alt', 'Aperçu des polices')
-    font_preview_caption = get_text('font_preview_caption', 'Sélecteur avec texte de test français pour prévisualiser les polices')
-    preview_zone_desc = get_text('preview_zone_desc', 'Zone de prévisualisation avec le texte test : "Voix ambiguë d\'un cœur qui au zéphyr préfère les jattes de kiwis."')
-    font_selector_label = get_text('font_selector_label', 'Sélecteur de police :')
-    font_selector_desc = get_text('font_selector_desc', 'Dropdown avec toutes les polices système compatibles')
-    realtime_preview_label = get_text('realtime_preview_label', 'Aperçu en temps réel :')
-    realtime_preview_desc = get_text('realtime_preview_desc', 'Le texte change immédiatement selon la police sélectionnée')
-    accent_test_label = get_text('accent_test_label', 'Test d\'accents :')
-    accent_test_desc = get_text('accent_test_desc', 'Vérifie la compatibilité avec les caractères français')
-
-    # Configuration individuelle
-    individual_config_title = get_text('individual_config_title', 'Configuration individuelle (Grille 2x3) :')
-    gui_fonts_grid_alt = get_text('gui_fonts_grid_alt', 'Grille de polices GUI')
-    gui_fonts_grid_caption = get_text('gui_fonts_grid_caption', 'Configuration individuelle des 5 éléments GUI avec cases et dropdowns alignés')
-    individual_config_intro = get_text('individual_config_intro', 'Chaque élément GUI peut être configuré séparément :')
-    main_text_title = get_text('main_text_title', 'Texte principal (dialogues)')
-    main_text_desc = get_text('main_text_desc', 'Police utilisée pour tous les dialogues des personnages')
-    character_names_title = get_text('character_names_title', 'Noms des personnages')
-    character_names_desc = get_text('character_names_desc', 'Police pour l\'affichage des noms au-dessus des dialogues')
-    user_interface_element_title = get_text('user_interface_element_title', 'Interface utilisateur')
-    user_interface_element_desc = get_text('user_interface_element_desc', 'Police pour les menus, préférences et éléments d\'interface')
-    general_buttons_title = get_text('general_buttons_title', 'Boutons généraux')
-    general_buttons_desc = get_text('general_buttons_desc', 'Police pour les boutons de navigation et d\'action')
-    choice_buttons_title = get_text('choice_buttons_title', 'Boutons de choix')
-    choice_buttons_desc = get_text('choice_buttons_desc', 'Police spécifique pour les choix de dialogue du joueur')
-    rtl_option_title = get_text('rtl_option_title', 'Option RTL :')
-    rtl_option_desc = get_text('rtl_option_desc', 'Case "RTL (Lecture droite à gauche)" pour les langues comme l\'arabe, l\'hébreu, le persan.')
-
-    # Boutons d'action
-    action_buttons_title = get_text('action_buttons_title', 'Boutons d\'action')
-    generate_translations_title = get_text('generate_translations_title', 'Générer les traductions')
-    generate_translations_action = get_text('generate_translations_action', 'Génération de base + common.rpy/screen.rpy si cochés')
-    usage_label = get_text('usage_label', 'Usage :')
-    generate_translations_usage = get_text('generate_translations_usage', 'Première utilisation, génération standard')
-    apply_fonts_title = get_text('apply_fonts_title', 'Appliquer les polices')
-    apply_fonts_action = get_text('apply_fonts_action', 'Applique SEULEMENT les polices GUI sélectionnées')
-    apply_fonts_usage = get_text('apply_fonts_usage', 'Modification des polices sur un projet existant')
-    add_selector_title = get_text('add_selector_title', 'Ajouter le sélecteur')
-    add_selector_action = get_text('add_selector_action', 'Crée UNIQUEMENT le sélecteur de langue')
-    add_selector_usage = get_text('add_selector_usage', 'Ajout ponctuel sans regénération')
-    generate_all_title = get_text('generate_all_title', 'Générer + options cochées')
-    generate_all_action = get_text('generate_all_action', 'Génération complète avec TOUTES les cases cochées')
-    generate_all_usage = get_text('generate_all_usage', 'Configuration complète en une fois')
-
-    # Section Extraction Config
-    extraction_config_title = get_text('extraction_config_title', 'Extraction des Textes Oubliés - Guide Complet')
-    config_extraction_complete_alt = get_text('config_extraction_complete_alt', 'Configuration d\'extraction complète')
-    config_extraction_complete_caption = get_text('config_extraction_complete_caption', 'Interface avec sélection langue, modes de détection et exclusions configurées')
-    config_extraction_purpose_title = get_text('config_extraction_purpose_title', 'À quoi ça sert')
-    config_extraction_purpose_intro = get_text('config_extraction_purpose_intro', 'Cette fonctionnalité trouve et extrait les textes d\'interface oubliés par le SDK Ren\'Py officiel : boutons de menu, messages d\'erreur, éléments GUI, etc. Contrairement à la génération normale qui ne traite que les dialogues, l\'extraction Config analyse en profondeur tous les fichiers pour détecter les chaînes traduisibles manquées.')
-    why_necessary_title = get_text('why_necessary_title', 'Pourquoi c\'est nécessaire')
-    why_necessary_desc = get_text('why_necessary_desc', 'Le SDK officiel ne génère que les traductions des dialogues principaux. Mais les jeux contiennent aussi des textes d\'interface (menus, boutons, notifications) qui ne sont pas automatiquement détectés. Cette fonction comble cette lacune.')
-
-    # Workflow Config
-    config_workflow_title = get_text('config_workflow_title', 'Workflow en 3 étapes')
-    config_step1_title = get_text('config_step1_title', 'Configuration (Onglet 3)')
-    config_step1_desc = get_text('config_step1_desc', 'Paramétrage de l\'analyse : langue de référence, mode de détection, exclusions')
-    config_step2_title = get_text('config_step2_title', 'Analyse automatique')
-    config_step2_desc = get_text('config_step2_desc', 'Le système scanne tous les fichiers .rpy avec patterns intelligents')
-    config_step3_title = get_text('config_step3_title', 'Résultats et génération (Onglet 4)')
-    config_step3_desc = get_text('config_step3_desc', 'Visualisation par catégories, sélection manuelle et création du fichier final')
-
-    # Sélection de langue config
-    auto_language_detection_title = get_text('auto_language_detection_title', 'Détection automatique des langues :')
-    smart_scan_label = get_text('smart_scan_label', 'Scan intelligent :')
-    smart_scan_desc = get_text('smart_scan_desc', 'Le bouton "Scanner les langues" détecte automatiquement toutes les langues ayant des fichiers .rpy dans le dossier tl/')
-    french_priority_label = get_text('french_priority_label', 'Priorité française :')
-    french_priority_desc = get_text('french_priority_desc', 'Si une langue "french" existe, elle apparaît en premier dans la liste')
-    language_validation_label = get_text('language_validation_label', 'Validation :')
-    language_validation_desc = get_text('language_validation_desc', 'Seules les langues contenant effectivement des fichiers de traduction sont proposées')
-    language_role_title = get_text('language_role_title', 'Rôle de la langue sélectionnée :')
-    language_role_desc = get_text('language_role_desc', 'La langue sélectionnée sert de référence anti-doublons. L\'analyse compare les textes détectés avec ceux déjà traduits dans cette langue pour éviter les redondances.')
-
-    # Modes de détection
-    detection_modes_title = get_text('detection_modes_title', 'Modes de détection - Simple vs Optimisé')
-    detection_modes_help_alt = get_text('detection_modes_help_alt', 'Aide sur les modes de détection')
-    detection_modes_help_caption = get_text('detection_modes_help_caption', 'Popup explicatif comparant les modes Simple et Optimisé')
-    simple_mode_title = get_text('simple_mode_title', 'Mode Simple')
-    basic_patterns_label = get_text('basic_patterns_label', 'Patterns basiques uniquement :')
-    basic_patterns_desc = get_text('basic_patterns_desc', 'Character(), input(), notify()')
-    simple_advantages_label = get_text('simple_advantages_label', 'Avantages :')
-    simple_advantages_desc = get_text('simple_advantages_desc', 'Très rapide, confiance 100%, pas de faux positifs')
-    simple_disadvantages_label = get_text('simple_disadvantages_label', 'Inconvénients :')
-    simple_disadvantages_desc = get_text('simple_disadvantages_desc', 'Détection limitée, peut manquer des textes d\'interface')
-    simple_usage_label = get_text('simple_usage_label', 'Usage :')
-    simple_usage_desc = get_text('simple_usage_desc', 'Premier essai rapide, projets avec peu de textes d\'interface')
-    optimized_mode_title = get_text('optimized_mode_title', 'Mode Optimisé (Recommandé)')
-    advanced_patterns_label = get_text('advanced_patterns_label', 'Patterns avancés :')
-    advanced_patterns_desc = get_text('advanced_patterns_desc', 'Character, input, notify, textbutton, text, show text')
-    optimized_advantages_label = get_text('optimized_advantages_label', 'Avantages :')
-    optimized_advantages_desc = get_text('optimized_advantages_desc', 'Détection complète, classification intelligente')
-    optimized_disadvantages_label = get_text('optimized_disadvantages_label', 'Inconvénients :')
-    optimized_disadvantages_desc = get_text('optimized_disadvantages_desc', 'Plus lent, nécessite vérification manuelle')
-    optimized_usage_label = get_text('optimized_usage_label', 'Usage :')
-    optimized_usage_desc = get_text('optimized_usage_desc', 'Extraction exhaustive, projets avec interface complexe')
-
-    # Classification intelligente
-    smart_classification_title = get_text('smart_classification_title', 'Classification intelligente (Mode Optimisé) :')
-    auto_safe_label = get_text('auto_safe_label', 'Auto-safe :')
-    auto_safe_desc = get_text('auto_safe_desc', 'Textes avec confiance 100% (Character(), input(), notify() confirmés)')
-    textbuttons_label = get_text('textbuttons_label', 'Textbuttons :')
-    textbuttons_desc = get_text('textbuttons_desc', 'Boutons d\'interface détectés nécessitant vérification')
-    text_elements_label = get_text('text_elements_label', 'Text elements :')
-    text_elements_desc = get_text('text_elements_desc', 'Éléments texte divers à examiner manuellement')
-
-    # Système d'exclusions
-    exclusions_system_title = get_text('exclusions_system_title', 'Système d\'exclusions intelligent')
-    auto_exclusions_title = get_text('auto_exclusions_title', 'Exclusions automatiques (système) :')
-    auto_exclusions_intro = get_text('auto_exclusions_intro', 'Le système exclut automatiquement ses propres fichiers générés :')
-    lang_select_file_desc = get_text('lang_select_file_desc', 'Sélecteur de langue généré')
-    console_file_desc = get_text('console_file_desc', 'Console développeur générée')
-    recommended_exclusions_title = get_text('recommended_exclusions_title', 'Exclusions recommandées (configurables) :')
-    system_files_desc = get_text('system_files_desc', 'Fichiers système Ren\'Py')
-    base_config_desc = get_text('base_config_desc', 'Configuration de base')
-    backup_temp_files_desc = get_text('backup_temp_files_desc', 'Fichiers de sauvegarde ou temporaires du projet')
-    usage_tip_title = get_text('usage_tip_title', 'Conseil d\'utilisation')
-    usage_tip_desc = get_text('usage_tip_desc', 'Commencez avec les exclusions par défaut, puis ajustez selon vos besoins. Un fichier exclu ne sera jamais analysé, ce qui accélère le processus.')
-
-    # Exclusions automatiques avancées
-    advanced_auto_exclusions_title = get_text('advanced_auto_exclusions_title', 'Exclusions automatiques avancées')
-    advanced_auto_exclusions_intro = get_text('advanced_auto_exclusions_intro', 'Le système reconnaît automatiquement et exclut :')
-    isolated_variables_label = get_text('isolated_variables_label', 'Variables isolées :')
-    isolated_variables_desc = get_text('isolated_variables_desc', '[player_name] seul sur une ligne')
-    technical_tags_label = get_text('technical_tags_label', 'Balises techniques :')
-    technical_tags_desc = get_text('technical_tags_desc', '{fast}, {nw}, etc.')
-    expressive_punctuation_label = get_text('expressive_punctuation_label', 'Ponctuations expressives :')
-    expressive_punctuation_desc = get_text('expressive_punctuation_desc', '!!!, ???, ...')
-    short_onomatopoeia_label = get_text('short_onomatopoeia_label', 'Onomatopées courtes :')
-    short_onomatopoeia_desc = get_text('short_onomatopoeia_desc', 'Ah!, Oh?, Mmh')
-
-    # Interface des résultats
-    results_interface_title = get_text('results_interface_title', 'Interface des résultats - 3 catégories')
-    results_categories_alt = get_text('results_categories_alt', 'Interface des résultats par catégories')
-    results_categories_caption = get_text('results_categories_caption', 'Affichage en 3 colonnes avec scrollbars individuelles et statistiques détaillées')
-    visual_organization_title = get_text('visual_organization_title', 'Organisation visuelle :')
-    visual_organization_intro = get_text('visual_organization_intro', 'L\'interface des résultats s\'organise en 3 colonnes fixes avec scroll individuel pour optimiser l\'espace et la lisibilité :')
-    auto_safe_column_title = get_text('auto_safe_column_title', 'Auto-safe (Gauche)')
-    content_label = get_text('content_label', 'Contenu :')
-    auto_safe_content = get_text('auto_safe_content', 'Textes à confiance 100%')
-    default_selection_label = get_text('default_selection_label', 'Sélection par défaut :')
-    auto_safe_selection = get_text('auto_safe_selection', 'Tous cochés')
-    recommended_action_label = get_text('recommended_action_label', 'Action recommandée :')
-    auto_safe_action = get_text('auto_safe_action', 'Extraction automatique sans vérification')
-    textbuttons_column_title = get_text('textbuttons_column_title', 'Textbuttons (Centre)')
-    textbuttons_content = get_text('textbuttons_content', 'Boutons d\'interface détectés')
-    textbuttons_selection = get_text('textbuttons_selection', 'Non cochés')
-    textbuttons_action = get_text('textbuttons_action', 'Vérification manuelle conseillée')
-    text_elements_column_title = get_text('text_elements_column_title', 'Text Elements (Droite)')
-    text_elements_content = get_text('text_elements_content', 'Éléments texte divers')
-    text_elements_selection = get_text('text_elements_selection', 'Non cochés')
-    text_elements_action = get_text('text_elements_action', 'Examen individuel nécessaire')
-
-    # Fonctionnalités d'interaction
-    interaction_features_title = get_text('interaction_features_title', 'Fonctionnalités d\'interaction :')
-    selection_workflow_alt = get_text('selection_workflow_alt', 'Workflow de sélection')
-    selection_workflow_caption = get_text('selection_workflow_caption', 'Démonstration des cases à cocher et boutons de sélection par section')
-    section_selection_label = get_text('section_selection_label', 'Sélection par section :')
-    section_selection_desc = get_text('section_selection_desc', 'Bouton "Tout cocher/décocher" dans chaque colonne')
-    global_selection_label = get_text('global_selection_label', 'Sélection globale :')
-    global_selection_desc = get_text('global_selection_desc', 'Boutons "Tout sélectionner" et "Tout désélectionner"')
-    independent_scroll_label = get_text('independent_scroll_label', 'Scroll indépendant :')
-    independent_scroll_desc = get_text('independent_scroll_desc', 'Chaque colonne a sa propre barre de défilement')
-    wheel_support_label = get_text('wheel_support_label', 'Support molette :')
-    wheel_support_desc = get_text('wheel_support_desc', 'Défilement à la molette dans chaque section')
-    two_column_display_label = get_text('two_column_display_label', 'Affichage 2 colonnes :')
-    two_column_display_desc = get_text('two_column_display_desc', 'Textes organisés en 2 colonnes dans chaque section pour optimiser l\'espace')
-
-    # Statistiques d'analyse
-    analysis_statistics_title = get_text('analysis_statistics_title', 'Statistiques d\'analyse')
-    complete_statistics_alt = get_text('complete_statistics_alt', 'Statistiques complètes')
-    complete_statistics_caption = get_text('complete_statistics_caption', 'Section statistiques avec métriques détaillées et indicateurs de performance')
-    displayed_metrics_title = get_text('displayed_metrics_title', 'Métriques affichées :')
-    basic_analysis_title = get_text('basic_analysis_title', 'Analyse de base')
-    analyzed_files_count = get_text('analyzed_files_count', 'Nombre de fichiers analysés')
-    existing_texts_count = get_text('existing_texts_count', 'Textes existants dans tl/ (anti-doublon)')
-    detection_mode_used = get_text('detection_mode_used', 'Mode de détection utilisé')
-    detection_results_title = get_text('detection_results_title', 'Résultats de détection')
-    new_texts_total = get_text('new_texts_total', 'Total de nouveaux textes détectés')
-    category_distribution = get_text('category_distribution', 'Répartition par catégorie')
-    global_confidence_level = get_text('global_confidence_level', 'Niveau de confiance global')
-
-    # Génération du fichier final
-    final_file_generation_title = get_text('final_file_generation_title', 'Génération du fichier final')
-    smart_save_dialog_alt = get_text('smart_save_dialog_alt', 'Dialogue de sauvegarde intelligent')
-    smart_save_dialog_caption = get_text('smart_save_dialog_caption', 'Fenêtre de sauvegarde avec suggestion automatique du dossier tl/langue')
-    smart_suggestions_title = get_text('smart_suggestions_title', 'Suggestions intelligentes :')
-    auto_folder_label = get_text('auto_folder_label', 'Dossier automatique :')
-    auto_folder_desc = get_text('auto_folder_desc', 'Le système propose le dossier tl/[langue] de la langue analysée')
-    default_name_label = get_text('default_name_label', 'Nom par défaut :')
-    default_name_desc = get_text('default_name_desc', '"textes_manquants.rpy" pour éviter les conflits')
-    complete_metadata_label = get_text('complete_metadata_label', 'Métadonnées complètes :')
-    complete_metadata_desc = get_text('complete_metadata_desc', 'Le fichier généré contient des commentaires avec contexte (projet, langue, mode, date)')
-
-    # Contenu du fichier généré
-    generated_file_content_title = get_text('generated_file_content_title', 'Contenu du fichier généré :')
-    generated_file_structure_intro = get_text('generated_file_structure_intro', 'Structure du fichier .rpy créé :')
-    informative_header_label = get_text('informative_header_label', 'En-tête informatif :')
-    informative_header_desc = get_text('informative_header_desc', 'Date, projet, langue analysée, mode de détection')
-    translate_block_label = get_text('translate_block_label', 'Bloc translate :')
-    old_new_pairs_label = get_text('old_new_pairs_label', 'Paires old/new :')
-    old_new_pairs_desc = get_text('old_new_pairs_desc', 'Chaque texte sélectionné avec structure old "texte"\\nnew "texte"')
-    alphabetical_sort_label = get_text('alphabetical_sort_label', 'Tri alphabétique :')
-    alphabetical_sort_desc = get_text('alphabetical_sort_desc', 'Textes organisés par ordre alphabétique pour faciliter l\'édition')
-
-    # Conseils d'utilisation pratique
-    practical_usage_tips_title = get_text('practical_usage_tips_title', 'Conseils d\'utilisation pratique')
-    recommended_workflow_title = get_text('recommended_workflow_title', 'Workflow recommandé :')
-    first_analysis_step = get_text('first_analysis_step', 'Première analyse :')
-    first_analysis_desc = get_text('first_analysis_desc', 'Mode Optimisé avec exclusions par défaut')
-    auto_safe_verification_step = get_text('auto_safe_verification_step', 'Vérification Auto-safe :')
-    auto_safe_verification_desc = get_text('auto_safe_verification_desc', 'Extraire directement les textes verts (confiance 100%)')
-    manual_examination_step = get_text('manual_examination_step', 'Examen manuel :')
-    manual_examination_desc = get_text('manual_examination_desc', 'Parcourir les Textbuttons et Text elements')
-    targeted_selection_step = get_text('targeted_selection_step', 'Sélection ciblée :')
-    targeted_selection_desc = get_text('targeted_selection_desc', 'Ne cocher que les textes réellement utiles')
-    generation_step = get_text('generation_step', 'Génération :')
-    generation_desc = get_text('generation_desc', 'Créer le fichier dans le bon dossier tl/')
-    testing_step = get_text('testing_step', 'Test :')
-    testing_desc = get_text('testing_desc', 'Vérifier l\'intégration dans le jeu')
-
-    # Astuces pour optimiser
-    optimization_tips_title = get_text('optimization_tips_title', 'Astuces pour optimiser les résultats :')
-    efficient_anti_duplicate_label = get_text('efficient_anti_duplicate_label', 'Anti-doublon efficace :')
-    efficient_anti_duplicate_desc = get_text('efficient_anti_duplicate_desc', 'Assurez-vous d\'avoir une langue de référence bien remplie')
-    custom_exclusions_label = get_text('custom_exclusions_label', 'Exclusions personnalisées :')
-    custom_exclusions_desc = get_text('custom_exclusions_desc', 'Ajoutez vos fichiers de test ou temporaires')
-    progressive_mode_label = get_text('progressive_mode_label', 'Mode progressif :')
-    progressive_mode_desc = get_text('progressive_mode_desc', 'Commencez par Simple, puis Optimisé si pas assez de résultats')
-    contextual_verification_label = get_text('contextual_verification_label', 'Vérification contextuelle :')
-    contextual_verification_desc = get_text('contextual_verification_desc', 'Les textes détectés peuvent nécessiter un contexte pour être traduits correctement')
-
-    # Section Combinaison
-    combination_division_title = get_text('combination_division_title', 'Combinaison & Division')
-    combination_interface_alt = get_text('combination_interface_alt', 'Générateur - Combinaison')
-    combination_interface_caption = get_text('combination_interface_caption', 'Interface de combinaison et division de fichiers')
-    combination_objective_title = get_text('combination_objective_title', 'Objectif')
-    combination_objective_desc = get_text('combination_objective_desc', 'Fusionne plusieurs fichiers de traduction en un seul ou divise un fichier volumineux pour faciliter la traduction collaborative.')
-    typical_use_cases_title = get_text('typical_use_cases_title', 'Cas d\'usage typiques')
-    collaborative_translation_label = get_text('collaborative_translation_label', 'Traduction collaborative :')
-    collaborative_translation_desc = get_text('collaborative_translation_desc', 'Divisez un gros fichier pour plusieurs traducteurs')
-    optimization_label = get_text('optimization_label', 'Optimisation :')
-    optimization_desc = get_text('optimization_desc', 'Combinez de petits fichiers en un seul pour simplifier')
-    organization_label = get_text('organization_label', 'Organisation :')
-    organization_desc = get_text('organization_desc', 'Restructurez vos fichiers selon vos préférences')
-
-    # Fonctionnalités combinaison
-    combination_features_title = get_text('combination_features_title', 'Fonctionnalités')
-    smart_combination_title = get_text('smart_combination_title', 'Combinaison intelligente')
-    smart_combination_desc = get_text('smart_combination_desc', 'Fusionne en préservant la structure des traductions')
-    advantage_label = get_text('advantage_label', 'Avantage :')
-    smart_combination_advantage = get_text('smart_combination_advantage', 'Aucune perte de données ou de formatage')
-    balanced_division_title = get_text('balanced_division_title', 'Division équilibrée')
-    balanced_division_desc = get_text('balanced_division_desc', 'Répartit les traductions de manière logique')
-    balanced_division_method = get_text('balanced_division_method', 'Par nombre de lignes ou par sections')
-    custom_exclusions_title = get_text('custom_exclusions_title', 'Exclusions personnalisées')
-    flexibility_label = get_text('flexibility_label', 'Flexibilité :')
-    custom_exclusions_flexibility = get_text('custom_exclusions_flexibility', 'Contrôle total sur le processus')
-    preview_title = get_text('preview_title', 'Prévisualisation')
-    preview_desc = get_text('preview_desc', 'Aperçu du résultat avant exécution')
-    security_label = get_text('security_label', 'Sécurité :')
-    preview_security = get_text('preview_security', 'Validation avant traitement')
-
-    # Modes de fonctionnement
-    operation_modes_title = get_text('operation_modes_title', 'Modes de fonctionnement')
-    combination_mode_title = get_text('combination_mode_title', 'Mode Combinaison :')
-    selection_step = get_text('selection_step', 'Sélection :')
-    combination_selection_desc = get_text('combination_selection_desc', 'Choisissez les fichiers à fusionner')
-    order_step = get_text('order_step', 'Ordre :')
-    combination_order_desc = get_text('combination_order_desc', 'Définissez l\'ordre de fusion')
-    output_name_step = get_text('output_name_step', 'Nom de sortie :')
-    combination_output_name_desc = get_text('combination_output_name_desc', 'Spécifiez le nom du fichier résultat')
-    validation_step = get_text('validation_step', 'Validation :')
-    combination_validation_desc = get_text('combination_validation_desc', 'Vérifiez la prévisualisation')
-    execution_step = get_text('execution_step', 'Exécution :')
-    combination_execution_desc = get_text('combination_execution_desc', 'Lancez la combinaison')
-
-    division_mode_title = get_text('division_mode_title', 'Mode Division :')
-    source_file_step = get_text('source_file_step', 'Fichier source :')
-    division_source_file_desc = get_text('division_source_file_desc', 'Sélectionnez le fichier à diviser')
-    division_criteria_step = get_text('division_criteria_step', 'Critère de division :')
-    division_criteria_desc = get_text('division_criteria_desc', 'Par taille, nombre de blocs, ou sections')
-    prefix_step = get_text('prefix_step', 'Préfixe :')
-    division_prefix_desc = get_text('division_prefix_desc', 'Nom de base pour les fichiers résultants')
-    preview_step = get_text('preview_step', 'Aperçu :')
-    division_preview_desc = get_text('division_preview_desc', 'Visualisez la répartition')
-    division_step = get_text('division_step', 'Division :')
-    division_execution_desc = get_text('division_execution_desc', 'Créez les fichiers')
-
-    # Bonnes pratiques
-    best_practices_title = get_text('best_practices_title', 'Bonnes pratiques')
-    important_precautions_title = get_text('important_precautions_title', 'Précautions importantes')
-    auto_backup_label = get_text('auto_backup_label', 'Sauvegarde automatique :')
-    auto_backup_desc = get_text('auto_backup_desc', 'Les fichiers originaux sont sauvegardés')
-    test_after_operation_label = get_text('test_after_operation_label', 'Test après opération :')
-    test_after_operation_desc = get_text('test_after_operation_desc', 'Vérifiez que le jeu fonctionne toujours')
-    naming_consistency_label = get_text('naming_consistency_label', 'Cohérence des noms :')
-    naming_consistency_desc = get_text('naming_consistency_desc', 'Utilisez une convention de nommage claire')
-    documentation_label = get_text('documentation_label', 'Documentation :')
-    documentation_desc = get_text('documentation_desc', 'Notez les changements effectués')
-    no_partial_recovery_label = get_text('no_partial_recovery_label', 'Pas de récupération partielle :')
-    no_partial_recovery_desc = get_text('no_partial_recovery_desc', 'Le nettoyage est global par fichier')
-
-    recommended_workflow_combination_title = get_text('recommended_workflow_combination_title', 'Workflow recommandé :')
-    planning_label = get_text('planning_label', 'Planification :')
-    planning_desc = get_text('planning_desc', 'Réfléchissez à l\'organisation souhaitée')
-    copy_tests_label = get_text('copy_tests_label', 'Tests sur copies :')
-    copy_tests_desc = get_text('copy_tests_desc', 'Essayez d\'abord sur des fichiers de test')
-    validation_coherence_label = get_text('validation_coherence_label', 'Validation :')
-    validation_coherence_desc = get_text('validation_coherence_desc', 'Utilisez le vérificateur de cohérence après')
-    change_documentation_label = get_text('change_documentation_label', 'Documentation :')
-    change_documentation_desc = get_text('change_documentation_desc', 'Gardez une trace des modifications')
-# Navigation rapide - maintenir l'indentation
+    
     return f"""
-        <div class="quick-nav-section" style="background: var(--card-bg); padding: 20px; margin-bottom: 30px; border-radius: 8px; border-left: 4px solid #4a90e2;">
-            <h3>🧭 {quick_nav_title}</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
-                <a href="#gen-extraction-rpa" class="nav-card-tab4" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">📦 {nav_extraction_rpa}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_extraction_rpa_desc}</div>
+        <!-- NAVIGATION RAPIDE -->
+        <div class="quick-nav-section" style="background: var(--card-bg); padding: 20px; margin-bottom: 30px; border-radius: 8px; border-left: 4px solid var(--accent);">
+            <h3 style="margin-top: 0;">🧭 Navigation rapide</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-top: 15px;">
+                <a href="#gen-extraction-rpa" class="nav-card" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; cursor: pointer;">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📦 Extraction & Compilation RPA</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Décompiler les archives du jeu</div>
                 </a>
-                <a href="#gen-generation" class="nav-card-tab4" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">⚙️ {nav_generation}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_generation_desc}</div>
+                <a href="#gen-generation-tl" class="nav-card" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; cursor: pointer;">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">⚙️ Génération TL</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Créer l'arborescence de traduction</div>
                 </a>
-                <a href="#gen-extraction-config" class="nav-card-tab4" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">🔧 {nav_extraction_config}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_extraction_config_desc}</div>
+                <a href="#gen-extraction-config" class="nav-card" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; cursor: pointer;">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🔧 Extraction Config</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Trouver les textes oubliés par le SDK</div>
                 </a>
-                <a href="#gen-combinaison" class="nav-card-tab4" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px;">🔄 {nav_combinaison}</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">{nav_combinaison_desc}</div>
+                <a href="#gen-combinaison" class="nav-card" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; cursor: pointer;">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🔄 Combinaison & Division</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Fusionner ou diviser des fichiers</div>
                 </a>
             </div>
         </div>
         
         <style>
-        .nav-card-tab4:hover {{
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important;
-            border-color: #4a90e2 !important;
-            background: linear-gradient(135deg, var(--button-bg) 0%, rgba(74, 144, 226, 0.1) 100%) !important;
+        .quick-nav-section a:hover {{
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+            border-color: var(--accent);
         }}
         </style>
         
-        <div class="section" id="generator-window">
-        <h2>🎮 {title}</h2>
-        <p>{intro}</p>
-        
-        <h3>📋 {overview_title}</h3>
-        <ul>
-            <li><strong>📦 {extraction_compilation_tab}</strong> - {extraction_compilation_desc}</li>
-            <li><strong>⚙️ {generation_tab}</strong> - {generation_desc}</li>
-            <li><strong>🔧 {extraction_config_tab}</strong> - {extraction_config_desc}</li>
-            <li><strong>📊 {extraction_results_tab}</strong> - {extraction_results_desc}</li>
-            <li><strong>🔄 {combination_tab}</strong> - {combination_desc}</li>
+        <!-- VUE D'ENSEMBLE -->
+        <div class="section" id="gen-vue-ensemble">
+            <h2>🎮 Générateur Ren'Py - Vue d'ensemble</h2>
+            
+            <p>Le <strong>Générateur Ren'Py</strong> est une interface séparée qui te permet de gérer l'infrastructure complète de ton projet de traduction. Contrairement à l'<strong>Interface Principale</strong> qui traite les fichiers un par un, le Générateur orchestre les opérations globales.</p>
+            
+            <h3>📍 Comment accéder au Générateur</h3>
+            
+            {generator._get_image_html("04_generateur", "001", "Accès au Générateur depuis l'interface principale", "Bouton Générateur Ren'Py dans l'onglet PRÉPARATION")}
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent); margin: 20px 0;">
+                <h4 style="margin-top: 0;">🚀 Accès rapide</h4>
+                <ol style="margin-bottom: 0;">
+                    <li>Dans l'interface principale, clique sur l'onglet <strong>PRÉPARATION</strong> (bleu)</li>
+                    <li>Clique sur le bouton <strong>🎮 Générateur Ren'Py</strong></li>
+                    <li>Une nouvelle fenêtre s'ouvre avec le Générateur</li>
+                </ol>
+            </div>
+            
+            <h3>🖥️ Vue d'ensemble de l'interface</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Rpa", "001", "Vue d'ensemble du Générateur", "Fenêtre complète du Générateur avec l'onglet Extraction RPA actif")}
+            
+            <p>L'interface du Générateur s'organise en <strong>5 onglets principaux</strong> accessibles en haut de la fenêtre. Chaque onglet regroupe des fonctionnalités spécifiques pour gérer différents aspects de ton projet de traduction.</p>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 15px 0;">
+                <p style="margin: 0;"><strong>ℹ️ À noter :</strong> L'onglet <strong>📊 Extraction Résultats</strong> n'apparaît que si tu as effectué une analyse d'extraction Config. Pas d'inquiétude s'il est absent au premier lancement !</p>
+            </div>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">📋 Les 5 sous-onglets principaux</h3>
+                <ul style="margin-bottom: 0;">
+                    <li><strong>📦 Extraction & Compilation RPA</strong> - Décompile les archives .rpa et .rpyc du jeu pour accéder aux scripts source</li>
+                    <li><strong>⚙️ Génération TL</strong> - Crée l'arborescence tl/[langue]/ avec modules français (sélecteur de langue, console, polices)</li>
+                    <li><strong>🔧 Extraction Config</strong> - Trouve des textes non détectés par le SDK officiel avec patterns intégrés et regex personnalisés</li>
+                    <li><strong>📊 Extraction Résultats</strong> - Visualise et sélectionne les textes détectés par catégories (Auto-safe, Textbuttons, Text Elements)</li>
+                    <li><strong>🔄 Combinaison & Division</strong> - Fusionne plusieurs fichiers de traduction en un seul, puis redivise le fichier combiné nouvellement traduit</li>
         </ul>
-        
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 15px 0;">
-            <h4>📄 {reorganization_title}</h4>
-            <p>{reorganization_desc}</p>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(74, 144, 226, 0.1) 100%); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success); margin: 20px 0;">
+                <h4 style="margin-top: 0;">💡 Bon à savoir</h4>
+                <p style="margin-bottom: 0;">Le Générateur nécessite qu'un projet Ren'Py soit sélectionné dans la section <strong>"Configuration du projet"</strong> de l'interface principale. Toutes les opérations s'appliquent directement au projet configuré.</p>
         </div>
     </div>
 
+        <!-- SECTION 1 : EXTRACTION & COMPILATION RPA -->
     <div class="section" id="gen-extraction-rpa">
-        <h2>📦 {extraction_rpa_title}</h2>
-        {generator._get_image_html("02_interface_generateur", "001", language, extraction_interface_alt, extraction_interface_caption)}
-        
-        <h3>🎯 {extraction_purpose_title}</h3>
-        <p>{extraction_purpose_intro}</p>
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>📂 {extraction_rpa_rpyc_title}</h5>
-                <p>{extraction_rpa_rpyc_desc}</p>
+            <h2>📦 Extraction RPA/RPYC & Compilation RPA</h2>
+            
+            <h3>🎯 À quoi ça sert ?</h3>
+            <p>Cet onglet orchestre l'extraction complète des archives du jeu pour accéder aux fichiers source (.rpy). Il gère deux opérations cruciales :</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                    <h4 style="margin-top: 0;">📂 Extraction RPA/RPYC</h4>
+                    <p style="margin-bottom: 0;">Extrait les archives .rpa et décompile les fichiers .rpyc pour obtenir les scripts source .rpy lisibles et modifiables.</p>
             </div>
             
-            <div class="feature-card">
-                <h5>🛠️ {custom_rpa_build_title}</h5>
-                <p>{custom_rpa_build_desc}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                    <h4 style="margin-top: 0;">🛠️ Construction RPA Personnalisée</h4>
+                    <p style="margin-bottom: 0;">Recompile tes traductions en archives .rpa optimisées pour distribution ou test dans le jeu original.</p>
             </div>
         </div>
         
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 15px 0;">
-            <h4>⚠️ {prerequisite_title}</h4>
-            <p>{prerequisite_desc}</p>
+            <h3>❓ Aide sur les limitations de chemins</h3>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--error); margin: 20px 0;">
+                <h4 style="margin-top: 0;">🚫 Chemins non supportés</h4>
+                <p>Les chemins contenant des <strong>crochets [ ]</strong> ne sont pas supportés par les modules Python des outils d'extraction (unrpyc). Cette limitation s'applique à <strong>l'extraction RPA/RPYC</strong> et à la <strong>construction RPA personnalisée</strong>.</p>
+                <p><strong>Exemples problématiques :</strong></p>
+                <ul>
+                    <li>❌ <code>C:/Jeux/Mon Jeu [v1.0]/</code></li>
+                    <li>❌ <code>D:/[Backup] Projets/MonProjet/</code></li>
+                    <li>❌ <code>/home/user/Jeux [Steam]/MonJeu/</code></li>
+        </ul>
+                <p style="margin-bottom: 0;"><strong>💡 Solutions :</strong> Renommez le dossier pour retirer les crochets (<code>Mon Jeu v1.0</code>) ou déplacez le projet vers un chemin sans caractères spéciaux (<code>C:/Projets/MonJeu/</code>).</p>
         </div>
         
-        <h3>🔧 {workflow_title}</h3>
-        <ol>
-            <li><strong>{auto_preparation_label}</strong> {auto_preparation_desc}</li>
-            <li><strong>{smart_extraction_label}</strong> {smart_extraction_desc}</li>
-            <li><strong>{cleanup_finalization_label}</strong> {cleanup_finalization_desc}</li>
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
+                <p style="margin: 0;"><strong>ℹ️ Aide intégrée :</strong> Un bouton <strong>"⚠ Aide chemins"</strong> en haut à droite de l'onglet affiche ces limitations directement dans l'application si nécessaire.</p>
+            </div>
+            
+            <h3>📂 Section Extraction RPA/RPYC</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Rpa", "002", "Onglet Extraction RPA - Vue complète", "Interface d'extraction avec projet configuré et options disponibles")}
+            
+            <h4>🔧 Workflow en 3 phases</h4>
+            <ol>
+                <li><strong>Préparation automatique :</strong> Téléchargement et configuration des outils (unrpyc v1/v2, rpatool, Python embedded)</li>
+                <li><strong>Extraction intelligente :</strong> Détection automatique de la version Ren'Py et choix de la méthode optimale</li>
+                <li><strong>Nettoyage et finalisation :</strong> Suppression des outils temporaires et options de post-traitement</li>
         </ol>
         
-        <h3>📂 {extraction_section_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "002", language, advanced_extraction_alt, advanced_extraction_caption)}
-        
-        <h4>{main_options_title}</h4>
+            <h4>Options principales :</h4>
         <ul>
-            <li><strong>{delete_rpa_option}</strong> {delete_rpa_desc}</li>
-            <li><strong>{start_extraction_button}</strong> {start_extraction_desc}</li>
-            <li><strong>{path_help_button}</strong> {path_help_desc}</li>
+                <li><strong>☑️ Supprimer les fichiers RPA après extraction :</strong> Économise l'espace disque en supprimant automatiquement les archives sources après extraction réussie</li>
+                <li><strong>🚀 Démarrer l'extraction :</strong> Lance le processus complet avec détection automatique des outils nécessaires</li>
         </ul>
         
-        <h4>{smart_detection_title}</h4>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>🔍 {renpy_version_title}</h5>
-                <p><strong>{method_label}</strong> {renpy_version_method}</p>
-                <p><strong>{auto_choice_label}</strong> {renpy_version_choice}</p>
+            <h4>🧠 Détection intelligente automatique</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🔍 Version Ren'Py</h5>
+                    <p><strong>Méthode :</strong> Analyse de script_version.txt puis fallback sur analyse binaire des .rpyc</p>
+                    <p style="margin-bottom: 0;"><strong>Choix automatique :</strong> unrpyc v1 (Ren'Py 6/7) ou v2 (Ren'Py 8+)</p>
             </div>
             
-            <div class="feature-card">
-                <h5>🐍 {compatible_python_title}</h5>
-                <p><strong>{v1_label}</strong> {python_v1_desc}</p>
-                <p><strong>{v2_label}</strong> {python_v2_desc}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🐍 Python Compatible</h5>
+                    <p><strong>v1 :</strong> Python 2.7 embedded pour les anciens jeux</p>
+                    <p style="margin-bottom: 0;"><strong>v2 :</strong> Python 3.11 embedded pour les jeux récents</p>
             </div>
             
-            <div class="feature-card">
-                <h5>🔄 {fallback_strategy_title}</h5>
-                <p>{fallback_strategy_desc}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🔄 Stratégie Fallback</h5>
+                    <p style="margin-bottom: 0;">Si la première tentative échoue massivement, essai automatique avec l'autre version d'unrpyc</p>
             </div>
         </div>
         
-        <h4>{important_limitations_title}</h4>
-        {generator._get_image_html("02_interface_generateur", "003", language, path_limitations_alt, path_limitations_caption)}
-        
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 15px 0;">
-            <h4>⚠️ {unsupported_paths_title}</h4>
-            <p>{unsupported_paths_desc}</p>
-            <p><strong>{problematic_examples_label}</strong></p>
+            <h3>🛠️ Section Construction RPA Personnalisée</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Rpa", "003", "Configuration construction RPA", "Interface de paramétrage pour créer une archive RPA personnalisée")}
+            
+            <h4>Configuration avancée :</h4>
+            
+            <h5>🌐 Sélection de langue :</h5>
             <ul>
-                <li>❌ C:/Jeux/Mon Jeu [v1.0]/</li>
-                <li>❌ D:/[Backup] Projets/MonProjet/</li>
-            </ul>
-            <p><strong>{solutions_label}</strong> {solutions_desc}</p>
-        </div>
-        
-        <h3>🛠️ {custom_rpa_section_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "005", language, rpa_build_config_alt, rpa_build_config_caption)}
-        
-        <h4>{advanced_config_title}</h4>
-        
-        <h5>{language_selection_title}</h5>
-        <ul>
-            <li><strong>{scan_languages_button}</strong> {scan_languages_desc}</li>
-            <li><strong>{smart_priority_label}</strong> {smart_priority_desc}</li>
-            <li><strong>{validation_label}</strong> {validation_desc}</li>
+                <li><strong>🔍 Bouton "Scanner les langues" :</strong> Détecte automatiquement les dossiers tl/ disponibles dans le projet</li>
+                <li><strong>⭐ Priorité intelligente :</strong> "french" apparaît en premier s'il existe, sinon tri alphabétique</li>
+                <li><strong>✅ Validation :</strong> Seuls les dossiers contenant des fichiers exploitables sont listés</li>
         </ul>
         
-        <h5>{file_types_title}</h5>
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>📄 {scripts_type_title}</h5>
-                <p>{scripts_type_desc}</p>
+            <h5>📦 Types de fichiers inclus automatiquement :</h5>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5em; margin-bottom: 5px;">📄</div>
+                    <strong>Scripts</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">.rpy, .rpyc</div>
             </div>
-            
-            <div class="feature-card">
-                <h5>🖼️ {images_type_title}</h5>
-                <p>{images_type_desc}</p>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5em; margin-bottom: 5px;">🖼️</div>
+                    <strong>Images</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">.jpg, .png, .webp</div>
             </div>
-            
-            <div class="feature-card">
-                <h5>📊 {audio_type_title}</h5>
-                <p>{audio_type_desc}</p>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5em; margin-bottom: 5px;">🎵</div>
+                    <strong>Audio</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">.ogg, .mp3</div>
             </div>
-            
-            <div class="feature-card">
-                <h5>🔤 {fonts_type_title}</h5>
-                <p>{fonts_type_desc}</p>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; text-align: center;">
+                    <div style="font-size: 1.5em; margin-bottom: 5px;">🔤</div>
+                    <strong>Polices</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8;">.ttf, .otf</div>
             </div>
         </div>
         
-        <h3>⚡ {operations_flow_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "004", language, extraction_in_progress_alt, extraction_in_progress_caption)}
-        
-        <h4>{extraction_phase_title}</h4>
-        <ol>
-            <li><strong>{initialization_step}</strong> {initialization_desc}</li>
-            <li><strong>{rpa_extraction_step}</strong> {rpa_extraction_desc}</li>
-            <li><strong>{version_detection_step}</strong> {version_detection_desc}</li>
-            <li><strong>{rpyc_decompilation_step}</strong> {rpyc_decompilation_desc}</li>
-            <li><strong>{cleanup_step}</strong> {cleanup_desc}</li>
+            <h3>⚡ Déroulement des opérations</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Rpa", "004", "Extraction en cours", "Interface pendant l'extraction avec barre de progression et statut détaillé")}
+            
+            <h4>Phase d'extraction :</h4>
+            <ol>
+                <li><strong>Initialisation (0-10%) :</strong> Téléchargement automatique des outils si nécessaire</li>
+                <li><strong>Extraction RPA (10-35%) :</strong> Décompression des archives avec rpatool</li>
+                <li><strong>Détection version (35-40%) :</strong> Analyse intelligente pour choisir unrpyc v1 ou v2</li>
+                <li><strong>Décompilation RPYC (40-85%) :</strong> Conversion des binaires en source avec fallback automatique</li>
+                <li><strong>Nettoyage (85-100%) :</strong> Suppression des outils temporaires et finalisation</li>
         </ol>
         
-        <h3>📊 {results_reports_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "006", language, detailed_results_alt, detailed_results_caption)}
+            <h3>📊 Résultats et rapports</h3>
         
-        <h4>{interactive_results_title}</h4>
-        <p>{interactive_results_intro}</p>
+            {generator._get_image_html("04_generateur/Extraction_Rpa", "005", "Popup de résultats détaillé", "Fenêtre de résultats après extraction avec statistiques et temps d'exécution")}
+            
+            <p>Si le mode <strong>"Popup détaillé"</strong> est activé, une fenêtre affiche à la fin de l'opération :</p>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 20px 0;">
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-                <h5>✅ {successful_extraction_title}</h5>
-                <ul>
-                    <li>{successful_extraction_1}</li>
-                    <li>{successful_extraction_2}</li>
-                    <li>{successful_extraction_3}</li>
-                    <li>{successful_extraction_4}</li>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success);">
+                    <h5 style="margin-top: 0;">✅ Extraction réussie</h5>
+                    <ul style="margin-bottom: 0;">
+                        <li>Nombre d'archives RPA extraites</li>
+                        <li>Fichiers RPYC convertis/ignorés/échoués</li>
+                        <li>Temps total d'exécution</li>
+                        <li>Statistiques de fallback si applicable</li>
                 </ul>
             </div>
             
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #ef4444;">
-                <h5>❌ {failure_management_title}</h5>
-                <ul>
-                    <li>{failure_management_1}</li>
-                    <li>{failure_management_2}</li>
-                    <li>{failure_management_3}</li>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--error);">
+                    <h5 style="margin-top: 0;">❌ Gestion d'échecs</h5>
+                    <ul style="margin-bottom: 0;">
+                        <li>Lien vers la méthode alternative (UnRen.bat)</li>
+                        <li>Détail des erreurs rencontrées</li>
+                        <li>Suggestions de résolution</li>
                 </ul>
             </div>
         </div>
     </div>
 
-    <div class="section" id="gen-generation">
-        <h2>⚙️ {generation_tl_title}</h2>
-        {generator._get_image_html("02_interface_generateur", "007", language, generation_overview_alt, generation_overview_caption)}
-        
-        <h3>🎯 {generation_purpose_title}</h3>
-        <p>{generation_purpose_intro}</p>
-        
-        <div class="workflow-step" data-step="1">
-            <h4>{basic_config_step}</h4>
-            <p>{basic_config_desc}</p>
+        <!-- SECTION 2 : GÉNÉRATION TL -->
+        <div class="section" id="gen-generation-tl">
+            <h2>⚙️ Génération TL - Guide Détaillé</h2>
+            
+            {generator._get_image_html("04_generateur/Generation", "001", "Onglet Génération - Vue complète", "Interface complète avec configuration langue, options et polices GUI")}
+            
+            <h3>🎯 À quoi ça sert ?</h3>
+            <p>L'onglet <strong>Génération</strong> est ton centre de contrôle pour créer l'arborescence de traduction complète (dossier <code>tl/[langue]/</code>) avec tous les fichiers nécessaires. Il combine la génération de base avec des modules optionnels selon tes besoins.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--border-color);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">⚙️</div>
+                    <strong>Configuration de base</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">Langue cible et options générales</div>
+        </div>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--border-color);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">🎨</div>
+                    <strong>Personnalisation avancée</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">Polices GUI et modules français</div>
+                </div>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--border-color);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">🚀</div>
+                    <strong>Génération ciblée</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">Choix du niveau de traitement selon tes besoins</div>
+                </div>
         </div>
         
-        <div class="workflow-step" data-step="2">
-            <h4>{advanced_customization_step}</h4>
-            <p>{advanced_customization_desc}</p>
-        </div>
-        
-        <div class="workflow-step" data-step="3">
-            <h4>{targeted_generation_step}</h4>
-            <p>{targeted_generation_desc}</p>
-        </div>
-        
-        <h3>🖥️ {user_interface_title}</h3>
-        
-        <h4>{basic_config_section_title}</h4>
-        
-        <h5>🌐 {target_language_title}</h5>
-        <ul>
-            <li><strong>{input_field_label}</strong> {input_field_desc}</li>
-            <li><strong>{help_button_label}</strong> {help_button_desc}</li>
-            <li><strong>{smart_autocomplete_label}</strong> {smart_autocomplete_desc}</li>
+            <h3>🖥️ Configuration de base</h3>
+            
+            <h4>🌐 Langue cible avec assistance</h4>
+            <ul>
+                <li><strong>📝 Champ de saisie :</strong> Tapez le nom de dossier souhaité (ex: "french", "spanish", "german", ou n'importe quel nom personnalisé)</li>
+                <li><strong>❓ Bouton d'aide :</strong> Affiche des exemples de noms de dossiers couramment utilisés</li>
+                <li><strong>🔄 Auto-complétion intelligente :</strong> Synchronisation automatique avec l'onglet Combinaison</li>
         </ul>
         
-        <h5>📋 {options_grid_title}</h5>
-        {generator._get_image_html("02_interface_generateur", "010", language, integration_options_alt, integration_options_caption)}
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>🔧 {language_selector_option_title}</h5>
-                <p><strong>{checkbox_label}</strong> {language_selector_checkbox}</p>
-                <p><strong>{action_label}</strong> {language_selector_action}</p>
-                <p><strong>{help_label}</strong> {language_selector_help}</p>
+            <h4>📋 Options d'intégration</h4>
+            
+            {generator._get_image_html("04_generateur/Generation", "002", "Options d'intégration", "Grille avec cases à cocher et boutons d'aide alignés")}
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">⚙️ Bouton Options Screen Preferences</h5>
+                    <p><strong>🎯 Fonction :</strong> Ouvre une fenêtre de configuration avancée</p>
+                    <p><strong>💡 Permet de :</strong> Sélecteur de langue, contrôle taille texte, personnalisation textbox</p>
+                    <p style="margin-bottom: 0;"><strong>❓ Aide :</strong> Détaille toutes les options configurables (voir section suivante)</p>
             </div>
             
-            <div class="feature-card">
-                <h5>📚 {common_rpy_option_title}</h5>
-                <p><strong>{checkbox_label}</strong> {common_rpy_checkbox}</p>
-                <p><strong>{action_label}</strong> {common_rpy_action}</p>
-                <p><strong>{help_label}</strong> {common_rpy_help}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">📚 Common.rpy français</h5>
+                    <p><strong>☑️ Case :</strong> "Ajouter le common.rpy"</p>
+                    <p><strong>💡 Action :</strong> Interface Ren'Py de base en français (disponible uniquement pour "french")</p>
+                    <p style="margin-bottom: 0;"><strong>❓ Aide :</strong> Détail du contenu inclus (menus, messages système)</p>
             </div>
             
-            <div class="feature-card">
-                <h5>🛠 {dev_console_option_title}</h5>
-                <p><strong>{checkbox_label}</strong> {dev_console_checkbox}</p>
-                <p><strong>{action_label}</strong> {dev_console_action}</p>
-                <p><strong>{help_label}</strong> {dev_console_help}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🖼️ Screen.rpy français</h5>
+                    <p><strong>☑️ Case :</strong> "Ajouter le screen.rpy"</p>
+                    <p><strong>💡 Action :</strong> Écrans d'interface traduits (disponible uniquement pour "french")</p>
+                    <p style="margin-bottom: 0;"><strong>❓ Aide :</strong> Structure et éléments visuels inclus</p>
             </div>
             
-            <div class="feature-card">
-                <h5>🖼 {screen_rpy_option_title}</h5>
-                <p><strong>{checkbox_label}</strong> {screen_rpy_checkbox}</p>
-                <p><strong>{action_label}</strong> {screen_rpy_action}</p>
-                <p><strong>{help_label}</strong> {screen_rpy_help}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🛠️ Console développeur</h5>
+                    <p><strong>☑️ Case :</strong> "Activer la console développeur"</p>
+                    <p><strong>💡 Action :</strong> Active config.developer et config.console pour la langue</p>
+                    <p style="margin-bottom: 0;"><strong>❓ Aide :</strong> Code exact inséré et avantages pour le debug</p>
             </div>
         </div>
         
-        <h4>{gui_fonts_section_title}</h4>
+            <h4>⚙️ Options Screen Preferences (fenêtre modale)</h4>
+            
+            {generator._get_image_html("04_generateur/Generation", "005", "Fenêtre modale Options Screen Preferences", "Fenêtre de configuration avancée des fonctionnalités à intégrer au jeu")}
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
+                <p>En cliquant sur le bouton <strong>"Options screen preferences"</strong>, une fenêtre modale s'ouvre pour configurer des fonctionnalités avancées à intégrer dans le menu Préférences du jeu :</p>
+                <ul>
+                    <li><strong>📺 Sélecteur de langue :</strong> Permet au joueur de changer la langue depuis le menu Préférences</li>
+                    <li><strong>📏 Contrôle de taille du texte :</strong> Système intelligent (contrôle précis dialogue ou global selon le screen say)</li>
+                    <li><strong>🎨 Personnalisation textbox :</strong> Opacité (0-100%), décalage vertical, épaisseur du contour</li>
+        </ul>
+                <p><strong>💡 Note :</strong> Le système génère automatiquement le module 99_Z_ScreenPreferences.rpy selon les cases cochées dans cette fenêtre.</p>
+                <p style="margin-bottom: 0;"><strong>⚠️ Avertissement :</strong> Ce système est optimisé pour un menu Préférences classique. Le résultat sur un menu personnalisé (custom) est incertain et peut nécessiter des ajustements manuels.</p>
+            </div>
         
-        <h5>👀 {font_preview_title}</h5>
-        {generator._get_image_html("02_interface_generateur", "009", language, font_preview_alt, font_preview_caption)}
-        
-        <p>{preview_zone_desc}</p>
-        <ul>
-            <li><strong>{font_selector_label}</strong> {font_selector_desc}</li>
-            <li><strong>{realtime_preview_label}</strong> {realtime_preview_desc}</li>
-            <li><strong>{accent_test_label}</strong> {accent_test_desc}</li>
+            <h3>🎨 Section Polices GUI (facultative)</h3>
+            
+            <h4>👀 Aperçu des polices</h4>
+            
+            {generator._get_image_html("04_generateur/Generation", "003", "Aperçu des polices", "Sélecteur avec texte de test français pour prévisualiser les polices")}
+            
+            <p>Zone de prévisualisation avec le texte test : <em>"Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."</em></p>
+            <ul>
+                <li><strong>📋 Sélecteur de police :</strong> Liste déroulante avec toutes les polices système compatibles</li>
+                <li><strong>➕ Polices personnalisées :</strong> Tu peux ajouter tes propres polices au projet si nécessaire</li>
+                <li><strong>⚡ Aperçu en temps réel :</strong> Le texte change immédiatement selon la police sélectionnée</li>
+                <li><strong>🔤 Test d'accents :</strong> Les polices par défaut supportent les accents français. Pour les polices personnalisées, ce test permet de vérifier leur compatibilité</li>
         </ul>
         
-        <h5>🎛 {individual_config_title}</h5>
-        {generator._get_image_html("02_interface_generateur", "008", language, gui_fonts_grid_alt, gui_fonts_grid_caption)}
-        
-        <p>{individual_config_intro}</p>
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>💬 {main_text_title}</h5>
-                <p>{main_text_desc}</p>
-            </div>
+            <h4>🎛️ Configuration individuelle</h4>
             
-            <div class="feature-card">
-                <h5>👤 {character_names_title}</h5>
-                <p>{character_names_desc}</p>
-            </div>
+            {generator._get_image_html("04_generateur/Generation", "004", "Grille de polices GUI", "Configuration individuelle des 5 éléments GUI avec cases et listes déroulantes alignées")}
             
-            <div class="feature-card">
-                <h5>🖥 {user_interface_element_title}</h5>
-                <p>{user_interface_element_desc}</p>
-            </div>
+            <p>Chaque élément GUI peut être configuré séparément :</p>
             
-            <div class="feature-card">
-                <h5>📘 {general_buttons_title}</h5>
-                <p>{general_buttons_desc}</p>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent);">
+                    <h5 style="margin: 0 0 8px 0;">💬 Texte principal</h5>
+                    <p style="margin: 0; font-size: 0.9em;">Police utilisée pour tous les dialogues des personnages</p>
             </div>
-            
-            <div class="feature-card">
-                <h5>🎯 {choice_buttons_title}</h5>
-                <p>{choice_buttons_desc}</p>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent);">
+                    <h5 style="margin: 0 0 8px 0;">👤 Noms des personnages</h5>
+                    <p style="margin: 0; font-size: 0.9em;">Police pour l'affichage des noms au-dessus des dialogues</p>
+            </div>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent);">
+                    <h5 style="margin: 0 0 8px 0;">🖥️ Interface utilisateur</h5>
+                    <p style="margin: 0; font-size: 0.9em;">Police pour les menus, préférences et éléments d'interface</p>
+            </div>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent);">
+                    <h5 style="margin: 0 0 8px 0;">📘 Boutons généraux</h5>
+                    <p style="margin: 0; font-size: 0.9em;">Police pour les boutons de navigation et d'action</p>
+                </div>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent);">
+                    <h5 style="margin: 0 0 8px 0;">🎯 Boutons de choix</h5>
+                    <p style="margin: 0; font-size: 0.9em;">Police spécifique pour les choix de dialogue du joueur</p>
             </div>
         </div>
         
-        <h5>🔄 {rtl_option_title}</h5>
-        <p>{rtl_option_desc}</p>
-        
-        <h3>⚡ {action_buttons_title}</h3>
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>🔧 {generate_translations_title}</h5>
-                <p><strong>{action_label}</strong> {generate_translations_action}</p>
-                <p><strong>{usage_label}</strong> {generate_translations_usage}</p>
+            <h3>⚡ Boutons d'action</h3>
+            
+            {generator._get_image_html("04_generateur/Generation", "006", "Focus sur les boutons d'action", "Boutons de génération avec leurs fonctions spécifiques")}
+            
+            <p>Les boutons d'action sont organisés en <strong>2 lignes</strong> pour une navigation claire :</p>
+            
+            <h4>📋 Ligne 1 : Génération complète</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border: 2px solid var(--border-color);">
+                    <h5 style="margin-top: 0; color: var(--accent);">⚡ Générer + options cochées</h5>
+                    <p><strong>Action :</strong> Génération complète prenant en compte toutes les cases cochées (principales et facultatives)</p>
+                    <p style="margin-bottom: 0;"><strong>Usage :</strong> Configuration complète en une fois avec tous les modules sélectionnés</p>
             </div>
             
-            <div class="feature-card">
-                <h5>🎨 {apply_fonts_title}</h5>
-                <p><strong>{action_label}</strong> {apply_fonts_action}</p>
-                <p><strong>{usage_label}</strong> {apply_fonts_usage}</p>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border: 2px solid var(--border-color);">
+                    <h5 style="margin-top: 0; color: var(--accent);">🔧 Générer les traductions</h5>
+                    <p><strong>Action :</strong> Génération classique uniquement (fichiers de base Ren'Py)</p>
+                    <p style="margin-bottom: 0;"><strong>Usage :</strong> Première utilisation, génération standard sans modules supplémentaires</p>
+            </div>
             </div>
             
-            <div class="feature-card">
-                <h5>🔗 {add_selector_title}</h5>
-                <p><strong>{action_label}</strong> {add_selector_action}</p>
-                <p><strong>{usage_label}</strong> {add_selector_usage}</p>
+            <h4>🛠️ Ligne 2 : Modules spécifiques</h4>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 2px solid var(--border-color);">
+                    <h5 style="margin-top: 0; color: var(--accent);">🎨 Appliquer polices</h5>
+                    <p style="margin-bottom: 0; font-size: 0.9em;">Applique SEULEMENT les polices GUI sélectionnées</p>
             </div>
             
-            <div class="feature-card">
-                <h5>⚡ {generate_all_title}</h5>
-                <p><strong>{action_label}</strong> {generate_all_action}</p>
-                <p><strong>{usage_label}</strong> {generate_all_usage}</p>
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 2px solid var(--border-color);">
+                    <h5 style="margin-top: 0; color: var(--accent);">⚙️ Créer Screen Pref</h5>
+                    <p style="margin-bottom: 0; font-size: 0.9em;">Génère 99_Z_ScreenPreferences.rpy</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 2px solid var(--border-color);">
+                    <h5 style="margin-top: 0; color: var(--accent);">🛠️ Console dev</h5>
+                    <p style="margin-bottom: 0; font-size: 0.9em;">Active la console développeur</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 2px solid var(--border-color);">
+                    <h5 style="margin-top: 0; color: var(--accent);">🔄 Réinitialiser</h5>
+                    <p style="margin-bottom: 0; font-size: 0.9em;">Réinitialise toutes les options</p>
             </div>
         </div>
+        
+            <h3>🎬 Démonstration en action</h3>
+            
+            {generator._get_image_html("04_generateur/Generation", "007", "Génération en cours", "Animation montrant l'exécution de la génération avec progression")}
+            
+            <p>Ce GIF animé montre le déroulement complet d'une opération de génération, avec la progression en temps réel et les différentes étapes du processus.</p>
     </div>
 
+        <!-- SECTION 3 : EXTRACTION CONFIG -->
     <div class="section" id="gen-extraction-config">
-        <h2>🔧 {extraction_config_title}</h2>
-        {generator._get_image_html("02_interface_generateur", "012", language, config_extraction_complete_alt, config_extraction_complete_caption)}
-        
-        <h3>🎯 {config_extraction_purpose_title}</h3>
-        <p>{config_extraction_purpose_intro}</p>
-        
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #f39c12; margin: 15px 0;">
-            <h4>💡 {why_necessary_title}</h4>
-            <p>{why_necessary_desc}</p>
-        </div>
-        
-        <h3>🖥️ {config_workflow_title}</h3>
-        
-        <div class="workflow-step" data-step="1">
-            <h4>{config_step1_title}</h4>
-            <p>{config_step1_desc}</p>
-        </div>
-        
-        <div class="workflow-step" data-step="2">
-            <h4>{config_step2_title}</h4>
-            <p>{config_step2_desc}</p>
-        </div>
-        
-        <div class="workflow-step" data-step="3">
-            <h4>{config_step3_title}</h4>
-            <p>{config_step3_desc}</p>
-        </div>
-        
-        <h3>🌐 {language_selection_title}</h3>
-        
-        <h4>{auto_language_detection_title}</h4>
-        <ul>
-            <li><strong>{smart_scan_label}</strong> {smart_scan_desc}</li>
-            <li><strong>{french_priority_label}</strong> {french_priority_desc}</li>
-            <li><strong>{language_validation_label}</strong> {language_validation_desc}</li>
-        </ul>
-        
-        <h4>{language_role_title}</h4>
-        <p>{language_role_desc}</p>
-        
-        <h3>🎯 {detection_modes_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "014", language, detection_modes_help_alt, detection_modes_help_caption)}
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>🔹 {simple_mode_title}</h5>
-                <p><strong>{basic_patterns_label}</strong> {basic_patterns_desc}</p>
-                <p><strong>{simple_advantages_label}</strong> {simple_advantages_desc}</p>
-                <p><strong>{simple_disadvantages_label}</strong> {simple_disadvantages_desc}</p>
-                <p><strong>{simple_usage_label}</strong> {simple_usage_desc}</p>
-            </div>
+            <h2>🔧 Extraction des Textes Oubliés - Guide Complet</h2>
             
-            <div class="feature-card">
-                <h5>🔸 {optimized_mode_title}</h5>
-                <p><strong>{advanced_patterns_label}</strong> {advanced_patterns_desc}</p>
-                <p><strong>{optimized_advantages_label}</strong> {optimized_advantages_desc}</p>
-                <p><strong>{optimized_disadvantages_label}</strong> {optimized_disadvantages_desc}</p>
-                <p><strong>{optimized_usage_label}</strong> {optimized_usage_desc}</p>
-            </div>
+            {generator._get_image_html("04_generateur/Extraction_Plus", "001", "Aperçu de l'onglet Extraction Config", "Vue complète de l'interface avec toutes les sections configurables")}
+            
+            <h3>🎯 À quoi ça sert ?</h3>
+            <p>Cette fonctionnalité trouve et extrait <strong>des textes non détectés par le SDK Ren'Py officiel</strong>. Grâce à des patterns de détection personnalisables (textbuttons, input, notify, etc.), elle analyse en profondeur tous les fichiers pour identifier les chaînes traduisibles manquées.</p>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning); margin: 20px 0;">
+                <h5 style="margin-top: 0;">⚠️ Important à savoir</h5>
+                <p style="margin-bottom: 0;">Ce système n'est pas parfait et ne détecte pas tous les textes. Il s'agit d'une aide précieuse mais qui nécessite une vérification manuelle des résultats pour garantir leur pertinence.</p>
         </div>
         
-        <h4>{smart_classification_title}</h4>
-        <ul>
-            <li><strong>{auto_safe_label}</strong> {auto_safe_desc}</li>
-            <li><strong>{textbuttons_label}</strong> {textbuttons_desc}</li>
-            <li><strong>{text_elements_label}</strong> {text_elements_desc}</li>
-        </ul>
-        
-        <h3>🚫 {exclusions_system_title}</h3>
-        
-        <h4>{auto_exclusions_title}</h4>
-        <p>{auto_exclusions_intro}</p>
-        <ul>
-            <li><code>99_Z_LangSelect.rpy</code> - {lang_select_file_desc}</li>
-            <li><code>99_Z_Console.rpy</code> - {console_file_desc}</li>
-        </ul>
-        
-        <h4>{recommended_exclusions_title}</h4>
-        <ul>
-            <li><code>common.rpy, screens.rpy</code> - {system_files_desc}</li>
-            <li><code>gui.rpy, options.rpy</code> - {base_config_desc}</li>
-            <li>{backup_temp_files_desc}</li>
-        </ul>
-        
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 15px 0;">
-            <h4>💡 {usage_tip_title}</h4>
-            <p>{usage_tip_desc}</p>
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
+                <h4 style="margin-top: 0;">💡 Pourquoi c'est nécessaire</h4>
+                <p style="margin-bottom: 0;">Le SDK officiel ne génère que les traductions des <strong>dialogues principaux, des choix</strong> et des éléments marqués avec <code>_()</code> ou <code>__()</code>. Mais les jeux contiennent aussi de nombreux autres textes (textbuttons, input, notify, variables avec tooltips, etc.) qui ne sont pas automatiquement détectés. Cette fonction comble cette lacune.</p>
         </div>
         
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #4a90e2; margin: 15px 0;">
-            <h4>💡 {advanced_auto_exclusions_title}</h4>
-            <p>{advanced_auto_exclusions_intro}</p>
+            <h3>🔄 Workflow en 2 étapes</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center; border-top: 4px solid var(--accent);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">1️⃣</div>
+                    <strong>Configuration et Analyse (Onglet Extraction Config)</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">Paramétrage de l'analyse : langue de référence, patterns de détection (textbutton, input, notify, etc.), patterns personnalisés, exclusions puis lancement</div>
+        </div>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center; border-top: 4px solid var(--accent);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">2️⃣</div>
+                    <strong>Résultats et génération (Onglet Extraction Résultats)</strong>
+                    <div style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">Visualisation par catégories, sélection manuelle et création du fichier final</div>
+                </div>
+        </div>
+        
+            <h3>🌐 Sélection de langue</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "002", "Sélection de la langue à analyser", "Menu déroulant avec détection automatique des langues disponibles")}
+            
+            <h4>🔍 Détection automatique des langues</h4>
             <ul>
-                <li><strong>{isolated_variables_label}</strong> {isolated_variables_desc}</li>
-                <li><strong>{technical_tags_label}</strong> {technical_tags_desc}</li>
-                <li><strong>{expressive_punctuation_label}</strong> {expressive_punctuation_desc}</li>
-                <li><strong>{short_onomatopoeia_label}</strong> {short_onomatopoeia_desc}</li>
+                <li><strong>🔎 Scan intelligent :</strong> Le bouton "Scanner les langues" détecte automatiquement toutes les langues ayant des fichiers .rpy dans le dossier <code>tl/</code></li>
+                <li><strong>⭐ Priorité française :</strong> Si une langue "french" existe, elle apparaît en premier dans la liste</li>
+                <li><strong>✅ Validation :</strong> Seules les langues contenant effectivement des fichiers de traduction sont proposées</li>
+        </ul>
+        
+            <h4>🎯 Rôle de la langue sélectionnée</h4>
+            <p>La langue sélectionnée sert de <strong>référence anti-doublons</strong>. L'analyse compare les textes détectés avec ceux déjà traduits dans cette langue pour éviter les redondances.</p>
+            
+            <h3>🎯 Système de détection avancé</h3>
+            
+            <p>Le système utilise un <strong>ensemble de patterns de détection</strong> pour identifier les textes traduisibles dans ton projet.</p>
+            
+            <div style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); padding: 20px; border-radius: 8px; border: 2px solid var(--success); margin: 20px 0;">
+                <h4 style="margin-top: 0; color: var(--success);">🔸 Patterns de détection intégrés</h4>
+                <p><strong>✨ Types de patterns détectés :</strong></p>
+                <ul>
+                    <li><strong>character :</strong> Définitions de personnages (Character(), DynamicCharacter())</li>
+                    <li><strong>input :</strong> Saisies utilisateur (renpy.input(), Input())</li>
+                    <li><strong>notify :</strong> Notifications à l'écran (notify(), renpy.notify())</li>
+                    <li><strong>textbutton :</strong> Boutons d'interface interactifs</li>
+                    <li><strong>text :</strong> Éléments texte divers (show text, text parameters)</li>
+                    <li><strong>+ Patterns personnalisés :</strong> Tes propres regex pour cas spécifiques</li>
+        </ul>
+                <p style="margin-bottom: 0;"><strong>📋 Résultat :</strong> Détection complète et classification intelligente en 3 catégories</p>
+        </div>
+        
+            <h4>📊 Classification intelligente des résultats</h4>
+            <ul>
+                <li><strong>🟢 Auto-safe :</strong> Textes avec confiance 100% (Character(), input(), notify() confirmés) + patterns personnalisés</li>
+                <li><strong>🟡 Textbuttons :</strong> Boutons d'interface détectés nécessitant vérification</li>
+                <li><strong>🟡 Text elements :</strong> Éléments texte divers à examiner manuellement</li>
+        </ul>
+        
+            <h3>🚫 Système d'exclusions intelligent</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "003", "Configuration des fichiers à exclure", "Interface de gestion des exclusions avec liste éditable et exclusions par défaut")}
+        
+            <h4>🔒 Exclusions automatiques (système)</h4>
+            <p>Le système exclut automatiquement ses propres fichiers générés :</p>
+        <ul>
+                <li><code>99_Z_ScreenPreferences.rpy</code> - Sélecteur de langue et options Screen Preferences générés</li>
+                <li><code>99_Z_Console.rpy</code> - Console développeur générée</li>
+                <li><code>99_Z_FontSystem.rpy</code> - Système de polices GUI généré</li>
+        </ul>
+        
+            <h4>📋 Exclusions recommandées (configurables)</h4>
+            <ul>
+                <li><code>common.rpy</code> - Fichier système Ren'Py (exclu par défaut utilisateur)</li>
+                <li><code>screens.rpy, gui.rpy, options.rpy</code> - Fichiers de configuration de base</li>
+                <li>Fichiers de sauvegarde ou temporaires du projet</li>
+        </ul>
+        
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success); margin: 20px 0;">
+                <h5 style="margin-top: 0;">💡 Conseil d'utilisation</h5>
+                <p style="margin-bottom: 0;">Commence avec les exclusions par défaut, puis ajuste selon tes besoins. Un fichier exclu ne sera jamais analysé.</p>
+        </div>
+        
+            <h4>🛡️ Exclusions automatiques avancées</h4>
+            <p>Le système reconnaît automatiquement et exclut :</p>
+            <ul>
+                <li><strong>Variables isolées :</strong> <code>[player_name]</code> seul sur une ligne</li>
+                <li><strong>Balises techniques :</strong> <code>{{fast}}</code>, <code>{{nw}}</code>, etc.</li>
+                <li><strong>Ponctuations expressives :</strong> !!!, ???, ...</li>
+                <li><strong>Onomatopées courtes :</strong> Ah!, Oh?, Mmh</li>
             </ul>
+            
+            <h3>🔧 Patterns Regex Personnalisés - Interface Regex101-like</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "004", "Treeview des Regex personnalisés", "Liste des patterns avec état activé/désactivé, boutons d'action et exemple intégré")}
+            
+            <h4>🎯 À quoi ça sert ?</h4>
+            <p>Les <strong>Patterns Regex Personnalisés</strong> te permettent de définir tes propres expressions régulières pour détecter des textes spécifiques dans tes fichiers Ren'Py. Chaque groupe de capture <code>()</code> crée un bloc old/new séparé dans les résultats.</p>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "005", "Fenêtre modale Pattern Regex", "Interface complète avec coloration syntaxique, zone de test et feedback temps réel")}
+            
+            
+            <div style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); padding: 20px; border-radius: 8px; border: 2px solid var(--success); margin: 20px 0;">
+                <h4 style="margin-top: 0; color: var(--success);">✨ Interface Regex101-like</h4>
+                <p><strong>🎨 Coloration syntaxique :</strong> Groupes, métacaractères, quantificateurs colorés en temps réel</p>
+                <p><strong>🔍 Surbrillance des correspondances :</strong> Feedback visuel immédiat dans la zone de test</p>
+                <p><strong>✅ Validation instantanée :</strong> Vérification de la syntaxe regex pendant la saisie</p>
+                <p><strong>📊 Formatage des résultats :</strong> Affichage structuré des groupes capturés avec indentation</p>
+                <p style="margin-bottom: 0;"><strong>💾 Sauvegarde persistante :</strong> Patterns et textes de test conservés entre les sessions</p>
+            </div>
+            
+            <h4>🚀 Workflow simplifié</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-top: 4px solid var(--accent);">
+                    <h5 style="margin-top: 0;">➕ Ajouter</h5>
+                    <p><strong>Action :</strong> Ouvre la fenêtre complètement vierge</p>
+                    <p style="margin-bottom: 0;"><strong>Usage :</strong> Créer un nouveau pattern depuis zéro</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-top: 4px solid var(--success);">
+                    <h5 style="margin-top: 0;">📚 Exemple intégré</h5>
+                    <p><strong>Action :</strong> "Exemple Regex" toujours présent dans la liste</p>
+                    <p style="margin-bottom: 0;"><strong>Usage :</strong> Cliquer sur la regex d'exemple puis sur "Modifier" pour comprendre le fonctionnement</p>
+            </div>
         </div>
-    </div>
+        
+            <h4>🎯 Exemple pratique</h4>
+            <p><strong>Pattern :</strong> <code>"QID_[^"]+\"\\s*:\\s*\\[\\s*"([^"]+)",\\s*"([^"]+)".*\\["hint",\\s*"([^"]+)"</code></p>
+            <p><strong>Flags :</strong> <code>gms</code> (global, multiligne, dotall)</p>
+            <p><strong>Résultat :</strong> 3 groupes → 3 blocs old/new dans les résultats</p>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
+                <h5 style="margin-top: 0;">💡 Conseil d'utilisation</h5>
+                <p style="margin-bottom: 0;">Commence par modifier l'exemple intégré pour comprendre le système, puis crée tes propres patterns selon tes besoins spécifiques.</p>
+            </div>
+            
+            <h3>🚀 Lancement de l'analyse</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "007", "Focus zone lancement analyse", "Interface de démarrage de l'analyse avec options et boutons d'action")}
+            
+            <h3>📊 Onglet Extraction Résultats - Visualisation et Sélection</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "008", "Aperçu de l'onglet Extraction Résultats", "Vue complète avec les 3 catégories, statistiques et boutons d'action")}
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
+                <h5 style="margin-top: 0;">ℹ️ À noter</h5>
+                <p style="margin-bottom: 0;">Cet onglet n'apparaît qu'après avoir effectué une analyse d'extraction Config. Il regroupe tous les résultats détectés pour une sélection précise avant génération.</p>
+            </div>
+            
+            <h3>📈 Statistiques d'analyse</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "009", "Focus sur les statistiques", "Métriques détaillées avec fichiers analysés, textes existants et résultats de détection")}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                    <h5 style="margin-top: 0;">📊 Analyse de base</h5>
+                    <ul style="margin-bottom: 0;">
+                        <li>Nombre de fichiers analysés</li>
+                        <li>Textes existants dans tl/ (anti-doublon)</li>
+                </ul>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success);">
+                    <h5 style="margin-top: 0;">🎯 Résultats de détection</h5>
+                    <ul style="margin-bottom: 0;">
+                        <li>Total de nouveaux textes détectés</li>
+                </ul>
+            </div>
+        </div>
+        
+            <h4>📐 Organisation visuelle en colonnes</h4>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "010", "Focus sur les 3 catégories principales", "Colonnes avec boutons Tout Cocher/Décocher, cases cochées/décochées et barres de scroll")}
+            
+            <p>L'interface des résultats s'organise en <strong>3 colonnes fixes</strong> avec scroll individuel pour optimiser l'espace et la lisibilité :</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-top: 4px solid var(--success);">
+                    <h5 style="margin-top: 0; color: var(--success);">🟢 Auto-safe</h5>
+                    <p><strong>Contenu :</strong> Textes à confiance 100% + patterns personnalisés</p>
+                    <p><strong>Sélection par défaut :</strong> Tous cochés</p>
+                    <p style="margin-bottom: 0;"><strong>Action recommandée :</strong> Extraction automatique sans vérification</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-top: 4px solid var(--warning);">
+                    <h5 style="margin-top: 0; color: var(--warning);">🟡 Textbuttons</h5>
+                    <p><strong>Contenu :</strong> Boutons d'interface détectés</p>
+                    <p><strong>Sélection par défaut :</strong> Non cochés</p>
+                    <p style="margin-bottom: 0;"><strong>Action recommandée :</strong> Vérification manuelle conseillée</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-top: 4px solid var(--warning);">
+                    <h5 style="margin-top: 0; color: var(--warning);">🟡 Text Elements</h5>
+                    <p><strong>Contenu :</strong> Éléments texte divers</p>
+                    <p><strong>Sélection par défaut :</strong> Non cochés</p>
+                    <p style="margin-bottom: 0;"><strong>Action recommandée :</strong> Examen individuel nécessaire</p>
+            </div>
+        </div>
+        
+            <h4>🎮 Fonctionnalités d'interaction</h4>
+            
+            <ul>
+                <li><strong>✅ Sélection par section :</strong> Bouton "Tout cocher/décocher" dans chaque colonne</li>
+                <li><strong>📜 Scroll indépendant :</strong> Chaque colonne a sa propre barre de défilement</li>
+                <li><strong>🖱️ Support molette :</strong> Défilement à la molette dans chaque section</li>
+                <li><strong>📊 Affichage 2 colonnes :</strong> Textes organisés en 2 colonnes dans chaque section pour optimiser l'espace</li>
+        </ul>
+        
+            <h3>⚡ Boutons d'action</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "011", "Focus sur les boutons d'action", "Boutons de génération du fichier final avec options de sélection globale")}
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success);">
+                    <h5 style="margin-top: 0;">✅ Tout sélectionner</h5>
+                    <p style="margin-bottom: 0;"><strong>Action :</strong> Coche toutes les cases de toutes les catégories</p>
+            </div>
+                
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning);">
+                    <h5 style="margin-top: 0;">❌ Tout désélectionner</h5>
+                    <p style="margin-bottom: 0;"><strong>Action :</strong> Décoche toutes les cases de toutes les catégories</p>
+        </div>
+        
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                    <h5 style="margin-top: 0;">💾 Générer le fichier</h5>
+                    <p style="margin-bottom: 0;"><strong>Action :</strong> Crée le fichier .rpy avec tous les textes sélectionnés</p>
+                </div>
+            </div>
+            
+            <h3>💾 Génération du fichier final</h3>
+            
+            {generator._get_image_html("04_generateur/Extraction_Plus", "012", "Dialogue de sauvegarde intelligent", "Fenêtre de sauvegarde avec suggestion automatique du dossier tl/langue")}
+            
+            <h4>🎯 Suggestions intelligentes</h4>
+            <ul>
+                <li><strong>📁 Dossier automatique :</strong> Le système propose le dossier <code>tl/[langue]</code> de la langue analysée</li>
+                <li><strong>📄 Nom par défaut :</strong> "textes_manquants.rpy" (modifiable selon tes besoins)</li>
+                <li><strong>📋 Métadonnées complètes :</strong> Le fichier généré contient des commentaires avec contexte (projet, langue, date)</li>
+        </ul>
+        
+            <h4>📦 Contenu du fichier généré</h4>
+            <p>Structure du fichier .rpy créé :</p>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
+                <h5 style="margin-top: 0;">📄 Exemple de fichier généré</h5>
+                <pre style="background: rgba(0,0,0,0.1); padding: 12px; border-radius: 6px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.9em;"><code># Date de génération: 12/10/2025 à 14:30:45
+# Fichier d'extraction généré par RenExtract
+# Projet: Game_Name
 
-    <div class="section" id="gen-extraction-resultats">
-        <h3>📊 {results_interface_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "013", language, results_categories_alt, results_categories_caption)}
-        
-        <h4>{visual_organization_title}</h4>
-        <p>{visual_organization_intro}</p>
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>🟢 {auto_safe_column_title}</h5>
-                <p><strong>{content_label}</strong> {auto_safe_content}</p>
-                <p><strong>{default_selection_label}</strong> {auto_safe_selection}</p>
-                <p><strong>{recommended_action_label}</strong> {auto_safe_action}</p>
+translate &lt;Langue&gt; strings:
+
+    old "Hello world"
+    new "Hello world"
+    
+    old "Start game"
+    new "Start game"</code></pre>
             </div>
             
-            <div class="feature-card">
-                <h5>🟡 {textbuttons_column_title}</h5>
-                <p><strong>{content_label}</strong> {textbuttons_content}</p>
-                <p><strong>{default_selection_label}</strong> {textbuttons_selection}</p>
-                <p><strong>{recommended_action_label}</strong> {textbuttons_action}</p>
-            </div>
+            <p><strong>🔄 Paires old/new :</strong> Chaque texte sélectionné génère une paire avec <code>old</code> et <code>new</code> identiques (à traduire manuellement)</p>
+            <p><strong>🔡 Tri alphabétique :</strong> Les textes sont organisés par ordre alphabétique pour faciliter l'édition</p>
+        
+            <h3>💡 Conseils d'utilisation pratique</h3>
             
-            <div class="feature-card">
-                <h5>🟡 {text_elements_column_title}</h5>
-                <p><strong>{content_label}</strong> {text_elements_content}</p>
-                <p><strong>{default_selection_label}</strong> {text_elements_selection}</p>
-                <p><strong>{recommended_action_label}</strong> {text_elements_action}</p>
-            </div>
-        </div>
-        
-        <h4>{interaction_features_title}</h4>
-        {generator._get_image_html("02_interface_generateur", "015", language, selection_workflow_alt, selection_workflow_caption)}
-        
-        <ul>
-            <li><strong>{section_selection_label}</strong> {section_selection_desc}</li>
-            <li><strong>{global_selection_label}</strong> {global_selection_desc}</li>
-            <li><strong>{independent_scroll_label}</strong> {independent_scroll_desc}</li>
-            <li><strong>{wheel_support_label}</strong> {wheel_support_desc}</li>
-            <li><strong>{two_column_display_label}</strong> {two_column_display_desc}</li>
-        </ul>
-        
-        <h3>📈 {analysis_statistics_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "016", language, complete_statistics_alt, complete_statistics_caption)}
-        
-        <h4>{displayed_metrics_title}</h4>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin: 20px 0;">
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #4a90e2;">
-                <h5>📊 {basic_analysis_title}</h5>
-                <ul>
-                    <li>{analyzed_files_count}</li>
-                    <li>{existing_texts_count}</li>
-                    <li>{detection_mode_used}</li>
-                </ul>
-            </div>
-            
-            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-                <h5>🎯 {detection_results_title}</h5>
-                <ul>
-                    <li>{new_texts_total}</li>
-                    <li>{category_distribution}</li>
-                    <li>{global_confidence_level}</li>
-                </ul>
-            </div>
-        </div>
-        
-        <h3>💾 {final_file_generation_title}</h3>
-        {generator._get_image_html("02_interface_generateur", "017", language, smart_save_dialog_alt, smart_save_dialog_caption)}
-        
-        <h4>{smart_suggestions_title}</h4>
-        <ul>
-            <li><strong>{auto_folder_label}</strong> {auto_folder_desc}</li>
-            <li><strong>{default_name_label}</strong> {default_name_desc}</li>
-            <li><strong>{complete_metadata_label}</strong> {complete_metadata_desc}</li>
-        </ul>
-        
-        <h4>{generated_file_content_title}</h4>
-        <p>{generated_file_structure_intro}</p>
-        <ul>
-            <li><strong>{informative_header_label}</strong> {informative_header_desc}</li>
-            <li><strong>{translate_block_label}</strong> <code>translate french strings:</code></li>
-            <li><strong>{old_new_pairs_label}</strong> {old_new_pairs_desc}</li>
-            <li><strong>{alphabetical_sort_label}</strong> {alphabetical_sort_desc}</li>
-        </ul>
-        
-        <h3>💡 {practical_usage_tips_title}</h3>
-        
-        <h4>{recommended_workflow_title}</h4>
-        <ol>
-            <li><strong>{first_analysis_step}</strong> {first_analysis_desc}</li>
-            <li><strong>{auto_safe_verification_step}</strong> {auto_safe_verification_desc}</li>
-            <li><strong>{manual_examination_step}</strong> {manual_examination_desc}</li>
-            <li><strong>{targeted_selection_step}</strong> {targeted_selection_desc}</li>
-            <li><strong>{generation_step}</strong> {generation_desc}</li>
-            <li><strong>{testing_step}</strong> {testing_desc}</li>
+            <h4>📋 Workflow recommandé</h4>
+            <ol>
+                <li><strong>Première analyse :</strong> Mode Optimisé avec exclusions par défaut</li>
+                <li><strong>Vérification Auto-safe :</strong> Extraire directement les textes verts (confiance 100%)</li>
+                <li><strong>Examen manuel :</strong> Parcourir les Textbuttons et Text elements</li>
+                <li><strong>Sélection ciblée :</strong> Ne cocher que les textes réellement utiles</li>
+                <li><strong>Génération :</strong> Créer le fichier dans le bon dossier tl/</li>
+                <li><strong>Test :</strong> Vérifier l'intégration dans le jeu</li>
         </ol>
         
-        <h4>{optimization_tips_title}</h4>
-        <ul>
-            <li><strong>{efficient_anti_duplicate_label}</strong> {efficient_anti_duplicate_desc}</li>
-            <li><strong>{custom_exclusions_label}</strong> {custom_exclusions_desc}</li>
-            <li><strong>{progressive_mode_label}</strong> {progressive_mode_desc}</li>
-            <li><strong>{contextual_verification_label}</strong> {contextual_verification_desc}</li>
+            <h4>⚡ Astuces pour optimiser les résultats</h4>
+            <ul>
+                <li><strong>🛡️ Anti-doublon efficace :</strong> Assure-toi d'avoir une langue de référence bien remplie</li>
+                <li><strong>🚫 Exclusions personnalisées :</strong> Ajoute tes fichiers de test ou temporaires</li>
         </ul>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning); margin: 20px 0;">
+                <h5 style="margin-top: 0;">⚠️ Variables avec fonction de traduction</h5>
+                <p>Certains textes détectés peuvent contenir des variables (ex: <code>[tooltip]</code>). Pour qu'ils soient traduits automatiquement, il faut créer un bloc de traduction spécifique :</p>
+                <pre style="background: rgba(0,0,0,0.1); padding: 12px; border-radius: 6px; overflow-x: auto; font-family: 'Courier New', monospace; font-size: 0.9em; margin-top: 10px;"><code>old "[tooltip]"
+new "[tooltip!t]"</code></pre>
+                <p style="margin-bottom: 0;"><strong>💡 Résultat :</strong> La fonction <code>!t</code> active la traduction automatique de la variable lors de l'affichage dans le jeu.</p>
+        </div>
     </div>
 
+        <!-- SECTION 4 : COMBINAISON & DIVISION -->
     <div class="section" id="gen-combinaison">
-        <h2>🔄 {combination_division_title}</h2>
-        {generator._get_image_html("02_interface_generateur", "018", language, combination_interface_alt, combination_interface_caption)}
-        
-        <h3>🎯 {combination_objective_title}</h3>
-        <p>{combination_objective_desc}</p>
-        
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #4a90e2; margin: 15px 0;">
-            <h4>💡 {typical_use_cases_title}</h4>
-            <ul>
-                <li><strong>{collaborative_translation_label}</strong> {collaborative_translation_desc}</li>
-                <li><strong>{optimization_label}</strong> {optimization_desc}</li>
-                <li><strong>{organization_label}</strong> {organization_desc}</li>
-            </ul>
+            <h2>🔄 Combinaison & Division - Gestion des Fichiers</h2>
+            
+            {generator._get_image_html("04_generateur/Combinaison", "001", "Générateur - Combinaison", "Interface de combinaison et division de fichiers de traduction")}
+            
+            <h3>🎯 Objectif</h3>
+            <p>Fusionne plusieurs fichiers de traduction en un seul, puis redivise le fichier combiné nouvellement traduit pour le remettre dans sa structure d'origine.</p>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent); margin: 20px 0;">
+                <h4 style="margin-top: 0;">💡 Cas d'usage typique</h4>
+                <p style="margin-bottom: 0;"><strong>🔄 Traduction optimisée :</strong> Combine tous les fichiers en un seul pour faciliter la traduction (avec un logiciel externe ou un traducteur), puis re-divise automatiquement le fichier traduit pour restaurer l'organisation originale.</p>
         </div>
         
-        <h3>🛠️ {combination_features_title}</h3>
-        
-        <div class="feature-grid">
-            <div class="feature-card">
-                <h5>🔗 {smart_combination_title}</h5>
-                <p>{smart_combination_desc}</p>
-                <p><strong>{advantage_label}</strong> {smart_combination_advantage}</p>
+            <h3>⚙️ Comment ça fonctionne ?</h3>
+            
+            <h4>🚫 Exclusion des fichiers</h4>
+            <p>Avant de combiner, tu peux définir quels fichiers doivent être exclus de l'opération (fichiers système, fichiers spéciaux, etc.).</p>
+            
+            {generator._get_image_html("04_generateur/Combinaison", "002", "Zone d'exclusion des fichiers", "Configuration des fichiers à exclure de la combinaison")}
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>💡 Astuce :</strong> Les fichiers système Ren'Py (common.rpy, screens.rpy, etc.) sont automatiquement exclus pour éviter les problèmes de compatibilité.</p>
             </div>
             
-            <div class="feature-card">
-                <h5>✂️ {balanced_division_title}</h5>
-                <p>{balanced_division_desc}</p>
-                <p><strong>{method_label}</strong> {balanced_division_method}</p>
-            </div>
-            
-            <div class="feature-card">
-                <h5>🚫 {custom_exclusions_title}</h5>
-                <p>{custom_exclusions_desc}</p>
-                <p><strong>{flexibility_label}</strong> {custom_exclusions_flexibility}</p>
-            </div>
-            
-            <div class="feature-card">
-                <h5>📊 {preview_title}</h5>
-                <p>{preview_desc}</p>
-                <p><strong>{security_label}</strong> {preview_security}</p>
-            </div>
-        </div>
-        
-        <h3>⚙️ {operation_modes_title}</h3>
-        
-        <h4>{combination_mode_title}</h4>
-        <ol>
-            <li><strong>{selection_step}</strong> {combination_selection_desc}</li>
-            <li><strong>{order_step}</strong> {combination_order_desc}</li>
-            <li><strong>{output_name_step}</strong> {combination_output_name_desc}</li>
-            <li><strong>{validation_step}</strong> {combination_validation_desc}</li>
-            <li><strong>{execution_step}</strong> {combination_execution_desc}</li>
+            <h4>🔗 Étape 1 : Combinaison</h4>
+            <ol>
+                <li><strong>Sélection automatique :</strong> RenExtract prend tous les fichiers du dossier, sauf ceux que tu as exclus</li>
+                <li><strong>Fusion intelligente :</strong> RenExtract combine tous les fichiers en un seul et enregistre les <strong>métadonnées</strong> (informations sur l'origine de chaque fichier)</li>
+                <li><strong>Fichier unique :</strong> Tu obtiens un seul fichier à traduire, beaucoup plus simple à gérer</li>
         </ol>
         
-        <h4>{division_mode_title}</h4>
-        <ol>
-            <li><strong>{source_file_step}</strong> {division_source_file_desc}</li>
-            <li><strong>{division_criteria_step}</strong> {division_criteria_desc}</li>
-            <li><strong>{prefix_step}</strong> {division_prefix_desc}</li>
-            <li><strong>{preview_step}</strong> {division_preview_desc}</li>
-            <li><strong>{division_step}</strong> {division_execution_desc}</li>
+            {generator._get_image_html("04_generateur/Combinaison", "003", "Interface de combinaison", "Dossier source et fichier de sortie pour la combinaison")}
+        
+            <h4>✂️ Étape 2 : Division</h4>
+            <p><strong>⚠️ Important :</strong> La division <strong>ne fonctionne que sur les fichiers combinés</strong> par RenExtract, grâce aux métadonnées enregistrées lors de la combinaison.</p>
+            <ol>
+                <li><strong>Traduction :</strong> Une fois le fichier combiné traduit (avec ton outil de traduction préféré)</li>
+                <li><strong>Re-division automatique :</strong> RenExtract utilise les métadonnées pour diviser le fichier traduit</li>
+                <li><strong>Restauration complète :</strong> Tu retrouves ta structure originale avec tous les fichiers traduits individuellement dans leurs dossiers d'origine</li>
         </ol>
         
-        <h3>🎯 {best_practices_title}</h3>
+            {generator._get_image_html("04_generateur/Combinaison", "004", "Interface de division", "Fichier combiné et dossier de sortie pour la division")}
         
-        <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 15px 0;">
-            <h4>⚠️ {important_precautions_title}</h4>
-            <ul>
-                <li><strong>{auto_backup_label}</strong> {auto_backup_desc}</li>
-                <li><strong>{test_after_operation_label}</strong> {test_after_operation_desc}</li>
-                <li><strong>{naming_consistency_label}</strong> {naming_consistency_desc}</li>
-                <li><strong>{documentation_label}</strong> {documentation_desc}</li>
-            </ul>
+            <h3>🛠️ Fonctionnalités clés</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🔗 Combinaison avec métadonnées</h5>
+                    <p>Enregistre l'origine de chaque fichier pour permettre la re-division</p>
+                    <p style="margin-bottom: 0;"><strong>✅ Avantage :</strong> Aucune perte de structure</p>
         </div>
         
-        <h4>{recommended_workflow_combination_title}</h4>
-        <ul>
-            <li><strong>{planning_label}</strong> {planning_desc}</li>
-            <li><strong>{copy_tests_label}</strong> {copy_tests_desc}</li>
-            <li><strong>{validation_coherence_label}</strong> {validation_coherence_desc}</li>
-            <li><strong>{change_documentation_label}</strong> {change_documentation_desc}</li>
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">✂️ Re-division intelligente</h5>
+                    <p>Restaure automatiquement la structure et les dossiers d'origine</p>
+                    <p style="margin-bottom: 0;"><strong>📏 Méthode :</strong> Basée sur les métadonnées du fichier combiné</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🚫 Exclusions personnalisées</h5>
+                    <p>Fichiers à ignorer lors de la combinaison</p>
+                    <p style="margin-bottom: 0;"><strong>🎛️ Flexibilité :</strong> Contrôle total sur les fichiers à inclure</p>
+            </div>
+            
+                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: var(--accent);">🗑️ Suppression automatique</h5>
+                    <p>Les fichiers sources sont supprimés après combinaison</p>
+                    <p style="margin-bottom: 0;"><strong>⚠️ Important :</strong> Sauvegarde le projet avant l'opération</p>
+            </div>
+        </div>
+        
+            <h3>🎯 Bonnes pratiques</h3>
+            
+            <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning); margin: 20px 0;">
+                <h4 style="margin-top: 0;">⚠️ Points importants</h4>
+                <ul style="margin-bottom: 0;">
+                    <li><strong>💾 Sauvegarde préalable OBLIGATOIRE :</strong> Les fichiers sources sont supprimés après combinaison, fais une sauvegarde avant !</li>
+                    <li><strong>📋 Métadonnées essentielles :</strong> Ne supprime jamais les commentaires de métadonnées dans le fichier combiné</li>
+                    <li><strong>✂️ Division uniquement sur fichiers combinés :</strong> La re-division ne fonctionne que sur les fichiers créés par la fonction de combinaison</li>
+                    <li><strong>🧪 Test après opération :</strong> Vérifie que tous les fichiers ont été correctement restaurés dans leurs dossiers</li>
         </ul>
+        </div>
+        
+            <h4>📋 Workflow recommandé</h4>
+            <ol>
+                <li><strong>💾 Sauvegarde :</strong> Fais une sauvegarde de ton projet avant de commencer</li>
+                <li><strong>🔗 Combinaison :</strong> Fusionne tous tes fichiers de traduction</li>
+                <li><strong>⚡ Extraction :</strong> Utilise l'application principale pour extraire les lignes traduisibles</li>
+                <li><strong>📝 Traduction :</strong> Traduis le fichier unique avec ton outil préféré</li>
+                <li><strong>🔄 Reconstruction :</strong> Utilise l'application principale pour reconstruire le fichier</li>
+                <li><strong>✂️ Re-division :</strong> Divise le fichier traduit pour restaurer la structure</li>
+                <li><strong>✅ Validation :</strong> Utilise le vérificateur de cohérence pour vérifier les traductions</li>
+        </ol>
     </div>
     """

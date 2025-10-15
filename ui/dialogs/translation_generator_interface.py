@@ -781,7 +781,7 @@ class TranslationGeneratorInterface:
             
             # Exclusions nettoyage
             if hasattr(self, 'cleanup_excluded_files_var'):
-                cleanup_exclusions = config_manager.get('cleanup_excluded_files', 'common.rpy, Z_LangSelect.rpy')
+                cleanup_exclusions = config_manager.get('cleanup_excluded_files', 'common.rpy')
                 self.cleanup_excluded_files_var.set(cleanup_exclusions)
             
             # Configuration extraction
@@ -932,12 +932,119 @@ class TranslationGeneratorInterface:
                 # Auto-ouverture
                 if hasattr(self, 'auto_open_var') and self.auto_open_var.get():
                     self._auto_open_results(results)
+                
+                # ✅ AJOUT : Invalider le cache des langues après génération
+                self._invalidate_language_cache_after_generation(results)
                     
             else:
                 self._handle_complete_failure(results)
         
         except Exception as e:
             log_message("ERREUR", f"Erreur handle_operation_complete_safe: {e}", category="renpy_generator")
+
+    def _invalidate_language_cache_after_generation(self, results: Dict[str, Any]):
+        """Invalide le cache des langues après génération de nouveaux fichiers"""
+        try:
+            log_message("DEBUG", f"Invalidation cache - Début avec résultats: {results}", category="renpy_generator")
+            
+            if not hasattr(self, 'current_project_path') or not self.current_project_path:
+                log_message("DEBUG", "Pas de projet actuel pour invalidation cache", category="renpy_generator")
+                return
+            
+            # Détecter quelle langue a été générée
+            language = None
+            
+            # Méthode 1: Chercher dans les résultats
+            if 'language' in results:
+                language = results['language']
+                log_message("DEBUG", f"Langue trouvée dans résultats: {language}", category="renpy_generator")
+            elif 'generated_files' in results:
+                # Extraire la langue du chemin des fichiers générés
+                generated_files = results.get('generated_files', [])
+                log_message("DEBUG", f"Fichiers générés: {generated_files}", category="renpy_generator")
+                if generated_files:
+                    # Le premier fichier devrait contenir le chemin vers la langue
+                    first_file = generated_files[0] if isinstance(generated_files, list) else str(generated_files)
+                    if 'tl/' in first_file:
+                        parts = first_file.split('tl/')
+                        if len(parts) > 1:
+                            language = parts[1].split('/')[0]
+                            log_message("DEBUG", f"Langue extraite du chemin: {language}", category="renpy_generator")
+            
+            # Méthode 2: Chercher dans le statut actuel
+            if not language and hasattr(self, 'current_language'):
+                language = self.current_language
+                log_message("DEBUG", f"Langue trouvée dans statut actuel: {language}", category="renpy_generator")
+            
+            if language:
+                # Invalider le cache pour cette langue
+                from core.models.cache.project_scan_cache import get_project_cache
+                cache = get_project_cache()
+                cache.invalidate_language(self.current_project_path, language)
+                
+                log_message("INFO", f"Cache invalidé pour la langue '{language}' après génération", category="renpy_generator")
+                
+                # ✅ AJOUT : Notifier l'interface principale pour refresh
+                self._notify_main_window_refresh()
+                
+                # ✅ AJOUT : Forcer l'invalidation complète du cache comme solution de contournement
+                self._force_clear_all_cache()
+            else:
+                # Si on ne peut pas déterminer la langue, invalider tout le projet
+                from core.models.cache.project_scan_cache import get_project_cache
+                cache = get_project_cache()
+                cache.invalidate_project(self.current_project_path)
+                
+                log_message("INFO", f"Cache invalidé pour tout le projet après génération", category="renpy_generator")
+                
+                # ✅ AJOUT : Notifier l'interface principale pour refresh
+                self._notify_main_window_refresh()
+                
+                # ✅ AJOUT : Forcer l'invalidation complète du cache comme solution de contournement
+                self._force_clear_all_cache()
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur invalidation cache après génération: {e}", category="renpy_generator")
+
+    def _notify_main_window_refresh(self):
+        """Notifie l'interface principale pour qu'elle refresh les langues"""
+        try:
+            # Méthode 1: Via l'app_controller si disponible
+            if hasattr(self, 'app_controller') and self.app_controller:
+                self.app_controller.force_refresh_project_languages()
+                return
+            
+            # Méthode 2: Via une référence globale si disponible
+            try:
+                from main import app_instance
+                if app_instance and hasattr(app_instance, 'controller'):
+                    app_instance.controller.force_refresh_project_languages()
+                    return
+            except:
+                pass
+            
+            log_message("INFO", "Notification de refresh envoyée à l'interface principale", category="renpy_generator")
+            
+        except Exception as e:
+            log_message("ATTENTION", f"Impossible de notifier l'interface principale: {e}", category="renpy_generator")
+
+    def _force_clear_all_cache(self):
+        """Force l'invalidation complète du cache comme solution de contournement"""
+        try:
+            from core.models.cache.project_scan_cache import get_project_cache
+            cache = get_project_cache()
+            
+            # Méthode 1: Invalider le projet actuel
+            if hasattr(self, 'current_project_path') and self.current_project_path:
+                cache.invalidate_project(self.current_project_path)
+                log_message("INFO", f"Cache invalidé pour le projet: {self.current_project_path}", category="renpy_generator")
+            
+            # Méthode 2: Vider complètement le cache (solution radicale)
+            cache.clear_cache()
+            log_message("INFO", "Cache complètement vidé comme solution de contournement", category="renpy_generator")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lors du vidage forcé du cache: {e}", category="renpy_generator")
 
     def _get_error_resolution_suggestions(self, errors: List[str], results: Dict[str, Any]) -> str:
         """Génère des suggestions de résolution basées sur les types d'erreurs"""
@@ -1834,315 +1941,6 @@ class TranslationGeneratorInterface:
         except Exception as e:
             log_message("ERREUR", f"Erreur fermeture interface: {e}", category="renpy_generator")
 
-    def _quick_targeted_search(self):
-        """
-        Recherche ciblée dans les endroits les plus probables
-        Basée sur les patterns courants d'architecture Tkinter
-        
-        Returns:
-            InfoFrame trouvé ou None
-        """
-        try:
-            # Liste des chemins les plus probables (ordre de priorité)
-            search_strategies = [
-                # Stratégie 1: Recherche directe dans les enfants de parent_window
-                lambda: self._search_in_direct_children(),
-                
-                # Stratégie 2: Recherche via attributs connus
-                lambda: self._search_via_known_attributes(),
-                
-                # Stratégie 3: Recherche dans les frames principaux
-                lambda: self._search_in_main_frames(),
-                
-                # Stratégie 4: Recherche par nom de classe
-                lambda: self._search_by_class_name()
-            ]
-            
-            for i, strategy in enumerate(search_strategies, 1):
-                try:
-                    result = strategy()
-                    if result:
-                        log_message("DEBUG", f"InfoFrame trouvé via stratégie rapide {i}", category="renpy_generator")
-                        return result
-                except Exception as e:
-                    log_message("DEBUG", f"Stratégie {i} échouée: {e}", category="renpy_generator")
-                    continue
-            
-            return None
-            
-        except Exception as e:
-            log_message("DEBUG", f"Erreur recherche ciblée: {e}", category="renpy_generator")
-            return None
-
-    def _search_in_direct_children(self):
-        """Recherche dans les enfants directs de parent_window"""
-        try:
-            if hasattr(self.parent_window, 'winfo_children'):
-                for child in self.parent_window.winfo_children():
-                    # Vérifier si c'est InfoFrame
-                    if 'InfoFrame' in child.__class__.__name__:
-                        if hasattr(child, 'set_path'):
-                            return child
-                    
-                    # Vérifier les attributs de ce niveau
-                    for attr in ['components', 'info', 'info_frame']:
-                        if hasattr(child, attr):
-                            attr_value = getattr(child, attr)
-                            if isinstance(attr_value, dict) and 'info' in attr_value:
-                                candidate = attr_value['info']
-                                if hasattr(candidate, 'set_path'):
-                                    return candidate
-                            elif hasattr(attr_value, 'set_path'):
-                                return attr_value
-            return None
-        except Exception:
-            return None
-
-    def _search_via_known_attributes(self):
-        """Recherche via les attributs connus de l'architecture"""
-        try:
-            # Patterns d'attributs courants
-            attribute_paths = [
-                # Format: (objet_de_base, chemin_d_attributs)
-                (self.parent_window, ['main_window', 'components', 'info']),
-                (self.parent_window, ['components', 'info']),
-                (self.parent_window, ['info_frame']),
-                (self.parent_window, ['info']),
-            ]
-            
-            # Si on a accès à app_controller
-            if hasattr(self, 'app_controller'):
-                attribute_paths.extend([
-                    (self.app_controller, ['main_window', 'components', 'info']),
-                    (self.app_controller, ['main_window', 'info_frame']),
-                ])
-            
-            for base_obj, path in attribute_paths:
-                try:
-                    current_obj = base_obj
-                    for attr in path:
-                        if isinstance(current_obj, dict):
-                            current_obj = current_obj.get(attr)
-                        else:
-                            current_obj = getattr(current_obj, attr, None)
-                        
-                        if current_obj is None:
-                            break
-                    
-                    if current_obj and hasattr(current_obj, 'set_path'):
-                        return current_obj
-                        
-                except Exception:
-                    continue
-            
-            return None
-        except Exception:
-            return None
-
-    def _search_in_main_frames(self):
-        """Recherche dans les frames principaux (MainFrame, ContentFrame, etc.)"""
-        try:
-            if hasattr(self.parent_window, 'winfo_children'):
-                for child in self.parent_window.winfo_children():
-                    class_name = child.__class__.__name__
-                    
-                    # Frames susceptibles de contenir InfoFrame
-                    if any(keyword in class_name.lower() for keyword in ['main', 'content', 'app', 'window']):
-                        # Recherche limitée dans ces frames
-                        result = self._limited_recursive_search(child, max_depth=2)
-                        if result:
-                            return result
-            
-            return None
-        except Exception:
-            return None
-
-    def _search_by_class_name(self):
-        """Recherche par nom de classe dans les 2 premiers niveaux"""
-        try:
-            def check_widget_and_children(widget, depth=0):
-                if depth > 2:  # Limiter à 2 niveaux
-                    return None
-                
-                # Vérifier le widget actuel
-                if 'InfoFrame' in widget.__class__.__name__:
-                    if hasattr(widget, 'set_path'):
-                        return widget
-                
-                # Vérifier ses enfants
-                if hasattr(widget, 'winfo_children'):
-                    for child in widget.winfo_children():
-                        result = check_widget_and_children(child, depth + 1)
-                        if result:
-                            return result
-                
-                return None
-            
-            return check_widget_and_children(self.parent_window)
-        except Exception:
-            return None
-
-    def _limited_recursive_search(self, widget, max_depth=2):
-        """Version allégée de la recherche récursive"""
-        try:
-            def search_limited(w, depth=0):
-                if depth > max_depth:
-                    return None
-                
-                # Vérifier le widget actuel
-                if 'InfoFrame' in w.__class__.__name__ and hasattr(w, 'set_path'):
-                    return w
-                
-                # Vérifier les attributs importants
-                for attr in ['components', 'info', 'info_frame']:
-                    if hasattr(w, attr):
-                        attr_value = getattr(w, attr)
-                        if isinstance(attr_value, dict) and 'info' in attr_value:
-                            candidate = attr_value['info']
-                            if hasattr(candidate, 'set_path'):
-                                return candidate
-                
-                # Continuer avec les enfants
-                if hasattr(w, 'winfo_children'):
-                    for child in w.winfo_children():
-                        result = search_limited(child, depth + 1)
-                        if result:
-                            return result
-                
-                return None
-            
-            return search_limited(widget)
-        except Exception:
-            return None
-
-    def _try_cached_path(self):
-        """Essaie d'utiliser le chemin mis en cache"""
-        try:
-            cached_path = self.__class__._cached_info_frame_path
-            if not cached_path or cached_path is True:  # True = cache simplifié
-                return None
-            
-            # Pour l'instant, cache simplifié - on pourrait implémenter un vrai cache de chemin
-            log_message("DEBUG", "Cache InfoFrame disponible mais non implémenté", category="renpy_generator")
-            return None
-                
-        except Exception:
-            # Cache invalide
-            self.__class__._cached_info_frame_path = None
-            return None
-
-    def _cache_info_frame_location(self, info_frame):
-        """Met en cache le chemin vers InfoFrame pour les prochaines fois"""
-        try:
-            # Cache simplifié - marque juste qu'on a trouvé quelque chose
-            self.__class__._cached_info_frame_path = True
-            log_message("DEBUG", "Emplacement InfoFrame mis en cache", category="renpy_generator")
-        except Exception:
-            pass
-
-    def _find_info_frame_via_controller(self, controller):
-        """
-        Cherche InfoFrame via l'app_controller
-        
-        Args:
-            controller: Instance du contrôleur d'application
-        
-        Returns:
-            InfoFrame trouvé ou None
-        """
-        try:
-            if hasattr(controller, 'main_window'):
-                main_window = controller.main_window
-                
-                # Essayer différents chemins
-                paths_to_try = [
-                    lambda: main_window.components.get('info'),
-                    lambda: main_window.get_component('info'),
-                    lambda: getattr(main_window, 'info_frame', None),
-                    lambda: getattr(main_window, 'info', None)
-                ]
-                
-                for path_func in paths_to_try:
-                    try:
-                        result = path_func()
-                        if result and hasattr(result, 'set_path'):
-                            log_message("DEBUG", f"InfoFrame trouvé via controller: {path_func}", category="renpy_generator")
-                            return result
-                    except:
-                        continue
-            
-            return None
-            
-        except Exception as e:
-            log_message("DEBUG", f"Erreur recherche via controller: {e}", category="renpy_generator")
-            return None
-
-    def _find_info_frame_in_globals(self):
-        """
-        Cherche InfoFrame dans les variables globales (dernier recours)
-        
-        Returns:
-            InfoFrame trouvé ou None
-        """
-        try:
-            import inspect
-            
-            # Obtenir le frame de l'appelant pour accéder aux globales
-            frame = inspect.currentframe()
-            while frame:
-                frame_globals = frame.f_globals
-                
-                # Chercher des variables qui pourraient contenir InfoFrame
-                candidates = ['app', 'main_app', 'application', 'app_controller', 'main_window']
-                
-                for candidate_name in candidates:
-                    if candidate_name in frame_globals:
-                        candidate = frame_globals[candidate_name]
-                        if hasattr(candidate, 'main_window'):
-                            result = self._find_info_frame_via_controller(candidate)
-                            if result:
-                                log_message("DEBUG", f"InfoFrame trouvé via globals['{candidate_name}']", category="renpy_generator")
-                                return result
-                
-                frame = frame.f_back
-            
-            return None
-            
-        except Exception as e:
-            log_message("DEBUG", f"Erreur recherche dans globals: {e}", category="renpy_generator")
-            return None
-
-    def _notify_transfer_success(self, project_name):
-        """
-        Notifie le succès du transfert à l'interface principale
-        
-        Args:
-            project_name: Nom du projet transféré
-        """
-        try:
-            # Essayer différentes méthodes de notification
-            notification_methods = [
-                lambda: self.parent_window.show_notification(
-                    f"Projet '{project_name}' chargé automatiquement depuis le générateur", 
-                    'TOAST', 
-                    toast_type='success'
-                ),
-                lambda: self.parent_window.notification_manager.show_success(
-                    f"Projet '{project_name}' chargé automatiquement"
-                )
-            ]
-            
-            for method in notification_methods:
-                try:
-                    method()
-                    return
-                except:
-                    continue
-                    
-            log_message("DEBUG", f"Notification de transfert non disponible pour {project_name}", category="renpy_generator")
-            
-        except Exception as e:
-            log_message("DEBUG", f"Impossible de notifier le transfert: {e}", category="renpy_generator")
 
     def _get_realtime_editor_business(self):
         """Obtient l'instance RealTime Editor business en initialisant si nécessaire"""

@@ -139,6 +139,7 @@ THEMES = {
         "warning": "#ed8936",      # Warning (comme --warning du tutoriel)
         "danger": "#f56565",       # Danger (comme --danger du tutoriel)
         "button_fg": "#000000",    # Texte des boutons (noir pour contraste)
+        "button_help_fg": "#000000", # Texte des boutons d'aide (noir pour contraste)
         "nav_bg": "#1a202c",       # Navigation (comme --nav-bg du tutoriel)
         "sep": "#4a5568"           # Séparateurs (comme --sep du tutoriel)
     },
@@ -155,6 +156,7 @@ THEMES = {
         "warning": "#d69e2e",      # Warning clair (comme --warning du tutoriel)
         "danger": "#e53e3e",       # Danger clair (comme --danger du tutoriel)
         "button_fg": "#000000",    # Texte des boutons (noir pour contraste)
+        "button_help_fg": "#000000", # Texte des boutons d'aide (noir pour contraste)
         "nav_bg": "#f7fafc",       # Navigation claire (comme --nav-bg du tutoriel)
         "sep": "#e2e8f0"           # Séparateurs clairs (comme --sep du tutoriel)
     }
@@ -257,20 +259,20 @@ MESSAGE_PRIORITIES = {
     "MODAL":["quit_confirmation","reset_with_data","clean_with_data","critical_errors","file_conflicts","health_critical","package_failures"]
 }
 
-# Thème par défaut & presets
+# Thème par défaut & presets (Classique v1)
 THEME_COLORS_DEFAULT = {
     "button_fg_dark":"#000000","button_fg_light":"#000000",
-    "button_primary_bg":"#98FB98","button_secondary_bg":"#ADD8E6","button_tertiary_bg":"#EEE8AA","button_danger_bg":"#F08080",
-    "button_feature_bg":"#E6E6FA","button_powerful_bg":"#FFA07A","button_devtool_bg":"#DCDCDC","button_nav_bg":"#AFEEEE",
-    "button_help_bg":"#7FFFD4","button_utility_bg":"#D3D3D3"
+    "button_primary_bg":"#28a745","button_secondary_bg":"#007bff","button_tertiary_bg":"#ffc107","button_danger_bg":"#dc3545",
+    "button_feature_bg":"#6f42c1","button_powerful_bg":"#fd7e14","button_devtool_bg":"#6c757d","button_nav_bg":"#17a2b8",
+    "button_help_bg":"#20c997","button_utility_bg":"#6c757d"
 }
 COLOR_PRESETS = {
-    "Défaut (Accessible)":{"button_primary_bg":"#98FB98","button_secondary_bg":"#ADD8E6","button_tertiary_bg":"#EEE8AA","button_danger_bg":"#F08080","button_feature_bg":"#E6E6FA","button_powerful_bg":"#FFA07A","button_devtool_bg":"#DCDCDC","button_nav_bg":"#AFEEEE","button_help_bg":"#7FFFD4","button_utility_bg":"#D3D3D3"},
-    "Océan Profond":{"button_primary_bg":"#20B2AA","button_secondary_bg":"#4682B4","button_tertiary_bg":"#5F9EA0","button_danger_bg":"#DC143C","button_feature_bg":"#9370DB","button_powerful_bg":"#FF6347","button_devtool_bg":"#708090","button_nav_bg":"#48D1CC","button_help_bg":"#40E0D0","button_utility_bg":"#B0C4DE"},
-    "Forêt d'Automne":{"button_primary_bg":"#228B22","button_secondary_bg":"#CD853F","button_tertiary_bg":"#DAA520","button_danger_bg":"#B22222","button_feature_bg":"#9932CC","button_powerful_bg":"#FF8C00","button_devtool_bg":"#A0522D","button_nav_bg":"#2E8B57","button_help_bg":"#32CD32","button_utility_bg":"#BC8F8F"},
-    "Coucher de Soleil":{"button_primary_bg":"#FF7F50","button_secondary_bg":"#FFA500","button_tertiary_bg":"#FFD700","button_danger_bg":"#FF4500","button_feature_bg":"#DA70D6","button_powerful_bg":"#FF1493","button_devtool_bg":"#CD5C5C","button_nav_bg":"#FF6347","button_help_bg":"#FFA07A","button_utility_bg":"#F0E68C"},
-    "Classique v1 (Ancienne version)":{"button_primary_bg":"#28a745","button_secondary_bg":"#007bff","button_tertiary_bg":"#ffc107","button_danger_bg":"#dc3545","button_feature_bg":"#6f42c1","button_powerful_bg":"#fd7e14","button_devtool_bg":"#6c757d","button_nav_bg":"#17a2b8","button_help_bg":"#20c997","button_utility_bg":"#6c757d"},
-    "Minimaliste Moderne":{"button_primary_bg":"#00CED1","button_secondary_bg":"#87CEEB","button_tertiary_bg":"#F5F5DC","button_danger_bg":"#FF6B6B","button_feature_bg":"#DDA0DD","button_powerful_bg":"#FFA500","button_devtool_bg":"#C0C0C0","button_nav_bg":"#20B2AA","button_help_bg":"#98FB98","button_utility_bg":"#D3D3D3"}
+    "Classique v1 (Fond Bleu)":{"button_primary_bg":"#28a745","button_secondary_bg":"#007bff","button_tertiary_bg":"#ffc107","button_danger_bg":"#dc3545","button_feature_bg":"#6f42c1","button_powerful_bg":"#fd7e14","button_devtool_bg":"#6c757d","button_nav_bg":"#17a2b8","button_help_bg":"#20c997","button_utility_bg":"#6c757d"},
+    "Océan Profond (Fond Bleu)":{"button_primary_bg":"#20B2AA","button_secondary_bg":"#4682B4","button_tertiary_bg":"#5F9EA0","button_danger_bg":"#DC143C","button_feature_bg":"#9370DB","button_powerful_bg":"#FF6347","button_devtool_bg":"#708090","button_nav_bg":"#48D1CC","button_help_bg":"#40E0D0","button_utility_bg":"#B0C4DE"},
+    "Forêt d'Automne (Fond Bleu)":{"button_primary_bg":"#228B22","button_secondary_bg":"#CD853F","button_tertiary_bg":"#DAA520","button_danger_bg":"#B22222","button_feature_bg":"#9932CC","button_powerful_bg":"#FF8C00","button_devtool_bg":"#A0522D","button_nav_bg":"#2E8B57","button_help_bg":"#32CD32","button_utility_bg":"#BC8F8F"},
+    "Coucher de Soleil (Fond Bleu)":{"button_primary_bg":"#FF7F50","button_secondary_bg":"#FFA500","button_tertiary_bg":"#FFD700","button_danger_bg":"#FF4500","button_feature_bg":"#DA70D6","button_powerful_bg":"#FF1493","button_devtool_bg":"#CD5C5C","button_nav_bg":"#FF6347","button_help_bg":"#FFA07A","button_utility_bg":"#F0E68C"},
+    "Minimaliste Moderne (Fond Bleu)":{"button_primary_bg":"#00CED1","button_secondary_bg":"#87CEEB","button_tertiary_bg":"#F5F5DC","button_danger_bg":"#FF6B6B","button_feature_bg":"#DDA0DD","button_powerful_bg":"#FFA500","button_devtool_bg":"#C0C0C0","button_nav_bg":"#20B2AA","button_help_bg":"#98FB98","button_utility_bg":"#D3D3D3"},
+    "Ancien (Fond Noir)":{"button_primary_bg":"#98FB98","button_secondary_bg":"#ADD8E6","button_tertiary_bg":"#EEE8AA","button_danger_bg":"#F08080","button_feature_bg":"#E6E6FA","button_powerful_bg":"#FFA07A","button_devtool_bg":"#DCDCDC","button_nav_bg":"#AFEEEE","button_help_bg":"#7FFFD4","button_utility_bg":"#D3D3D3"}
 }
 
 DEFAULT_CONFIG_PLACEHOLDERS = {
@@ -301,7 +303,7 @@ DEFAULT_CONFIG = {
     "notification_mode": "status_only",
     "project_progress_tracking": True,
     "html_reports_priority": True,
-    "log_format": "html",  # ✅ NOUVELLE CLÉ : "txt" ou "html"
+    "log_format": "html",
     "html_reports_theme": "dark",
     "auto_enable_debug_on_init_errors": True,
     "last_directory":"","auto_open_files":True,"auto_open_folders":True,"language":"fr","theme_colors":THEME_COLORS_DEFAULT,
@@ -311,7 +313,7 @@ DEFAULT_CONFIG = {
     "extraction_detect_duplicates":True,"default_save_mode":"overwrite",
     "extraction_excluded_files":"",
     "reconstruction_auto_check_untranslated":False,
-    "cleanup_excluded_files":"",
+    "cleanup_excluded_files":"common.rpy",
     "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_check_ellipsis":True,
     "coherence_check_escape_sequences":True,"coherence_check_percentages":True,"coherence_check_quotations":True,"coherence_check_parentheses":True,
     "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_french_quotes":True,"coherence_check_line_structure":True,
@@ -319,10 +321,10 @@ DEFAULT_CONFIG = {
     "coherence_excluded_files":"",
     "coherence_auto_open_report":True,
     "realtime_editor_enabled":True,"realtime_monitoring_interval":200,"realtime_auto_backup":True,"realtime_default_language":"french",
-    "editor_font_size":9,"realtime_log_retention_days":7,"realtime_max_log_size_mb":10,
+    "editor_font_size":9,"realtime_log_retention_days":7,"realtime_max_log_size_mb":10,"default_online_translator":"Google","groq_api_key":"","groq_custom_instructions":"","groq_translation_style":"Naturel","groq_game_context":"Général","groq_temperature":0.3,
     "current_renpy_project":"","renpy_sdk_path":"","renpy_default_language":"french","renpy_auto_open_folder":True,"renpy_show_results_popup":True,
     "renpy_delete_rpa_after":False,"renpy_delete_source_after_rpa":False,
-    "renpy_excluded_files":"",
+    "renpy_excluded_files":"common.rpy",
     "language_selector_integration":False,"developer_console_integration":False,
     "dark_mode":True,"show_output_path_display":False,
     "last_game_directory":"",
@@ -332,15 +334,7 @@ DEFAULT_CONFIG = {
         "interface_text_font":{"enabled":False,"font_name":"","font_path":""},
         "button_text_font":{"enabled":False,"font_name":"","font_path":""},
         "choice_button_text_font":{"enabled":False,"font_name":"","font_path":""}}},
-    "custom_extraction_patterns":[
-        {
-            "name":"Exemple SMS",
-            "pattern":r'.*,\s*"([^"]+)"',
-            "flags":"gm",
-            "enabled":False,
-            "description":"Extrait le contenu entre guillemets après une virgule"
-        }
-    ]
+    "custom_extraction_patterns":[]
 }
 # Note: Les catégories de logs sont maintenant extraites dynamiquement depuis le fichier HTML
 # Voir utils/logging.py → _extract_categories_from_log_file()

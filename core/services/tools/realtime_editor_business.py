@@ -27,6 +27,14 @@ from core.models.backup.unified_backup_manager import UnifiedBackupManager, Back
 class RealTimeEditorBusiness:
     """Logique métier pour l'éditeur temps réel"""
     
+    # Dictionnaire de compatibilité Ren'Py → Module
+    MODULE_COMPATIBILITY = {
+        (8, 1, 2): "v1",  # Testé sur Nudist Olivia
+        (8, 2, 1): "v1",  # Testé sur FamilyIsland
+        # Ajoutez ici les futures versions et modules
+        # (7, 5, 3): "v2",  # Exemple futur
+    }
+    
     def __init__(self):
         """Initialise la logique métier"""
         self.backup_manager = UnifiedBackupManager()
@@ -1061,18 +1069,19 @@ class RealTimeEditorBusiness:
         """Vérifie s'il y a des modifications en attente"""
         return len(self.pending_modifications) > 0
 
-    def generate_monitoring_module(self, project_path: str, language: str) -> Dict[str, Any]:
+    def generate_monitoring_module(self, project_path: str, language: str, manual_version: Optional[str] = None) -> Dict[str, Any]:
         """
         Génère et installe le module de surveillance dans le projet
         
         Args:
             project_path: Chemin vers le projet Ren'Py
             language: Langue cible (ex: "french")
+            manual_version: Version Ren'Py manuelle au format "8.2.1" (optionnel)
             
         Returns:
             Dict avec les résultats de l'opération
         """
-        result = {'success': False, 'module_path': None, 'errors': []}
+        result = {'success': False, 'module_path': None, 'module_version': None, 'renpy_version_detected': None, 'errors': [], 'warnings': []}
         
         try:
             if not os.path.exists(project_path):
@@ -1086,8 +1095,21 @@ class RealTimeEditorBusiness:
             
             module_path = os.path.join(game_dir, "renextract_realtime_monitor.rpy")
             
+            # Sélectionner la version du module
+            selected_module = self._select_module_version(project_path, manual_version)
+            
+            # Si la version est None, c'est une version inconnue
+            if selected_module is None:
+                detected_version = self._get_renpy_version_from_project(project_path)
+                result['renpy_version_detected'] = detected_version
+                result['warnings'].append(f"Version Ren'Py {detected_version} inconnue, utilisation du module v1 par défaut")
+                selected_module = "v1"
+            
+            result['module_version'] = selected_module
+            log_message("INFO", f"Module {selected_module} sélectionné pour le projet", category="realtime_editor")
+            
             # Générer le contenu du module
-            module_content = self._generate_module_content(language)
+            module_content = self._generate_module_content(language, selected_module)
             
             # Sauvegarder le fichier existant si présent
             if os.path.exists(module_path):
@@ -1114,218 +1136,134 @@ class RealTimeEditorBusiness:
         
         return result
 
-    def _generate_module_content(self, language: str) -> str:
+    def _get_renpy_version_from_project(self, project_path: str) -> Optional[tuple]:
+        """
+        Détecte la version Ren'Py du projet en réutilisant la logique de rpa_extraction_business
+        
+        Returns:
+            Tuple (major, minor, patch) ou None si non détecté
+        """
+        try:
+            from core.services.translation.rpa_extraction_business import RPAExtractionBusiness
+            
+            rpa_business = RPAExtractionBusiness()
+            version_info = rpa_business.detect_renpy_version(project_path)
+            
+            version_str = version_info.get('version', 'Unknown')
+            if version_str == 'Unknown' or not version_str:
+                return None
+            
+            # Parser la version (format "8.2.1" ou "RenPy8+")
+            import re
+            numbers = re.findall(r'\d+', version_str)
+            
+            if len(numbers) >= 3:
+                return (int(numbers[0]), int(numbers[1]), int(numbers[2]))
+            elif len(numbers) >= 2:
+                return (int(numbers[0]), int(numbers[1]), 0)
+            elif len(numbers) >= 1:
+                return (int(numbers[0]), 0, 0)
+            
+            return None
+            
+        except Exception as e:
+            log_message("ATTENTION", f"Erreur détection version Ren'Py: {e}", category="realtime_editor")
+            return None
+    
+    def _select_module_version(self, project_path: str, manual_override: Optional[str] = None) -> str:
+        """
+        Sélectionne la version du module à utiliser
+        
+        Args:
+            project_path: Chemin vers le projet
+            manual_override: Version manuelle au format "8.2.1" (optionnel)
+            
+        Returns:
+            Nom de la version du module ("v1", "v2", etc.)
+        """
+        # 1. Si override manuel fourni, l'utiliser
+        if manual_override:
+            try:
+                import re
+                numbers = re.findall(r'\d+', manual_override)
+                if len(numbers) >= 3:
+                    version_tuple = (int(numbers[0]), int(numbers[1]), int(numbers[2]))
+                elif len(numbers) >= 2:
+                    version_tuple = (int(numbers[0]), int(numbers[1]), 0)
+                else:
+                    version_tuple = (int(numbers[0]), 0, 0)
+                
+                if version_tuple in self.MODULE_COMPATIBILITY:
+                    log_message("INFO", f"Version manuelle {manual_override} → module {self.MODULE_COMPATIBILITY[version_tuple]}", category="realtime_editor")
+                    return self.MODULE_COMPATIBILITY[version_tuple]
+                else:
+                    log_message("ATTENTION", f"Version manuelle {manual_override} inconnue, utilisation de v1 par défaut", category="realtime_editor")
+                    return "v1"
+            except Exception as e:
+                log_message("ATTENTION", f"Erreur parsing version manuelle: {e}, utilisation de v1", category="realtime_editor")
+                return "v1"
+        
+        # 2. Détection automatique
+        detected_version = self._get_renpy_version_from_project(project_path)
+        
+        if detected_version:
+            if detected_version in self.MODULE_COMPATIBILITY:
+                module_version = self.MODULE_COMPATIBILITY[detected_version]
+                log_message("INFO", f"Version Ren'Py {detected_version} détectée → module {module_version}", category="realtime_editor")
+                return module_version
+            else:
+                log_message("ATTENTION", f"Version Ren'Py {detected_version} inconnue, utilisation de v1 par défaut", category="realtime_editor")
+                # Retourner None pour signaler une version inconnue (pour le feedback utilisateur)
+                return None
+        
+        # 3. Fallback par défaut
+        log_message("INFO", "Version Ren'Py non détectée, utilisation de v1 par défaut", category="realtime_editor")
+        return "v1"
+    
+    def _load_module_template(self, module_version: str) -> str:
+        """
+        Charge le template du module depuis le fichier correspondant
+        
+        Args:
+            module_version: Version du module ("v1", "v2", etc.)
+            
+        Returns:
+            Contenu du template
+        """
+        try:
+            # Chemin vers le module
+            module_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "renpy_modules",
+                f"{module_version}.rpy"
+            )
+            
+            if not os.path.exists(module_path):
+                log_message("ERREUR", f"Module {module_version} introuvable: {module_path}", category="realtime_editor")
+                # Fallback vers v1
+                module_path = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "renpy_modules",
+                    "v1.rpy"
+                )
+            
+            with open(module_path, 'r', encoding='utf-8') as f:
+                template = f.read()
+            
+            log_message("INFO", f"Module {module_version} chargé depuis {module_path}", category="realtime_editor")
+            return template
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur chargement module {module_version}: {e}", category="realtime_editor")
+            raise
+    
+    def _generate_module_content(self, language: str, module_version: str = "v1") -> str:
         """Génère le contenu complet du module de surveillance avec la logique de menu SIMPLIFIÉE."""
-        return f'''# Module de surveillance RenExtract pour édition temps réel
-# Langue cible: {language}
-init python:
-    import threading
-
-    _FOCUS_URL = "http://127.0.0.1:8765/focus"  # port fixe
-
-    # Compat Ren'Py 8 (py3) / Ren'Py 7 (py2) sans dépendances externes
-    try:
-        import urllib.request as _urlreq  # Ren'Py 8 / Python 3
-    except Exception:
-        try:
-            import urllib2 as _urlreq      # Ren'Py 7 / Python 2
-        except Exception:
-            _urlreq = None
-
-    def _hit_focus_endpoint():
-        if _urlreq is None:
-            return
-        try:
-            req = _urlreq.Request(_FOCUS_URL)
-            _urlreq.urlopen(req, timeout=0.5).read()
-        except Exception:
-            # silence côté joueur
-            pass
-
-    def focus_editor_now():
-        t = threading.Thread(target=_hit_focus_endpoint)
-        t.daemon = True
-        t.start()
-
-    def focus_editor_safe():
-        """
-        Si plein écran -> bascule fenêtré via screen (préférence + force), puis focus.
-        Sinon -> focus direct.
-        """
-        try:
-            rp = __import__('renpy')  # import paresseux
-        except Exception:
-            focus_editor_now(); return
-
-        # Détecte l'état plein écran
-        try:
-            is_full = rp.get_fullscreen()
-        except Exception:
-            try:
-                is_full = getattr(rp.store.preferences, "fullscreen", False)
-            except Exception:
-                is_full = False
-
-        if is_full:
-            try:
-                rp.show_screen("renextract_display_window_then_focus")
-            except Exception:
-                # fallback ultime
-                _renextract_force_window_mode()
-                focus_editor_now()
-        else:
-            focus_editor_now()
-
-    def _renextract_force_window_mode():
-        """
-        Force le mode fenêtré même si la persistance/le code du jeu tente de rester en plein écran.
-        """
-        try:
-            rp = __import__('renpy')
-        except Exception:
-            return
-        # 1) forcer la fenêtre
-        try:
-            rp.set_fullscreen(False)
-        except Exception:
-            pass
-        # 2) aligner les préférences (runtime)
-        try:
-            rp.store.preferences.fullscreen = False
-        except Exception:
-            pass
-        # 3) aligner la persistance si le jeu la lit (certains menus le font)
-        try:
-            # suivant les projets, _preferences peut ne pas exister : on ignore si c'est le cas
-            if hasattr(rp.store, "_preferences") and isinstance(rp.store._preferences, dict):
-                rp.store._preferences["fullscreen"] = False
-        except Exception:
-            pass
-        # 4) enregistrer la persistance (au cas où le jeu relit tout de suite)
-        try:
-            rp.save_persistent()
-        except Exception:
-            pass
-        # 5) relancer l'interaction pour que l'UI prenne l'état (optionnel mais utile)
-        try:
-            rp.restart_interaction()
-        except Exception:
-            pass
-
-init -900:
-    # Passe en fenêtré (préférence) + force, puis focus ~50 ms après
-    screen renextract_display_window_then_focus():
-        timer 0.0 action [
-            Preference("display", "window"),          # même action que ton menu
-            Function(_renextract_force_window_mode),  # force contre la persistance
-            Hide("renextract_display_window_then_focus"),
-            Show("renextract_focus_timer")
-        ]
-
-    # Timer qui déclenche /focus puis se cache
-    screen renextract_focus_timer():
-        timer 0.05 action [ Function(focus_editor_now), Hide("renextract_focus_timer") ]
-
-# Screen overlay : hotkey + timer
-init -900:
-    screen renextract_hotkeys():
-        key "K_F8" action Function(focus_editor_safe)
-
-init -900 python:
-    if "renextract_hotkeys" not in config.overlay_screens:
-        config.overlay_screens.append("renextract_hotkeys")
-
-
-init -999 python:
-    import renpy.exports as renpy_exports
-    import os
-    import codecs
-    import re
-    import traceback
-
-    print(u"Démarrage du module surveillance RenExtract v3 (logique simplifiée)")
-
-    RENEXTRACT_TARGET_LANG = "{language}"
-    RENEXTRACT_LOG_FILE = "renextract_dialogue_log.txt"
-
-    try:
-        if os.path.exists(RENEXTRACT_LOG_FILE):
-            with codecs.open(RENEXTRACT_LOG_FILE, "w", encoding="utf-8") as f: f.write(u"")
-    except Exception as e:
-        print(u"Erreur réinitialisation log : {{0}}".format(e))
-
-    def get_translated_dialogue(file_path, line_number, original_text=None):
-        try:
-            tl_file_path = os.path.join("game", "tl", RENEXTRACT_TARGET_LANG, file_path)
-            if not os.path.exists(tl_file_path):
-                tl_file_path = os.path.join("game", file_path)
-                if not os.path.exists(tl_file_path): return original_text or None, tl_file_path, line_number
-            with open(tl_file_path, "rb") as f:
-                content = f.read()
-            if content.startswith(b'\\xef\\xbb\\xbf'): content = content[3:]
-            lines = content.decode("utf-8").splitlines()
-            for i, line in enumerate(lines):
-                line = line.strip()
-                if i + 1 == line_number or i + 2 == line_number:
-                    if "old" in line.lower():
-                        match_old = re.search(r'old\\s+"((?:\\\\.|[^"])*)"', line)
-                        if match_old:
-                            old_text = match_old.group(1).strip()
-                            if original_text and old_text != original_text: continue
-                            next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
-                            match_new = re.search(r'new\\s+"((?:\\\\.|[^"])*)"', next_line)
-                            if match_new: return match_new.group(1), tl_file_path, i + 2
-                            else: return old_text, tl_file_path, i + 1
-                    match = re.search(r'"((?:\\\\.|[^"])*)"', line)
-                    if match and i + 1 == line_number:
-                        return match.group(1), tl_file_path, line_number
-            return original_text or None, tl_file_path, line_number
-        except Exception as e:
-            return original_text or None, None, line_number
-
-    # Hook pour les menus - VERSION SIMPLIFIÉE
-    original_menu = renpy.exports.menu
-    def patched_menu(items, *args, **kwargs):
-        try:
-            menu_choices = []
-            for item in items:
-                caption = item[0] if isinstance(item, (tuple, list)) and len(item) >= 1 else None
-                if caption and caption != "":
-                    # On ne cherche plus la traduction ici, on envoie juste l'original.
-                    menu_choices.append(caption)
-            if menu_choices:
-                with codecs.open(RENEXTRACT_LOG_FILE, "a", encoding="utf-8") as f:
-                    f.write(u"MENU_START\\n")
-                    for choice in menu_choices:
-                        # Nouveau format de log : juste CHOICE|texte_original
-                        f.write(u"CHOICE|{{0}}\\n".format(choice))
-                    f.write(u"MENU_END\\n")
-        except Exception as e:
-            print(u"Erreur dans patched_menu : {{0}}".format(e))
-        return original_menu(items, *args, **kwargs)
-    renpy.exports.menu = patched_menu
-
-    # Hook de la fonction say (inchangé)
-    if getattr(renpy_exports.say, "__name__", "") != "patched_say":
-        def make_patched_say(original):
-            def patched_say(who, what, *args, **kwargs):
-                try:
-                    if what and what.strip() and renpy.game.contexts:
-                        current_file, line_number = renpy_exports.get_filename_line()
-                        current_file = os.path.normpath(current_file)
-                        if current_file.startswith(os.path.normpath("game/")):
-                            current_file = current_file[len(os.path.normpath("game/")) + 1:]
-                        translated_dialogue, tl_file, tl_line = get_translated_dialogue(current_file, line_number, what)
-                        display_text = translated_dialogue if translated_dialogue is not None else what
-                        with codecs.open(RENEXTRACT_LOG_FILE, "a", encoding="utf-8") as f:
-                            f.write(u"{{0}}|{{1}}|{{2}}|{{3}}|{{4}}\\n".format(display_text, current_file, line_number, tl_file, tl_line))
-                    return original(who, what, *args, **kwargs)
-                except Exception as e:
-                    print(u"Erreur dans patched_say : {{0}}".format(e))
-                    raise
-            return patched_say
-        renpy_exports.say = make_patched_say(renpy_exports.say)
-'''
+        # Charger le template
+        template = self._load_module_template(module_version)
+        
+        # Remplacer {language} par la langue cible
+        return template.format(language=language)
 
     def start_monitoring(self, project_path: str, language: str) -> Dict[str, Any]:
         """
@@ -1768,6 +1706,77 @@ init -999 python:
             return ""
         except Exception:
             return ""
+    
+    def get_previous_dialogue(self, dialogue_info: Dict) -> Optional[Dict[str, str]]:
+        """
+        Récupère le dialogue précédent dans le fichier de traduction
+        pour fournir un contexte conversationnel
+        
+        Args:
+            dialogue_info: Infos du dialogue actuel
+            
+        Returns:
+            Dict avec 'speaker' et 'text' du dialogue précédent, ou None
+        """
+        try:
+            if not self.current_project_path or not dialogue_info.get('tl_file'):
+                return None
+            
+            tl_file_path = os.path.join(self.current_project_path, dialogue_info['tl_file'])
+            if not os.path.exists(tl_file_path):
+                tl_file_path = os.path.join(self.current_project_path, "game", dialogue_info['tl_file'])
+                if not os.path.exists(tl_file_path):
+                    return None
+            
+            with open(tl_file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            target_line = dialogue_info.get('tl_line', 0) - 1
+            if target_line < 0 or target_line >= len(lines):
+                return None
+            
+            # Chercher le bloc translate précédent
+            for i in range(target_line - 1, max(0, target_line - 50), -1):
+                line = lines[i].strip()
+                
+                # Ignorer les lignes vides et commentaires
+                if not line or line.startswith('#'):
+                    continue
+                
+                # Si on trouve un nouveau bloc translate, on arrête
+                if line.startswith('translate '):
+                    # Le dialogue précédent devrait être juste après
+                    for j in range(i + 1, min(len(lines), i + 20)):
+                        dialogue_line = lines[j].strip()
+                        if not dialogue_line or dialogue_line.startswith('#') or dialogue_line.startswith('translate '):
+                            continue
+                        
+                        # Extraire locuteur et texte
+                        speaker = self._extract_speaker_from_line(dialogue_line)
+                        text = self._extract_text_from_line(dialogue_line)
+                        
+                        if text:
+                            return {
+                                'speaker': speaker or '',
+                                'text': text
+                            }
+                    break
+                
+                # Sinon, essayer d'extraire directement
+                speaker = self._extract_speaker_from_line(line)
+                text = self._extract_text_from_line(line)
+                
+                if text and len(text) > 3:  # Texte valide trouvé
+                    return {
+                        'speaker': speaker or '',
+                        'text': text
+                    }
+            
+            return None
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur récupération dialogue précédent: {e}", category="realtime_editor")
+            return None
     
     def _get_original_text(self, dialogue_info: Dict) -> str:
         """
