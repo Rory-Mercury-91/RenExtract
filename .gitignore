@@ -58,6 +58,10 @@ python-*.exe
 Thumbs.db
 desktop.ini
 
+# Fichiers de métadonnées Windows (Zone.Identifier)
+*:Zone.Identifier
+*.Zone.Identifier
+
 # ============================================
 # LOGS
 # ============================================
