@@ -5,18 +5,20 @@ Module de contenu pour l'onglet 2 : Workflow - Guide du processus de traduction
 
 import html
 
-def generate_content(generator, language, translations):
+def generate_content(generator, language=None, translations=None):
     """Génère le contenu de l'onglet Workflow
     
     Args:
         generator: Instance du générateur avec méthodes utilitaires
-        language: Code langue (fr, en, de)
-        translations: Dictionnaire des traductions
+        language: Code langue (fr, en, de) - optionnel
+        translations: Dictionnaire des traductions - optionnel
     
     Returns:
         str: HTML généré pour l'onglet workflow
     """
     # Vérification des traductions
+    if translations is None:
+        translations = {}
     if not isinstance(translations, dict) or 'tabs' not in translations or 'common' not in translations:
         return "<div>Erreur : Traductions manquantes ou mal formées</div>"
     

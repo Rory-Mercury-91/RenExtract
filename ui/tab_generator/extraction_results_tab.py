@@ -686,7 +686,7 @@ def _generate_extraction_file(main_interface):
             
             # Auto-ouverture si configurée (commun aux deux modes)
             try:
-                if config_manager.is_auto_open_enabled():
+                if config_manager.get('auto_open_folders', True):
                     FileOpener.open_files([save_path], True)
                     log_message("INFO", "Fichier d'extraction ouvert automatiquement", category="extraction_results")
             except Exception as e:

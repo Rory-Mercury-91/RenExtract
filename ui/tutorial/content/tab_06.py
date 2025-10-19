@@ -37,7 +37,7 @@ def generate_content(generator, language=None, translations=None):
                 
                 <a href="#types-sauvegardes" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📊 Types</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">Les 4 types de sauvegardes</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Les 5 types de sauvegardes</div>
                 </a>
                 
                 <a href="#structure" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -45,24 +45,24 @@ def generate_content(generator, language=None, translations=None):
                     <div style="font-size: 0.9em; opacity: 0.8;">Organisation des fichiers</div>
                 </a>
                 
+                <a href="#statistiques" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📈 Statistiques</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Aperçu en temps réel</div>
+                </a>
+                
                 <a href="#filtres" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🔍 Filtres</div>
                     <div style="font-size: 0.9em; opacity: 0.8;">Trouver rapidement</div>
                 </a>
                 
-                <a href="#gestion" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📋 Gestion</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">Tri et navigation</div>
+                <a href="#treeview" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🌳 Tree View</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Vue hiérarchique</div>
                 </a>
                 
-                <a href="#restauration" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">💾 Restaurer</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">Récupérer un fichier</div>
-                </a>
-                
-                <a href="#suppression" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🗑️ Supprimer</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">Nettoyer l'espace</div>
+                <a href="#actions" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🎯 Actions</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Restaurer, supprimer</div>
                 </a>
                 
                 <a href="#avancees" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -70,10 +70,6 @@ def generate_content(generator, language=None, translations=None):
                     <div style="font-size: 0.9em; opacity: 0.8;">Fonctionnalités techniques</div>
                 </a>
                 
-                <a href="#astuces-sauvegardes" class="nav-card" style="display: block; padding: 12px 16px; background: var(--hdr); border-radius: 6px; text-decoration: none; color: var(--fg); border: 1px solid var(--sep); transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">💡 Astuces</div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">Bonnes pratiques</div>
-                </a>
                 
             </div>
         </div>
@@ -95,17 +91,17 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="vue-ensemble-sauvegardes">
             <h2>💾 Vue d'Ensemble du Gestionnaire de Sauvegardes</h2>
             
-            {generator._get_image_html("06_sauvegardes", "003", 
-                "Interface complète du gestionnaire de sauvegardes", 
-                "Vue d'ensemble du gestionnaire avec statistiques, filtres et liste des sauvegardes")}
+            {generator._get_image_html("06_backup", "002", 
+                "Vue d'ensemble du gestionnaire de sauvegardes", 
+                "Interface complète du gestionnaire avec statistiques, filtres et liste des sauvegardes")}
             
             <h3>Qu'est-ce que c'est ?</h3>
-            <p>Le <strong>Gestionnaire de Sauvegardes</strong> est ton centre de contrôle pour toutes les sauvegardes automatiques créées par RenExtract. 
-            Chaque fois que tu lances une opération importante (nettoyage, extraction, édition), RenExtract crée automatiquement une sauvegarde de tes fichiers.</p>
+            <p>Le <strong>Gestionnaire de Sauvegardes</strong> est votre centre de contrôle pour toutes les sauvegardes automatiques créées par RenExtract. 
+            Chaque fois que vous lancez une opération importante, RenExtract crée automatiquement une sauvegarde de vos fichiers.</p>
             
-            <p>Cette interface te permet de :</p>
+            <p>Cette interface vous permet de :</p>
             <ul>
-                <li>📊 <strong>Visualiser</strong> toutes tes sauvegardes en un coup d'œil</li>
+                <li>📊 <strong>Visualiser</strong> toutes vos sauvegardes en un coup d'œil</li>
                 <li>🔍 <strong>Filtrer</strong> par jeu ou par type de sauvegarde</li>
                 <li>💾 <strong>Restaurer</strong> un fichier en cas de problème</li>
                 <li>🗑️ <strong>Supprimer</strong> les anciennes sauvegardes pour libérer de l'espace</li>
@@ -114,8 +110,8 @@ def generate_content(generator, language=None, translations=None):
             
             <div class="info-box">
                 <h4>🛡️ Sécurité avant tout</h4>
-                <p>RenExtract ne supprime <strong>jamais</strong> une sauvegarde sans ta confirmation explicite. Même après restauration, 
-                le fichier sauvegardé est automatiquement supprimé uniquement pour éviter les doublons.</p>
+                <p>RenExtract ne supprime <strong>jamais</strong> une sauvegarde sans votre confirmation explicite. 
+                La seule exception : lors d'une restauration normale, le fichier sauvegardé est automatiquement supprimé pour éviter les doublons, mais cette action est clairement expliquée avant confirmation.</p>
             </div>
             
             <h3>Quand l'utiliser ?</h3>
@@ -124,10 +120,10 @@ def generate_content(generator, language=None, translations=None):
                 <div class="tip-box" style="margin: 0;">
                     <h4>✅ Situations courantes</h4>
                     <ul>
-                        <li>Tu as fait une erreur lors du nettoyage</li>
+                        <li>Vous avez fait une erreur lors du nettoyage</li>
                         <li>Un fichier a été modifié par erreur</li>
-                        <li>Tu veux récupérer une ancienne version</li>
-                        <li>Tu veux libérer de l'espace disque</li>
+                        <li>Vous voulez récupérer une ancienne version</li>
+                        <li>Vous voulez libérer de l'espace disque</li>
                     </ul>
                 </div>
                 
@@ -135,9 +131,9 @@ def generate_content(generator, language=None, translations=None):
                     <h4>⚠️ Important à savoir</h4>
                     <ul>
                         <li>Les sauvegardes prennent de l'espace disque</li>
-                        <li>Pense à nettoyer régulièrement</li>
+                        <li>Pensez à nettoyer régulièrement</li>
                         <li>La suppression est <strong>irréversible</strong></li>
-                        <li>Vérifie avant de supprimer !</li>
+                        <li>Vérifiez avant de supprimer !</li>
                     </ul>
                 </div>
             </div>
@@ -152,7 +148,7 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="acces">
             <h2>🔓 Accès au Gestionnaire</h2>
             
-            {generator._get_image_html("06_sauvegardes", "001", 
+            {generator._get_image_html("06_backup", "001", 
                 "Bouton Sauvegardes dans l'onglet OUTILS", 
                 "Accès au gestionnaire de sauvegardes depuis l'onglet OUTILS")}
             
@@ -163,16 +159,16 @@ def generate_content(generator, language=None, translations=None):
                 <div class="step-box" style="margin: 0;">
                     <h4>📍 Étape par étape</h4>
                     <ol>
-                        <li><strong>Clique sur l'onglet OUTILS</strong> (jaune) dans l'interface principale</li>
-                        <li><strong>Clique sur le bouton "💾 Sauvegardes"</strong></li>
+                        <li><strong>Cliquez sur l'onglet OUTILS</strong> (jaune) dans l'interface principale</li>
+                        <li><strong>Cliquez sur le bouton "💾 Sauvegardes"</strong></li>
                         <li>Le gestionnaire s'ouvre dans une nouvelle fenêtre</li>
                     </ol>
                 </div>
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>💡 Bon à savoir</h4>
-                    <p>Le gestionnaire de sauvegardes est une <strong>fenêtre persistante</strong> : quand tu la fermes, elle se cache simplement.</p>
-                    <p>La prochaine fois que tu l'ouvres, elle <strong>réapparaît instantanément</strong> et charge automatiquement les dernières sauvegardes, 
+                    <p>Le gestionnaire de sauvegardes est une <strong>fenêtre persistante</strong> : quand vous la fermez, elle se cache simplement.</p>
+                    <p>La prochaine fois que vous l'ouvrez, elle <strong>réapparaît instantanément</strong> et charge automatiquement les dernières sauvegardes, 
                     y compris celles créées entre temps !</p>
                 </div>
                 
@@ -188,45 +184,62 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="types-sauvegardes">
             <h2>📊 Comprendre les Types de Sauvegardes</h2>
             
-            <p>RenExtract crée automatiquement <strong>4 types de sauvegardes</strong> différents selon le contexte. Chaque type a son rôle spécifique :</p>
+            <p>RenExtract crée automatiquement <strong>5 types de sauvegardes</strong> différents selon le contexte. Chaque type a son rôle spécifique :</p>
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>🛡️ Sécurité</h4>
                     <p><strong>Quand ?</strong> Avant chaque extraction de fichiers</p>
-                    <p><strong>Pourquoi ?</strong> Protection maximale de tes fichiers originaux</p>
-                    <p><strong>À savoir :</strong> Ces sauvegardes sont précieuses, ne les supprime pas trop vite !</p>
+                    <p><strong>Pourquoi ?</strong> Protection maximale de vos fichiers originaux</p>
                 </div>
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>🧹 Nettoyage</h4>
-                    <p><strong>Quand ?</strong> Avant chaque opération de nettoyage de projet</p>
-                    <p><strong>Pourquoi ?</strong> Te permet de revenir en arrière si nécessaire</p>
-                    <p><strong>À savoir :</strong> Très utile si un nettoyage supprime quelque chose d'important</p>
+                    <p><strong>Quand ?</strong> Avant chaque opération de nettoyage</p>
+                    <p><strong>Pourquoi ?</strong> Protection contre la perte de données lors du nettoyage</p>
                 </div>
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>📦 Avant RPA</h4>
-                    <p><strong>Quand ?</strong> Juste avant la construction d'une archive RPA</p>
-                    <p><strong>Pourquoi ?</strong> Garder une trace avant la compression</p>
-                    <p><strong>À savoir :</strong> Protection contre la corruption potentielle des données lors de la construction RPA</p>
+                    <p><strong>Quand ?</strong> Avant chaque construction d'archive RPA</p>
+                    <p><strong>Pourquoi ?</strong> Protection contre la corruption potentielle des données lors de la construction RPA</p>
+                </div>
+                
+                <div class="info-box" style="margin: 0;">
+                    <h4>🔗 Avant combinaison</h4>
+                    <p><strong>Quand ?</strong> Avant chaque opération de combinaison</p>
+                    <p><strong>Pourquoi ?</strong> Protection contre la perte de données lors de la fusion</p>
                 </div>
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>⚡ Édition temps réel</h4>
-                    <p><strong>Quand ?</strong> À chaque modification dans l'éditeur temps réel</p>
+                    <p><strong>Quand ?</strong> Avant chaque modification dans l'éditeur</p>
                     <p><strong>Pourquoi ?</strong> Historique de modifications automatique</p>
-                    <p><strong>Rotation ?</strong> ✅ <strong>Max 10 fichiers</strong> (les plus anciens sont supprimés automatiquement)</p>
-                    <p><strong>À savoir :</strong> Ces sauvegardes tournent automatiquement, pas besoin de les gérer !</p>
+                    <p><strong>Rotation :</strong> ✅ <strong>Max 10 fichiers</strong> (les plus anciens sont supprimés automatiquement)</p>
                 </div>
                 
             </div>
             
-            <div class="tip-box">
-                <h4>💡 Astuce : Libérer de l'espace</h4>
-                <p>Les sauvegardes <strong>Édition temps réel</strong> se gèrent toutes seules avec un maximum de 10 fichiers. 
-                Pour libérer de l'espace, concentre-toi sur les sauvegardes des types (Sécurité, Nettoyage, Avant RPA) que tu n'utilises plus.</p>
+            <div class="info-box">
+                <h4>📁 Types de sauvegarde : Fichier vs Dossier</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 15px;">
+                    <div>
+                        <p><strong>Sauvegardes par fichier :</strong></p>
+                        <ul>
+                            <li><strong>🛡️ Sécurité</strong> : Sauvegarde individuelle de chaque fichier</li>
+                            <li><strong>⚡ Édition temps réel</strong> : Sauvegarde individuelle à chaque modification</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p><strong>Sauvegardes par dossier complet :</strong></p>
+                        <ul>
+                            <li><strong>🧹 Nettoyage</strong> : Archive ZIP complète du dossier avant nettoyage</li>
+                            <li><strong>📦 Avant RPA</strong> : Archive ZIP complète du dossier avant construction</li>
+                            <li><strong>🔗 Avant combinaison</strong> : Archive ZIP complète du dossier avant fusion</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     """
@@ -240,7 +253,7 @@ def generate_content(generator, language=None, translations=None):
             <h2>📂 Structure de Stockage</h2>
             
             <h3>Organisation hiérarchique</h3>
-            <p>RenExtract organise tes sauvegardes de manière <strong>intelligente et structurée</strong> (arborescence collapsible) :</p>
+            <p>RenExtract organise vos sauvegardes de manière <strong>intelligente et structurée</strong> (arborescence collapsible) :</p>
             
             <div style="margin: 1.5rem 0; background: var(--nav-bg); border-radius: 8px; border-left: 4px solid var(--accent);">
                 <div class="arbo-toggle" style="padding: 18px 24px; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 12px; transition: all 0.2s; border-bottom: 1px solid var(--sep);" onclick="window.toggleArborescence()" id="arborescence-title">
@@ -252,21 +265,24 @@ def generate_content(generator, language=None, translations=None):
                 </style>
                 <div id="arborescence-content" style="display: none; margin-top: 15px;">
                     <pre style="background: var(--bg); padding: 15px; border-radius: 6px; overflow-x: auto; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9em;">
-02_Sauvegardes/                        ← Dossier racine
-├── &lt;Game_Name&gt;/                      ← Nom du jeu
-│   ├── &lt;File_name&gt;/                  ← Nom du fichier (sans extension)
-│   │   ├── security/                ← Sauvegardes de sécurité
-│   │   │   └── file_20250110_143022.rpy
-│   │   ├── cleanup/                 ← Sauvegardes de nettoyage
-│   │   │   └── file_20250110_150030.rpy
-│   │   ├── rpa_build/               ← Sauvegardes avant RPA
-│   │   │   └── file_20250110_160045.rpy
-│   │   └── realtime_edit/           ← Sauvegardes édition (max 10)
-│   │       ├── file_20250110_170001.rpy
-│   │       ├── file_20250110_170015.rpy
+02_Sauvegardes/                            ← Dossier racine
+├── backup_metadata.json                   ← Métadonnées globales
+├── backup_cache.pkl                       ← Cache pour performances
+├── &lt;Game_Name&gt;/                           ← Nom du jeu
+│   ├── &lt;File_Name&gt;/                       ← Nom du fichier (sans extension)
+│   │   ├── security/                      ← Sauvegardes de sécurité (fichiers individuels)
+│   │   │   └── script_20251015_143124.rpy
+│   │   └── realtime_edit/                 ← Sauvegardes édition (max 10 fichiers)
+│   │       ├── script_20251015_144235.rpy
 │   │       └── ... (max 10 fichiers)
-├── backup_metadata.json             ← Métadonnées
-└── backup_cache.pkl                 ← Cache pour performances
+│   ├── &lt;Langue_Name&gt;/                     ← Nom de la langue (pour archives ZIP)
+│   │   ├── before_combination/            ← Sauvegardes avant combinaison (ZIP)
+│   │   │   └── french_20251015_143111.zip
+│   │   └── rpa_build/                     ← Sauvegardes avant RPA (ZIP)
+│   │       └── french_20251015_143816.zip
+│   └── tl/                                ← Dossier de traductions
+│       └── cleanup/                       ← Sauvegardes de nettoyage (ZIP)
+│           └── tl_20251015_143155.zip
                     </pre>
                 </div>
                 </div>
@@ -277,8 +293,9 @@ def generate_content(generator, language=None, translations=None):
                     <h4>✅ Organisation claire</h4>
                     <ul>
                         <li>Un dossier par jeu</li>
-                        <li>Un sous-dossier par fichier</li>
-                        <li>Un type par sous-dossier</li>
+                        <li>Séparation par contexte : fichiers individuels vs archives ZIP</li>
+                        <li>Fichiers individuels : security/ et realtime_edit/</li>
+                        <li>Archives ZIP : before_combination/, rpa_build/, cleanup/</li>
                         <li>Facile à retrouver manuellement</li>
                     </ul>
                 </div>
@@ -296,32 +313,89 @@ def generate_content(generator, language=None, translations=None):
             
             <div class="info-box">
                 <h4>📍 Où se trouve ce dossier ?</h4>
-                <p>Le dossier <code>02_Sauvegardes</code> est situé à la racine de ton dossier de travail RenExtract. 
-                Tu peux y accéder manuellement si besoin, mais le gestionnaire intégré est beaucoup plus pratique !</p>
+                <p>Le dossier <code>02_Sauvegardes</code> est situé à la racine de votre dossier de travail RenExtract. 
+                Vous pouvez y accéder par le bouton <strong>"Ouvrir le Dossier"</strong> depuis l'interface du gestionnaire !</p>
             </div>
         </div>
     """
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # SECTION 5 : FILTRER LES SAUVEGARDES
+    # SECTION 5 : STATISTIQUES DES SAUVEGARDES
     # ═══════════════════════════════════════════════════════════════════════════
     
     section_5 = f"""
+        <div class="section" id="statistiques">
+            <h2>📊 Statistiques des Sauvegardes</h2>
+            
+            <p>Le gestionnaire affiche des <strong>statistiques en temps réel</strong> pour vous donner un aperçu complet de vos sauvegardes :</p>
+            
+            {generator._get_image_html("06_backup", "003", 
+                "Statistiques des sauvegardes", 
+                "Zone de statistiques montrant le nombre total de sauvegardes, jeux et fichiers")}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                <div class="info-box" style="margin: 0;">
+                    <h4>📊 Informations affichées</h4>
+                    <p>Les statistiques vous donnent un aperçu rapide de vos sauvegardes :</p>
+                    <ul>
+                        <li><strong>Nombre total de sauvegardes</strong> : Toutes les sauvegardes confondues</li>
+                        <li><strong>Nombre de jeux</strong> : Jeux différents ayant des sauvegardes</li>
+                        <li><strong>Nombre de fichiers</strong> : Fichiers différents sauvegardés</li>
+                        <li><strong>Taille totale</strong> : Espace disque utilisé par toutes les sauvegardes</li>
+                    </ul>
+                    <p>Ces statistiques se mettent à jour automatiquement selon les filtres actifs !</p>
+                </div>
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>💡 Utilisation pratique</h4>
+                    <p>Les statistiques sont particulièrement utiles pour :</p>
+                    <ul>
+                        <li><strong>Surveiller l'espace disque</strong> utilisé par les sauvegardes</li>
+                        <li><strong>Identifier les jeux</strong> avec le plus de sauvegardes</li>
+                        <li><strong>Décider quelles sauvegardes</strong> supprimer pour libérer de l'espace</li>
+                        <li><strong>Vérifier l'impact</strong> des filtres sur les données affichées</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 6 : FILTRER LES SAUVEGARDES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_6 = f"""
         <div class="section" id="filtres">
             <h2>🔍 Filtrer les Sauvegardes</h2>
             
-            <p>Quand tu as beaucoup de sauvegardes, les <strong>filtres</strong> sont tes meilleurs amis ! 
-            RenExtract te propose deux filtres complémentaires :</p>
+            <p>Quand vous avez beaucoup de sauvegardes, les <strong>filtres</strong> sont vos meilleurs amis ! 
+            RenExtract vous propose deux filtres complémentaires :</p>
+            
+            <h3>Filtres et actions</h3>
+            
+            {generator._get_image_html("06_backup", "004", 
+                "Filtres et actions", 
+                "Zone des filtres et boutons d'action du gestionnaire")}
+            
+            <div class="info-box">
+                <h4>🔍 Filtres disponibles</h4>
+                <p>Le gestionnaire propose deux types de filtres :</p>
+                <ul>
+                    <li><strong>🎮 Filtre par jeu</strong> : Affiche les sauvegardes d'un jeu spécifique</li>
+                    <li><strong>🏷️ Filtre par type</strong> : Affiche un type de sauvegarde spécifique</li>
+                </ul>
+                <p>Vous pouvez combiner les deux filtres pour affiner votre recherche !</p>
+            </div>
             
             <h3>Filtre par jeu</h3>
             
-            {generator._get_image_html("06_sauvegardes", "004", 
-                "Menu de filtrage par jeu", 
-                "Liste déroulante pour filtrer les sauvegardes par jeu")}
+            {generator._get_image_html("06_backup", "005", 
+                "Filtre par jeu", 
+                "Menu déroulant pour filtrer les sauvegardes par jeu")}
             
             <div class="info-box">
                 <h4>🎮 Comment ça marche ?</h4>
-                <p>Clique sur le menu déroulant <strong>"🎮 Filtrer par jeu"</strong> et choisis :</p>
+                <p>Cliquez sur le menu déroulant <strong>"🎮 Filtrer par jeu"</strong> et choisissez :</p>
                 <ul>
                     <li><strong>Tous</strong> : Affiche toutes les sauvegardes (tous jeux confondus)</li>
                     <li><strong>Un jeu spécifique</strong> : Affiche uniquement les sauvegardes de ce jeu</li>
@@ -331,31 +405,26 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>Filtre par type</h3>
             
-            {generator._get_image_html("06_sauvegardes", "002", 
-                "Menu de filtrage par type", 
-                "Liste déroulante pour filtrer les sauvegardes par type (Sécurité, Nettoyage, etc.)")}
+            {generator._get_image_html("06_backup", "006", 
+                "Filtre par type", 
+                "Menu déroulant pour filtrer les sauvegardes par type")}
             
             <div class="info-box">
                 <h4>🏷️ Comment ça marche ?</h4>
-                <p>Clique sur le menu déroulant <strong>"🏷️ Filtrer par type"</strong> et choisis :</p>
+                <p>Cliquez sur le menu déroulant <strong>"🏷️ Filtrer par type"</strong> et choisissez :</p>
                 <ul>
                     <li><strong>Tous</strong> : Affiche tous les types</li>
                     <li><strong>🛡️ Sécurité</strong> : Uniquement les sauvegardes de sécurité</li>
                     <li><strong>🧹 Nettoyage</strong> : Uniquement les sauvegardes de nettoyage</li>
                     <li><strong>📦 Avant RPA</strong> : Uniquement les sauvegardes avant compilation en RPA</li>
+                    <li><strong>🔗 Avant combinaison</strong> : Uniquement les sauvegardes avant combinaison</li>
                     <li><strong>⚡ Édition temps réel</strong> : Uniquement les sauvegardes d'édition</li>
             </ul>
             </div>
             
-            <h3>Combiner les filtres</h3>
-            
-            {generator._get_image_html("06_sauvegardes", "008", 
-                "Filtres combinés actifs", 
-                "Exemple de filtrage par jeu ET par type simultanément")}
-            
             <div class="tip-box">
                 <h4>🎯 Filtrage puissant</h4>
-                <p>Tu peux <strong>combiner les deux filtres</strong> ! Par exemple :</p>
+                <p>Vous pouvez <strong>combiner les deux filtres</strong> ! Par exemple :</p>
                 <ul>
                     <li>Jeu = "Game_Name" + Type = "Sécurité" → Affiche uniquement les sauvegardes de sécurité de ce jeu</li>
                     <li>Les statistiques s'adaptent en temps réel</li>
@@ -365,90 +434,156 @@ def generate_content(generator, language=None, translations=None):
             
             <div class="warning-box">
                 <h4>⚠️ Attention au filtre actif</h4>
-                <p>Quand un filtre est actif, tu ne vois qu'une <strong>partie</strong> de tes sauvegardes. 
-                Vérifie bien la barre de statut en bas pour savoir si un filtre est appliqué !</p>
+                <p>Quand un filtre est actif, vous ne voyez qu'une <strong>partie</strong> de vos sauvegardes. 
+                Vérifiez bien la barre de statut en bas pour savoir si un filtre est appliqué !</p>
             </div>
         </div>
     """
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # SECTION 6 : GÉRER LES SAUVEGARDES
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    section_6 = f"""
-        <div class="section" id="gestion">
-            <h2>📋 Gérer les Sauvegardes</h2>
-            
-            <h3>Tri des colonnes</h3>
-            
-            {generator._get_image_html("06_sauvegardes", "006", 
-                "Tri par nom de fichier", 
-                "Exemple de tri avec indicateur de direction")}
-            
-            <div class="info-box">
-                <h4>🔄 Trier pour mieux s'y retrouver</h4>
-                <p>Clique sur <strong>n'importe quel en-tête de colonne</strong> pour trier la liste :</p>
-                <ul>
-                    <li><strong>Nom du jeu</strong> : Tri alphabétique des jeux</li>
-                    <li><strong>Nom du fichier</strong> : Tri alphabétique des fichiers</li>
-                    <li><strong>Type backup</strong> : Tri par type de sauvegarde</li>
-                    <li><strong>Date créé</strong> : Tri chronologique (plus récent/ancien)</li>
-                    <li><strong>Taille</strong> : Tri par taille de fichier</li>
-                </ul>
-                <p>Un indicateur (<strong>↑</strong> ou <strong>↓</strong>) apparaît pour montrer l'ordre actuel.</p>
-            </div>
-            
-            <h3>Navigation dans le tableau</h3>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
-                <div class="tip-box" style="margin: 0;">
-                    <h4>⌨️ Raccourcis clavier</h4>
-                    <ul>
-                        <li><strong>Clic</strong> : Sélectionner une sauvegarde</li>
-                        <li><strong>Clic droit</strong> : Menu contextuel</li>
-                        <li><strong>Flèches ↑↓ ou molette</strong> : Naviguer dans la liste</li>
-                    </ul>
-                </div>
-                
-                <div class="info-box" style="margin: 0;">
-                    <h4>📊 Colonnes affichées</h4>
-                    <ul>
-                        <li><strong>Nom du jeu</strong> : Jeu concerné</li>
-                        <li><strong>Nom du fichier</strong> : Fichier sauvegardé</li>
-                        <li><strong>Type backup</strong> : Type de sauvegarde</li>
-                        <li><strong>Date créé</strong> : Date et heure</li>
-                        <li><strong>Taille</strong> : Espace utilisé</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="tip-box">
-                <h4>💡 Astuce : Scroll infini</h4>
-                <p>Le tableau supporte le <strong>scroll vertical et horizontal</strong>. Si tu as beaucoup de sauvegardes, 
-                utilise les scrollbars pour naviguer confortablement !</p>
-            </div>
-        </div>
-    """
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SECTION 7 : RESTAURER UNE SAUVEGARDE
+    # SECTION 7 : TREE VIEW DES SAUVEGARDES
     # ═══════════════════════════════════════════════════════════════════════════
     
     section_7 = f"""
-        <div class="section" id="restauration">
-            <h2>💾 Restaurer une Sauvegarde</h2>
+        <div class="section" id="treeview">
+            <h2>🌳 Tree View des Sauvegardes</h2>
             
-            <p>La restauration te permet de <strong>récupérer une version antérieure</strong> de ton fichier. 
-            RenExtract propose deux modes de restauration :</p>
+            <p>Le <strong>Tree View</strong> vous donne une <strong>vue hiérarchique</strong> de toutes vos sauvegardes, 
+            organisées de manière logique et intuitive.</p>
+            
+            {generator._get_image_html("06_backup", "007", 
+                "Tree view des sauvegardes", 
+                "Vue hiérarchique montrant tous les types de sauvegardes organisés")}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                <div class="info-box" style="margin: 0;">
+                    <h4>🌳 Structure hiérarchique</h4>
+                    <p>Le Tree View organise vos sauvegardes selon cette logique :</p>
+                    <ul>
+                        <li><strong>Niveau 1</strong> : Checkbox</li>
+                        <li><strong>Niveau 2</strong> : Nom du jeu</li>
+                        <li><strong>Niveau 3</strong> : Nom du fichier/dossier</li>
+                        <li><strong>Niveau 4</strong> : Type de sauvegarde</li>
+                        <li><strong>Niveau 5</strong> : Date de création</li>
+                        <li><strong>Niveau 6</strong> : Taille</li>
+                    </ul>
+                </div>
+                
+                <div class="tip-box" style="margin: 0;">
+                    <h4>🎯 Avantages du Tree View</h4>
+                    <ul>
+                        <li><strong>Navigation intuitive</strong> : Structure claire et logique</li>
+                        <li><strong>Vue d'ensemble</strong> : Toutes les sauvegardes en un coup d'œil</li>
+                        <li><strong>Organisation par jeu</strong> : Facile de trouver ce qui vous intéresse</li>
+                        <li><strong>Types visibles</strong> : Distinction claire entre les types</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h4>🎮 Interactions avec le Tree View</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 1rem 0;">
+                    <div>
+                        <h5>🔍 Navigation de base</h5>
+                        <ul>
+                            <li><strong>Clic sur le nom</strong> : Sélectionner l'élément</li>
+                            <li><strong>Clic droit</strong> : Menu contextuel</li>
+                            <li><strong>Scroll</strong> : Naviguer dans la liste</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5>⌨️ Raccourcis clavier</h5>
+                        <ul>
+                            <li><strong>Flèches ↑↓</strong> : Navigation clavier</li>
+                            <li><strong>Molette</strong> : Scroll fluide</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5>💡 Sélection multiple</h5>
+                        <ul>
+                            <li><strong>Clic + Ctrl</strong> : Ajouter à la sélection</li>
+                            <li><strong>Clic + Shift</strong> : Sélectionner une plage</li>
+                            <li><strong>Checkbox</strong> : Sélection visuelle</li>
+                        </ul>
+                    </div>
+                </div>
+                <p><strong>💡 Astuce :</strong> Le Tree View est particulièrement utile pour comprendre l'organisation de vos sauvegardes, identifier rapidement les sauvegardes d'un jeu spécifique, et naviguer facilement dans une grande quantité de données.</p>
+            </div>
+        </div>
+    """
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SECTION 8 : ACTIONS SUR LES SAUVEGARDES
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    section_8 = f"""
+        <div class="section" id="actions">
+            <h2>🎯 Actions sur les Sauvegardes</h2>
+            
+            <p>Cette section couvre toutes les <strong>actions disponibles</strong> dans le gestionnaire de sauvegardes : 
+            restaurer, supprimer et accéder aux dossiers. Chaque action est adaptée selon le type de sauvegarde sélectionnée.</p>
             
             <h3>Actions disponibles</h3>
             
-            {generator._get_image_html("06_sauvegardes", "005", 
-                "Boutons d'action sur les sauvegardes", 
-                "Boutons Restaurer, Restaurer vers... et Supprimer")}
+            {generator._get_image_html("06_backup", "008", 
+                "Actions sur les sauvegardes", 
+                "Boutons d'action disponibles pour les sauvegardes sélectionnées")}
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
+                <div class="info-box" style="margin: 0;">
+                    <h4>🔧 Actions disponibles</h4>
+                    <p>Selon la sauvegarde sélectionnée, vous pouvez :</p>
+                    <ul>
+                        <li><strong>💾 Restaurer</strong> : Restauration intelligente (ZIP → extraction, Fichier → remplacement)</li>
+                        <li><strong>📄 Restaurer vers...</strong> : Copier la sauvegarde à un emplacement choisi</li>
+                        <li><strong>🗑️ Supprimer</strong> : Supprimer définitivement la sauvegarde (une ou plusieurs sélectionnées)</li>
+                        <li><strong>📁 Ouvrir le Dossier</strong> : Accéder au dossier mère des sauvegardes (02_Sauvegardes)</li>
+                    </ul>
+                    <p>Les boutons s'activent automatiquement selon la sélection et le type de sauvegarde !</p>
+                </div>
                 
+                <div class="tip-box" style="margin: 0;">
+                    <h4>🎯 Workflow recommandé</h4>
+                    <p>Pour une gestion efficace de vos sauvegardes :</p>
+                    <ol>
+                        <li><strong>Sélectionnez</strong> les sauvegardes à traiter (une ou plusieurs)</li>
+                        <li><strong>Choisissez l'action</strong> appropriée selon vos besoins</li>
+                        <li><strong>Confirmez</strong> les dialogues de sécurité</li>
+                        <li><strong>Vérifiez</strong> le résultat dans la barre de statut</li>
+                    </ol>
+                </div>
+            </div>
+            
+            <h3>💾 Restaurer une Sauvegarde</h3>
+            
+            <p>La restauration vous permet de <strong>récupérer une version antérieure</strong> de vos fichiers. 
+            RenExtract adapte automatiquement le processus selon le type de sauvegarde :</p>
+            
+            <div class="info-box">
+                <h4>🎯 Types de Restauration Intelligente</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1rem 0;">
+                    <div>
+                        <h5>📁 Archives ZIP (Nettoyage, RPA, Combinaison)</h5>
+                        <ul>
+                            <li><strong>Extraction automatique</strong> vers le dossier original</li>
+                            <li><strong>Détection intelligente</strong> du chemin source</li>
+                            <li><strong>Restauration complète</strong> du dossier</li>
+                            <li>Gestion des conflits de fichiers</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5>📄 Fichiers individuels (Sécurité, Édition)</h5>
+                        <ul>
+                            <li><strong>Remplacement direct</strong> du fichier original</li>
+                            <li><strong>Gestion des conflits</strong> avec renommage automatique</li>
+                            <li><strong>Suppression automatique</strong> après restauration</li>
+                            <li>Protection contre l'écrasement</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 <div class="info-box" style="margin: 0;">
                     <h4>💾 Restaurer (normal)</h4>
                     <p><strong>Ce qui se passe :</strong></p>
@@ -456,10 +591,11 @@ def generate_content(generator, language=None, translations=None):
                         <li>Sélectionne une sauvegarde dans la liste</li>
                         <li>Clique sur <strong>"💾 Restaurer"</strong></li>
                         <li>Confirme la restauration</li>
-                        <li>Le fichier remplace l'original</li>
+                        <li><strong>ZIP :</strong> Extraction vers le dossier original</li>
+                        <li><strong>Fichier :</strong> Remplacement du fichier original</li>
                         <li>La sauvegarde est <strong>automatiquement supprimée</strong></li>
                     </ol>
-                    <p><strong>Avantage :</strong> Restauration rapide au bon endroit</p>
+                    <p><strong>Avantage :</strong> Restauration intelligente au bon endroit</p>
                 </div>
                 
                 <div class="info-box" style="margin: 0;">
@@ -468,54 +604,62 @@ def generate_content(generator, language=None, translations=None):
                     <ol>
                         <li>Sélectionne une sauvegarde</li>
                         <li>Clique sur <strong>"📄 Restaurer vers..."</strong></li>
-                        <li>Choisis le dossier de destination</li>
-                        <li>Le fichier est copié là où tu veux</li>
+                        <li><strong>ZIP :</strong> Choisissez le dossier de destination</li>
+                        <li><strong>Fichier :</strong> Choisissez l'emplacement et le nom</li>
+                        <li>Le contenu est copié là où vous voulez</li>
                         <li>La sauvegarde reste disponible</li>
                     </ol>
-                    <p><strong>Avantage :</strong> Tu gardes la sauvegarde et l'original</p>
-                </div>
-                
-            </div>
-            
-            <h3>Confirmation de restauration</h3>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 1.5rem 0; align-items: start;">
-                {generator._get_image_html("06_sauvegardes", "007", 
-                    "Dialogue de confirmation restauration", 
-                    "Fenêtre de confirmation avant restauration d'une sauvegarde")}
-                
-                <div class="warning-box" style="margin: 0;">
-                    <h4>⚠️ Attention : Remplacement du fichier</h4>
-                    <p>Lors d'une restauration normale :</p>
-                    <ul>
-                        <li>Le fichier actuel sera <strong>remplacé</strong> par la sauvegarde</li>
-                        <li>Cette action est <strong>irréversible</strong> (sauf si tu as une autre sauvegarde)</li>
-                        <li>La sauvegarde est supprimée après restauration pour éviter les doublons</li>
-                        <li>Vérifie bien les détails (jeu, fichier, date) avant de confirmer !</li>
-                    </ul>
+                    <p><strong>Avantage :</strong> Vous gardez la sauvegarde et l'original</p>
                 </div>
             </div>
             
-            <div class="tip-box">
-                <h4>💡 Astuce : Menu contextuel</h4>
-                <p>Tu peux aussi <strong>cliquer droit</strong> sur une sauvegarde pour accéder rapidement aux actions de restauration !</p>
+            <div class="info-box">
+                <h4>🧠 Détection Intelligente du Chemin Source</h4>
+                <p>RenExtract utilise une <strong>logique avancée</strong> pour retrouver automatiquement le bon emplacement :</p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1rem 0;">
+                    <div>
+                        <h5>🎯 Pour les Archives ZIP</h5>
+                        <ol>
+                            <li><strong>Métadonnées</strong> : Utilise le chemin stocké lors de la sauvegarde</li>
+                            <li><strong>Reconstruction</strong> : Reconstitue le chemin basé sur le projet</li>
+                            <li><strong>Détection projet</strong> : Trouve automatiquement le dossier racine</li>
+                            <li><strong>Fallback</strong> : Demande à l'utilisateur si nécessaire</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h5>📄 Pour les Fichiers Individuels</h5>
+                        <ol>
+                            <li><strong>Chemin original</strong> : Utilise le chemin exact du fichier</li>
+                            <li><strong>Vérification</strong> : S'assure que le fichier existe</li>
+                            <li><strong>Conflit</strong> : Renomme automatiquement si nécessaire</li>
+                            <li><strong>Sécurité</strong> : Évite l'écrasement accidentel</li>
+                        </ol>
+                    </div>
+                </div>
+                <p><strong>💡 Résultat :</strong> Dans 99% des cas, la restauration se fait automatiquement au bon endroit !</p>
             </div>
-        </div>
-    """
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SECTION 8 : SUPPRIMER UNE SAUVEGARDE
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    section_8 = f"""
-        <div class="section" id="suppression">
-            <h2>🗑️ Supprimer une Sauvegarde</h2>
             
-            <p>Pour libérer de l'espace disque, tu peux supprimer les sauvegardes dont tu n'as plus besoin.</p>
+            <div class="warning-box">
+                <h4>⚠️ Attention : Remplacement du fichier</h4>
+                <p>Lors d'une restauration normale :</p>
+                <ul>
+                    <li>Le fichier actuel sera <strong>remplacé</strong> par la sauvegarde</li>
+                    <li>Cette action est <strong>irréversible</strong> (sauf si vous avez une autre sauvegarde)</li>
+                    <li>La sauvegarde est supprimée après restauration pour éviter les doublons</li>
+                    <li>Vérifiez bien les détails (jeu, fichier, date) avant de confirmer !</li>
+                </ul>
+            </div>
             
-            <h3>Comment supprimer ?</h3>
+            <h3>🗑️ Supprimer des Sauvegardes</h3>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 1.5rem 0; align-items: start;">
+            <p>Pour libérer de l'espace disque, vous pouvez supprimer les sauvegardes dont vous n'avez plus besoin. 
+            Vous pouvez supprimer <strong>une sauvegarde unique</strong> ou <strong>plusieurs sauvegardes en une fois</strong>.</p>
+            
+            {generator._get_image_html("06_backup", "009", 
+                "Dialogue de confirmation suppression", 
+                "Fenêtre de confirmation avant suppression définitive")}
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 <div class="step-box" style="margin: 0;">
                     <h4>📝 Étapes de suppression</h4>
                     <ol>
@@ -523,30 +667,9 @@ def generate_content(generator, language=None, translations=None):
                         <li>Clique sur le bouton <strong>"🗑️ Supprimer"</strong> (rouge)</li>
                         <li>Lis attentivement les détails affichés dans la confirmation</li>
                         <li>Confirme en cliquant sur <strong>"Oui"</strong></li>
-                        <li>La sauvegarde est définitivement supprimée</li>
-            </ol>
+                        <li>La ou les sauvegardes sont définitivement supprimées</li>
+                    </ol>
                 </div>
-                
-                {generator._get_image_html("06_sauvegardes", "009", 
-                    "Dialogue de confirmation suppression", 
-                    "Fenêtre de confirmation avant suppression définitive")}
-            </div>
-            
-            <div class="warning-box">
-                <h4>⚠️ IMPORTANT : Action irréversible</h4>
-                <p><strong>La suppression est DÉFINITIVE</strong> ! Tu ne pourras pas récupérer une sauvegarde supprimée.</p>
-                <p>Avant de supprimer, vérifie bien :</p>
-                <ul>
-                    <li>✅ C'est bien la bonne sauvegarde ?</li>
-                    <li>✅ Tu n'en auras plus besoin ?</li>
-                    <li>✅ Tu as d'autres sauvegardes si nécessaire ?</li>
-                    <li>✅ Le jeu et le fichier correspondent bien ?</li>
-                </ul>
-            </div>
-            
-            <h3>Quelles sauvegardes supprimer ?</h3>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 
                 <div class="tip-box" style="margin: 0;">
                     <h4>✅ Supprimer sans risque</h4>
@@ -557,24 +680,56 @@ def generate_content(generator, language=None, translations=None):
                         <li>Sauvegardes de tests ou d'essais</li>
                     </ul>
                 </div>
-                
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 <div class="warning-box" style="margin: 0;">
                     <h4>❌ À conserver</h4>
                     <ul>
                         <li>Sauvegardes de sécurité récentes</li>
                         <li>Dernière sauvegarde avant modification importante</li>
                         <li>Sauvegardes de projets en cours</li>
-                        <li>En cas de doute, garde-les !</li>
+                        <li>Dernière sauvegarde de chaque jeu</li>
                     </ul>
                 </div>
                 
+                <div class="warning-box" style="margin: 0;">
+                    <h4>⚠️ IMPORTANT : Action irréversible</h4>
+                    <p><strong>La suppression est DÉFINITIVE</strong> ! Vous ne pourrez pas récupérer une sauvegarde supprimée.</p>
+                    <p>Avant de supprimer, vérifiez bien :</p>
+                    <ul>
+                        <li>✅ C'est bien la bonne sauvegarde ?</li>
+                        <li>✅ Vous n'en aurez plus besoin ?</li>
+                        <li>✅ Vous avez d'autres sauvegardes si nécessaire ?</li>
+                        <li>✅ Le jeu et le fichier correspondent bien ?</li>
+                    </ul>
+                </div>
             </div>
             
             <div class="info-box">
-                <h4>🧹 Nettoyage automatique des dossiers vides</h4>
-                <p>Quand tu supprimes une sauvegarde, RenExtract nettoie automatiquement les dossiers vides. 
-                Pas besoin de t'en soucier !</p>
+                <h4>🎯 Cas d'Usage par Type de Sauvegarde</h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1rem 0;">
+                    <div>
+                        <h5>📁 Archives ZIP - Quand les utiliser ?</h5>
+                        <ul>
+                            <li><strong>Nettoyage</strong> : Restaurer tout le dossier `tl` après erreur</li>
+                            <li><strong>Avant RPA</strong> : Revenir à l'état avant compilation</li>
+                            <li><strong>Avant combinaison</strong> : Annuler une fusion problématique</li>
+                            <li><strong>Avantage</strong> : Restauration complète en une action</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5>📄 Fichiers individuels - Quand les utiliser ?</h5>
+                        <ul>
+                            <li><strong>Sécurité</strong> : Restaurer un fichier spécifique</li>
+                            <li><strong>Édition temps réel</strong> : Annuler une modification récente</li>
+                            <li><strong>Avantage</strong> : Restauration précise et rapide</li>
+                            <li><strong>Rotation</strong> : Gestion automatique (max 10 fichiers) - Édition temps réel uniquement</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
+            
         </div>
     """
     
@@ -586,7 +741,7 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="avancees">
             <h2>⚙️ Fonctionnalités Avancées</h2>
             
-            <p>Le gestionnaire de sauvegardes intègre plusieurs technologies pour optimiser ton expérience :</p>
+            <p>Le gestionnaire de sauvegardes intègre plusieurs technologies pour optimiser votre expérience :</p>
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 
@@ -640,90 +795,9 @@ def generate_content(generator, language=None, translations=None):
                 
             </div>
             
-            <div class="tip-box">
-                <h4>💡 Pour les curieux : Structure technique</h4>
-                <p>Si tu veux en savoir plus sur la structure technique :</p>
-                <ul>
-                    <li><strong>Singleton Pattern</strong> : Une seule instance du gestionnaire</li>
-                    <li><strong>Métadonnées JSON</strong> : Stockage léger et lisible</li>
-                    <li><strong>Cache Pickle</strong> : Sérialisation Python pour vitesse maximale</li>
-                    <li><strong>Scan hiérarchique</strong> : Parcours optimisé de l'arborescence</li>
-                </ul>
-            </div>
         </div>
     """
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SECTION 10 : ASTUCES ET BONNES PRATIQUES
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    section_10 = """
-        <div class="section" id="astuces-sauvegardes">
-            <h2>💡 Astuces et Bonnes Pratiques</h2>
-            
-            <p>Quelques conseils pour gérer efficacement tes sauvegardes :</p>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
-                
-                <div class="tip-box" style="margin: 0;">
-                    <h4>📅 Vérification régulière</h4>
-                    <ul>
-                        <li>Ouvre le gestionnaire <strong>une fois par semaine</strong></li>
-                        <li>Vérifie l'espace disque utilisé</li>
-                        <li>Supprime les sauvegardes obsolètes</li>
-                        <li>Garde uniquement ce qui est utile</li>
-                    </ul>
-                </div>
-                
-                <div class="tip-box" style="margin: 0;">
-                    <h4>🎯 Utiliser les filtres</h4>
-                    <ul>
-                        <li>Filtre par jeu pour les projets terminés</li>
-                        <li>Filtre par type pour cibler les sauvegardes lourdes</li>
-                        <li>Combine les filtres pour affiner</li>
-                        <li>Trie par taille pour voir les plus gros fichiers</li>
-                    </ul>
-                </div>
-                
-                <div class="warning-box" style="margin: 0;">
-                    <h4>⚠️ Rotation édition temps réel</h4>
-                    <ul>
-                        <li>Max 10 fichiers : ancien automatiquement supprimé</li>
-                        <li>Pas besoin de gérer manuellement</li>
-                        <li>Restaure rapidement si modification récente</li>
-                        <li>Ne compte pas dessus pour l'archivage long terme</li>
-                    </ul>
-                </div>
-                
-                <div class="tip-box" style="margin: 0;">
-                    <h4>💾 Sauvegarde externe importante</h4>
-                    <ul>
-                        <li>Les sauvegardes RenExtract sont <strong>locales</strong></li>
-                        <li>Pour les projets importants, fais des sauvegardes externes</li>
-                        <li>Utilise Git, cloud, ou disque externe</li>
-                        <li>Ne compte pas uniquement sur RenExtract</li>
-                    </ul>
-                </div>
-                
-            </div>
-            
-            <div class="info-box">
-                <h4>🔍 Workflow recommandé</h4>
-                <ol>
-                    <li><strong>Avant une opération importante</strong> : Vérifie qu'une sauvegarde de sécurité est créée</li>
-                    <li><strong>Après l'opération</strong> : Si tout va bien, tu peux supprimer l'ancienne sauvegarde</li>
-                    <li><strong>En cas de problème</strong> : Restaure la dernière sauvegarde valide</li>
-                    <li><strong>Nettoyage mensuel</strong> : Supprime les sauvegardes de plus de 30 jours si inutiles</li>
-                </ol>
-            </div>
-        </div>
-    """
-    
-    # ═══════════════════════════════════════════════════════════════════════════
-    # SECTION 11 : CONCLUSION
-    # ═══════════════════════════════════════════════════════════════════════════
-    
-    section_11 = ""
     
     # ═══════════════════════════════════════════════════════════════════════════
     # ASSEMBLAGE FINAL
@@ -739,7 +813,5 @@ def generate_content(generator, language=None, translations=None):
         section_6 +
         section_7 +
         section_8 +
-        section_9 +
-        section_10 +
-        section_11
+        section_9
     )

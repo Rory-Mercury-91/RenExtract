@@ -35,6 +35,49 @@ except Exception:
 TEXT_WIDGET_HEIGHT = 120  # Hauteur fixe en pixels
 TEXT_WIDGET_WIDTH = 400   # Largeur fixe en pixels
 
+def update_status_with_pending_count(main_interface):
+    """Met à jour le statut avec le nombre de modifications en attente."""
+    try:
+        biz = main_interface._get_realtime_editor_business()
+        summary = biz.get_pending_modifications_summary()
+        pending_count = summary['total_count']
+        
+        # Mettre à jour la barre de statut générale
+        if pending_count > 0:
+            status_parts = [f"{pending_count} modification(s) en attente"]
+            by_type = summary['by_type']
+            if len(by_type) > 1:
+                type_details = []
+                for mod_type, count in by_type.items():
+                    type_name = {'simple': 'simple', 'split': 'division', 'speaker_dialogue': 'locuteur+dialogue', 'merge': 'fusion', 'menu_choice': 'choix', 'multiple_dialogue': 'multiple'}.get(mod_type, mod_type)
+                    type_details.append(f"{count} {type_name}")
+                status_parts.append(f"({', '.join(type_details)})")
+            main_interface._update_status(" ".join(status_parts))
+        
+        # Mettre à jour le label de surveillance spécifique
+        if hasattr(main_interface, 'monitor_status_label'):
+            current_text = main_interface.monitor_status_label.cget("text")
+            current_fg = main_interface.monitor_status_label.cget("fg")
+            
+            # Déterminer le statut de base selon la couleur
+            if current_fg == '#28a745':  # Vert = Surveillance active
+                base_status = "🟢 Surveillance active"
+            elif current_fg == '#dc3545':  # Rouge = Surveillance arrêtée
+                base_status = "⭕ Surveillance arrêtée"
+            else:
+                base_status = current_text
+            
+            # Ajouter le nombre de modifications en attente
+            if pending_count > 0:
+                status_text = f"{base_status} ({pending_count} modification{'s' if pending_count > 1 else ''} en attente)"
+            else:
+                status_text = base_status
+            
+            main_interface.monitor_status_label.config(text=status_text)
+            
+    except Exception as e:
+        log_message("ERREUR", f"Erreur mise à jour statut pending: {e}", category="realtime_editor")
+
 def create_realtime_editor_tab(parent_notebook, main_interface):
     """Crée l'onglet d'édition temps réel avec interface optimisée."""
     theme = theme_manager.get_theme()
@@ -79,7 +122,7 @@ def create_realtime_editor_tab(parent_notebook, main_interface):
 
     if not hasattr(main_interface, 'editor_font_size_var'):
         main_interface.editor_font_size_var = tk.IntVar()
-        default_size = config_manager.get('editor_font_size', 9)
+        default_size = config_manager.get('editor_font_size', 12)
         main_interface.editor_font_size_var.set(default_size)
 
     if not hasattr(main_interface, 'vf_split_mode'):
@@ -129,21 +172,31 @@ def create_realtime_editor_tab(parent_notebook, main_interface):
         update_vf_label_text(main_interface)
     main_interface.realtime_language_var.trace('w', on_language_changed)
     
-    scan_btn = tk.Button(config_frame, text="Scanner les langues", command=lambda: scan_available_languages(main_interface, lang_combo), bg=theme["button_utility_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8, relief='flat', cursor='hand2')
+    # --- AUTO-SCAN LANGUE (création + re-sélection de l'onglet + changement de projet) ---
+    _last_scanned_project = [None]  # Liste pour mutation dans closure
+    
+    def _manual_scan():
+        """Scan manuel avec mise à jour du dernier projet scanné"""
+        scan_available_languages(main_interface, lang_combo)
+        _last_scanned_project[0] = getattr(main_interface, "current_project_path", "")
+    
+    scan_btn = tk.Button(config_frame, text="Scanner les langues", command=_manual_scan, bg=theme["button_utility_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8, relief='flat', cursor='hand2')
     scan_btn.pack(side='left', padx=(0, 10))
 
     install_btn = tk.Button(config_frame, text="Installer le module", command=lambda: install_monitoring_module(main_interface), bg=theme["button_feature_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8, relief='flat', cursor='hand2')
     install_btn.pack(side='left')
-
-    # --- AUTO-SCAN LANGUE (création + re-sélection de l'onglet) ---
+    
     def _auto_scan_realtime_if_ready(*_):
-        # On n'essaie que si on a un projet et si la combo n'a pas encore été remplie
-        has_project = bool(getattr(main_interface, "current_project_path", ""))
+        # Scanner si on a un projet et (combo vide OU projet différent du dernier scan)
+        current_project = getattr(main_interface, "current_project_path", "")
+        has_project = bool(current_project)
         combo_empty = not lang_combo['values']
-        if has_project and combo_empty:
+        project_changed = (_last_scanned_project[0] != current_project)
+        
+        if has_project and (combo_empty or project_changed):
             try:
-                # ta fonction existante de scan dans cet onglet
                 scan_available_languages(main_interface, lang_combo)
+                _last_scanned_project[0] = current_project  # Mémoriser le projet scanné
             except Exception as e:
                 log_message("DEBUG", f"Auto-scan realtime échoué: {e}", category="realtime_editor")
 
@@ -158,8 +211,26 @@ def create_realtime_editor_tab(parent_notebook, main_interface):
 
     parent_notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_realtime)
 
-    # 3) (optionnel) expose un hook pour resync forcé depuis la fenêtre principale
+    # 3) Hook pour resync forcé depuis la fenêtre principale
     main_interface.realtime_resync = _auto_scan_realtime_if_ready
+    
+    # 4) NOUVEAU : Surveiller les changements de projet
+    def _on_project_changed_realtime(*_):
+        _auto_scan_realtime_if_ready()
+    
+    # Attacher un observer si current_project_path est une StringVar
+    if hasattr(main_interface, 'current_project_var') and hasattr(main_interface.current_project_var, 'trace'):
+        main_interface.current_project_var.trace('w', _on_project_changed_realtime)
+    
+    # Fallback : Vérifier périodiquement les changements de projet (polling léger)
+    def _check_project_change():
+        current_project = getattr(main_interface, "current_project_path", "")
+        if current_project and current_project != _last_scanned_project[0]:
+            _auto_scan_realtime_if_ready()
+        # Re-vérifier dans 2 secondes
+        tab_frame.after(2000, _check_project_change)
+    
+    _check_project_change()  # Démarrer la vérification périodique
 
 
     controls_frame = tk.Frame(install_monitor_frame, bg=theme["bg"])
@@ -388,17 +459,47 @@ def open_google_translate_website(main_interface):
         log_message("ERREUR", f"Erreur ouverture Google Translate: {e}", category="realtime_editor")
 
 def update_editor_font_size(main_interface):
-    """Met à jour la taille de police des zones de texte et sauvegarde le choix."""
+    """Met à jour la taille de police de tous les widgets de texte et sauvegarde le choix."""
     try:
         new_size = main_interface.editor_font_size_var.get()
         new_font = ('Segoe UI', new_size)
 
-        # Mettre à jour les widgets s'ils existent
-        if hasattr(main_interface, 'vo_text_widget') and main_interface.vo_text_widget.winfo_exists():
+        # ✅ Mettre à jour les widgets principaux (simple)
+        if hasattr(main_interface, 'vo_text_widget') and main_interface.vo_text_widget and main_interface.vo_text_widget.winfo_exists():
             main_interface.vo_text_widget.config(font=new_font)
         
-        if hasattr(main_interface, 'vf_text_widget') and main_interface.vf_text_widget.winfo_exists():
+        if hasattr(main_interface, 'vf_text_widget') and main_interface.vf_text_widget and main_interface.vf_text_widget.winfo_exists():
             main_interface.vf_text_widget.config(font=new_font)
+        
+        # ✅ Mettre à jour les widgets split (partie 1 et 2)
+        if hasattr(main_interface, 'vf_text_widget_2') and main_interface.vf_text_widget_2 and main_interface.vf_text_widget_2.winfo_exists():
+            main_interface.vf_text_widget_2.config(font=new_font)
+        
+        # ✅ Mettre à jour les widgets speaker/dialogue divisé (VO)
+        if hasattr(main_interface, 'vo_speaker_widget') and main_interface.vo_speaker_widget and main_interface.vo_speaker_widget.winfo_exists():
+            main_interface.vo_speaker_widget.config(font=new_font)
+        
+        # ✅ Mettre à jour les widgets de dialogues multiples (ce sont des widgets Text directs)
+        if hasattr(main_interface, 'multiple_vo_widgets'):
+            for text_widget in main_interface.multiple_vo_widgets:
+                if text_widget and text_widget.winfo_exists():
+                    text_widget.config(font=new_font)
+        
+        if hasattr(main_interface, 'multiple_vf_widgets'):
+            for text_widget in main_interface.multiple_vf_widgets:
+                if text_widget and text_widget.winfo_exists():
+                    text_widget.config(font=new_font)
+        
+        # ✅ Mettre à jour les widgets de menus (ce sont des widgets Text directs)
+        if hasattr(main_interface, 'menu_vo_widgets'):
+            for text_widget in main_interface.menu_vo_widgets:
+                if text_widget and text_widget.winfo_exists():
+                    text_widget.config(font=new_font)
+        
+        if hasattr(main_interface, 'menu_vf_widgets'):
+            for text_widget in main_interface.menu_vf_widgets:
+                if text_widget and text_widget.winfo_exists():
+                    text_widget.config(font=new_font)
 
         # Sauvegarder la nouvelle taille dans la configuration
         config_manager.set('editor_font_size', new_size)
@@ -436,9 +537,9 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
             edit_main.grid_rowconfigure(0, weight=1)  # Zones de texte
             edit_main.grid_rowconfigure(1, weight=0)  # Boutons globaux
 
-        # Proportions : VO 40% / VF 60%
-        edit_main.grid_columnconfigure(0, weight=40, minsize=200)
-        edit_main.grid_columnconfigure(1, weight=60, minsize=300)
+        # Proportions : VO 50% / VF 50%
+        edit_main.grid_columnconfigure(0, weight=1, minsize=200)
+        edit_main.grid_columnconfigure(1, weight=1, minsize=300)
 
         # HEADER SEULEMENT POUR LA FENÊTRE DÉTACHÉE
         if is_detached:
@@ -461,17 +562,20 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
         # ZONES DE TEXTE avec Grid
         text_areas_frame = tk.Frame(edit_main, bg=theme["bg"])
         if is_detached:
-            text_areas_frame.grid(row=1, column=0, columnspan=2, sticky='nsew')
+            # ✅ Petit padding horizontal pour ne pas coller aux bords
+            text_areas_frame.grid(row=1, column=0, columnspan=2, sticky='nsew', padx=8)
         else:
             text_areas_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
 
-        text_areas_frame.grid_columnconfigure(0, weight=40)
-        text_areas_frame.grid_columnconfigure(1, weight=60)
+        text_areas_frame.grid_columnconfigure(0, weight=1)
+        text_areas_frame.grid_columnconfigure(1, weight=1)
         text_areas_frame.grid_rowconfigure(0, weight=1)
 
         # --- COLONNE VO avec Grid ---
         main_interface.vo_main_container = tk.Frame(text_areas_frame, bg=theme["bg"])
-        main_interface.vo_main_container.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
+        # ✅ Réduire l'espace horizontal entre VO et VF en mode détaché
+        padding_between = 3 if is_detached else 5
+        main_interface.vo_main_container.grid(row=0, column=0, sticky='nsew', padx=(0, padding_between))
         
         main_interface.vo_main_container.grid_rowconfigure(0, weight=0)
         main_interface.vo_main_container.grid_rowconfigure(1, weight=1)
@@ -492,7 +596,8 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
 
         # --- COLONNE VF avec Grid ---
         main_interface.vf_main_container = tk.Frame(text_areas_frame, bg=theme["bg"])
-        main_interface.vf_main_container.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
+        # ✅ Réduire l'espace horizontal entre VO et VF en mode détaché
+        main_interface.vf_main_container.grid(row=0, column=1, sticky='nsew', padx=(padding_between, 0))
         
         main_interface.vf_main_container.grid_rowconfigure(0, weight=0)
         main_interface.vf_main_container.grid_rowconfigure(1, weight=1)
@@ -514,7 +619,8 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
         # BOUTONS GLOBAUX
         buttons_frame = tk.Frame(edit_main, bg=theme["bg"])
         if is_detached:
-            buttons_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(10, 0))
+            # ✅ Ajouter un petit espace en bas et à droite en mode détaché
+            buttons_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(10, 8), padx=(0, 8))
         else:
             buttons_frame.grid(row=1, column=0, columnspan=2, sticky='ew', pady=(10, 0))
         
@@ -541,7 +647,7 @@ def _create_normal_vo_interface_with_grid(main_interface):
     for widget in main_interface.vo_content_container.winfo_children():
         widget.destroy()
 
-    # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
+    # ✅ MODIFIÉ : Application du thème sombre sans dimensions fixes (pour permettre le word wrap)
     vo_text = tk.Text(
         main_interface.vo_content_container,
         wrap='word',
@@ -551,9 +657,7 @@ def _create_normal_vo_interface_with_grid(main_interface):
         state='disabled',
         relief='solid',
         borderwidth=1,
-        highlightbackground='#666666',
-        height=7,  # Hauteur fixe en lignes (ajustée pour container de 160px)
-        width=50   # Largeur fixe en caractères
+        highlightbackground='#666666'
     )
     vo_text.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
     main_interface.vo_text_widget = vo_text
@@ -587,12 +691,10 @@ def _create_normal_vf_interface_with_grid_and_buttons(main_interface):
     for widget in main_interface.vf_content_container.winfo_children():
         widget.destroy()
 
-    # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
+    # ✅ MODIFIÉ : Application du thème sombre sans dimensions fixes (pour permettre le word wrap)
     vf_text = tk.Text(main_interface.vf_content_container, wrap='word', font=editor_font,
                      bg=theme["entry_bg"], fg=theme["accent"], relief='solid', borderwidth=1,
-                     insertbackground='#1976d2', highlightbackground='#666666',
-                     height=7,  # Hauteur fixe en lignes (ajustée pour container de 160px)
-                     width=50   # Largeur fixe en caractères
+                     insertbackground='#1976d2', highlightbackground='#666666'
                      )
     vf_text.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
     main_interface.vf_text_widget = vf_text
@@ -657,9 +759,7 @@ def _create_split_vf_interface_with_grid_and_buttons(main_interface, part1_text=
         borderwidth=2 if is_part1_active else 1,
         highlightbackground=soft_active_border if is_part1_active else normal_border,
         highlightcolor=soft_active_border if is_part1_active else normal_border,
-        insertbackground='#1976d2',
-        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
-        width=45   # Largeur fixe en caractères
+        insertbackground='#1976d2'
     )
     txt1.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     txt1.insert('1.0', part1_text)
@@ -687,9 +787,7 @@ def _create_split_vf_interface_with_grid_and_buttons(main_interface, part1_text=
         borderwidth=2 if is_part2_active else 1,
         highlightbackground=soft_active_border if is_part2_active else normal_border,
         highlightcolor=soft_active_border if is_part2_active else normal_border,
-        insertbackground='#1976d2',
-        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
-        width=45   # Largeur fixe en caractères
+        insertbackground='#1976d2'
     )
     txt2.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     txt2.insert('1.0', part2_text)
@@ -728,7 +826,7 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         speaker_container = tk.Frame(main_interface.vo_content_container, bg=theme["bg"]); speaker_container.grid(row=0, column=0, sticky='nsew', padx=(0, 2))
         speaker_container.grid_rowconfigure(0, weight=0); speaker_container.grid_rowconfigure(1, weight=1); speaker_container.grid_rowconfigure(2, weight=0); speaker_container.grid_columnconfigure(0, weight=1)
         tk.Label(speaker_container, text="Locuteur Original", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).grid(row=0, column=0, sticky='w', pady=(0, 2))
-        # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
+        # ✅ MODIFIÉ : Application du thème sombre sans dimensions fixes (pour permettre le word wrap)
         speaker_widget = tk.Text(
             speaker_container,
             wrap='word',
@@ -738,9 +836,7 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
             relief='solid',
             borderwidth=1,
             state='disabled',
-            highlightbackground='#666666',
-            height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
-            width=40   # Largeur fixe en caractères
+            highlightbackground='#666666'
         )
         speaker_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
         speaker_widget.config(state='normal'); speaker_widget.insert('1.0', speaker_text); speaker_widget.config(state='disabled')
@@ -764,7 +860,7 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         dialogue_container = tk.Frame(main_interface.vo_content_container, bg=theme["bg"]); dialogue_container.grid(row=0, column=1, sticky='nsew', padx=(2, 0))
         dialogue_container.grid_rowconfigure(0, weight=0); dialogue_container.grid_rowconfigure(1, weight=1); dialogue_container.grid_rowconfigure(2, weight=0); dialogue_container.grid_columnconfigure(0, weight=1)
         tk.Label(dialogue_container, text="Dialogue Original", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).grid(row=0, column=0, sticky='w', pady=(0, 2))
-        # ✅ MODIFIÉ : Application du thème sombre + dimensions fixes
+        # ✅ MODIFIÉ : Application du thème sombre sans dimensions fixes (pour permettre le word wrap)
         dialogue_widget = tk.Text(
             dialogue_container,
             wrap='word',
@@ -774,9 +870,7 @@ def _create_split_vo_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
             relief='solid',
             borderwidth=1,
             state='disabled',
-            highlightbackground='#666666',
-            height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
-            width=40   # Largeur fixe en caractères
+            highlightbackground='#666666'
         )
         dialogue_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
         dialogue_widget.config(state='normal'); dialogue_widget.insert('1.0', dialogue_text); dialogue_widget.config(state='disabled')
@@ -852,9 +946,7 @@ def _create_split_vf_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         borderwidth=1,
         insertbackground='#1976d2',
         highlightbackground=normal_border,
-        highlightcolor=normal_border,
-        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
-        width=40   # Largeur fixe en caractères
+        highlightcolor=normal_border
     )
     vf_speaker_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     vf_speaker_widget.insert('1.0', part1_text)
@@ -896,9 +988,7 @@ def _create_split_vf_interface_for_unnamed_speaker_with_grid_and_buttons(main_in
         borderwidth=2,
         insertbackground='#1976d2',
         highlightbackground=soft_active_border,
-        highlightcolor=soft_active_border,
-        height=7,  # Hauteur fixe en lignes (cohérente avec mode normal)
-        width=40   # Largeur fixe en caractères
+        highlightcolor=soft_active_border
     )
     vf_dialogue_widget.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     vf_dialogue_widget.insert('1.0', part2_text)
@@ -1039,21 +1129,45 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
 
     edit_main = tk.Frame(parent_container, bg=theme["bg"])
 
+    # ✅ Ajout du header pour la fenêtre détachée
     if is_detached:
-        edit_main.grid_rowconfigure(0, weight=1); edit_main.grid_rowconfigure(1, weight=0)
+        edit_main.grid_rowconfigure(0, weight=0)  # Header
+        edit_main.grid_rowconfigure(1, weight=1)  # Zones de texte
+        edit_main.grid_rowconfigure(2, weight=0)  # Boutons globaux
     else:
-        edit_main.grid_rowconfigure(0, weight=0); edit_main.grid_rowconfigure(1, weight=1); edit_main.grid_rowconfigure(2, weight=0)
+        edit_main.grid_rowconfigure(0, weight=0)  # Zones de texte
+        edit_main.grid_rowconfigure(1, weight=1)
+        edit_main.grid_rowconfigure(2, weight=0)  # Boutons globaux
 
-    edit_main.grid_columnconfigure(0, weight=40, minsize=200); edit_main.grid_columnconfigure(1, weight=60, minsize=300)
+    edit_main.grid_columnconfigure(0, weight=1, minsize=200); edit_main.grid_columnconfigure(1, weight=1, minsize=300)
+
+    # ✅ HEADER SEULEMENT POUR LA FENÊTRE DÉTACHÉE
+    if is_detached:
+        header_frame = tk.Frame(edit_main, bg=theme["bg"])
+        header_frame.grid(row=0, column=0, columnspan=2, sticky='ew', padx=15, pady=(5, 10))
+
+        if hasattr(main_interface, 'monitor_status_label'):
+            current_text = main_interface.monitor_status_label.cget("text")
+            current_fg = main_interface.monitor_status_label.cget("fg")
+        else:
+            current_text = "⭕ Surveillance arrêtée"
+            current_fg = '#dc3545'
+        
+        status_label = tk.Label(header_frame, text=current_text, font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=current_fg)
+        status_label.pack(side='left')
+
+        _build_editor_controls(header_frame, main_interface, is_detached=True)
 
     text_areas_frame = tk.Frame(edit_main, bg=theme["bg"])
-    text_areas_frame.grid(row=0, column=0, columnspan=2, sticky='nsew' if is_detached else 'ew')
-    text_areas_frame.grid_columnconfigure(0, weight=40); text_areas_frame.grid_columnconfigure(1, weight=60)
+    text_areas_frame.grid(row=1 if is_detached else 0, column=0, columnspan=2, sticky='nsew' if is_detached else 'ew')
+    text_areas_frame.grid_columnconfigure(0, weight=1); text_areas_frame.grid_columnconfigure(1, weight=1)
 
     vo_grid_frame = tk.Frame(text_areas_frame, bg=theme["bg"]); vo_grid_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
-    if not is_detached: vo_grid_frame.configure(height=TEXT_AREA_HEIGHT)
+    # ✅ Fixer une hauteur pour empêcher les textes de pousser les boutons (augmentée pour laisser place aux boutons)
+    vo_grid_frame.configure(height=280)
     tk.Label(vo_grid_frame, text="Textes Originaux", font=('Segoe UI', 10, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 5))
     vo_grid_container = tk.Frame(vo_grid_frame, bg=theme["bg"]); vo_grid_container.pack(fill='both', expand=True)
+    vo_grid_frame.grid_propagate(False)  # Empêcher le container de s'étendre
     
     grid_rows, grid_cols = dialogue_group['grid_rows'], dialogue_group['grid_cols']
     for r in range(grid_rows): vo_grid_container.grid_rowconfigure(r, weight=1)
@@ -1064,9 +1178,13 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
     for i in range(min(len(vo_dialogues), grid_rows * grid_cols)):
         row, col = i // grid_cols, i % grid_cols
         vo_dialogue_container = tk.Frame(vo_grid_container, bg=theme["bg"]); vo_dialogue_container.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
-        vo_dialogue_container.grid_rowconfigure(0, weight=0); vo_dialogue_container.grid_rowconfigure(1, weight=1); vo_dialogue_container.grid_rowconfigure(2, weight=0); vo_dialogue_container.grid_columnconfigure(0, weight=1)
+        # ✅ Configuration des rangées pour garantir l'espace des boutons
+        vo_dialogue_container.grid_rowconfigure(0, weight=0, minsize=25)  # Label
+        vo_dialogue_container.grid_rowconfigure(1, weight=1, minsize=60)   # Text widget - weight=1 pour occuper l'espace
+        vo_dialogue_container.grid_rowconfigure(2, weight=0, minsize=40)   # Boutons
+        vo_dialogue_container.grid_columnconfigure(0, weight=1)
         tk.Label(vo_dialogue_container, text=f"Original {i+1}", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).grid(row=0, column=0, sticky='w', padx=3, pady=(3, 2))
-        # ✅ MODIFIÉ : Application du thème sombre au widget VO
+        # ✅ MODIFIÉ : Hauteur minimale (1 ligne) qui s'adapte à l'espace du container
         vo_widget = tk.Text(
             vo_dialogue_container,
             wrap='word',
@@ -1075,7 +1193,7 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
             fg=theme["fg"],
             relief='solid',
             borderwidth=1,
-            height=3,
+            height=1,
             state='disabled',
             highlightbackground='#666666'
         )
@@ -1098,9 +1216,11 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
         main_interface.multiple_vo_widgets.append(vo_widget)
 
     vf_grid_frame = tk.Frame(text_areas_frame, bg=theme["bg"]); vf_grid_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
-    if not is_detached: vf_grid_frame.configure(height=TEXT_AREA_HEIGHT)
+    # ✅ Fixer une hauteur pour empêcher les textes de pousser les boutons (augmentée pour laisser place aux boutons)
+    vf_grid_frame.configure(height=280)
     tk.Label(vf_grid_frame, text=f"Traductions ({dialogue_group['group_size']} dialogues)", font=('Segoe UI', 10, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 5))
     vf_grid_container = tk.Frame(vf_grid_frame, bg=theme["bg"]); vf_grid_container.pack(fill='both', expand=True)
+    vf_grid_frame.grid_propagate(False)  # Empêcher le container de s'étendre
     
     for r in range(grid_rows): vf_grid_container.grid_rowconfigure(r, weight=1)
     for c in range(grid_cols): vf_grid_container.grid_columnconfigure(c, weight=1)
@@ -1111,9 +1231,13 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
         if i >= grid_rows * grid_cols: break
         row, col = i // grid_cols, i % grid_cols
         vf_dialogue_container = tk.Frame(vf_grid_container, bg=theme["bg"]); vf_dialogue_container.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
-        vf_dialogue_container.grid_rowconfigure(0, weight=0); vf_dialogue_container.grid_rowconfigure(1, weight=1); vf_dialogue_container.grid_rowconfigure(2, weight=0); vf_dialogue_container.grid_columnconfigure(0, weight=1)
+        # ✅ Configuration des rangées pour garantir l'espace des boutons
+        vf_dialogue_container.grid_rowconfigure(0, weight=0, minsize=25)  # Label
+        vf_dialogue_container.grid_rowconfigure(1, weight=1, minsize=60)   # Text widget - weight=1 pour occuper l'espace
+        vf_dialogue_container.grid_rowconfigure(2, weight=0, minsize=40)   # Bouton
+        vf_dialogue_container.grid_columnconfigure(0, weight=1)
         tk.Label(vf_dialogue_container, text=f"Traduction {i+1}", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).grid(row=0, column=0, sticky='w', padx=3, pady=(3, 2))
-        # ✅ MODIFIÉ : Application du thème sombre au widget VF
+        # ✅ MODIFIÉ : Hauteur minimale (1 ligne) qui s'adapte à l'espace du container
         vf_widget = tk.Text(
             vf_dialogue_container,
             wrap='word',
@@ -1122,7 +1246,7 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
             fg=theme["accent"],
             relief='solid',
             borderwidth=1,
-            height=3,
+            height=1,
             insertbackground='#1976d2',
             highlightbackground='#666666'
         )
@@ -1132,7 +1256,11 @@ def _build_multiple_dialogue_interface_with_individual_buttons(parent_container,
         main_interface.multiple_vf_widgets.append(vf_widget)
     # --- Boutons globaux ---
     buttons_frame = tk.Frame(edit_main, bg=theme["bg"])
-    buttons_frame.grid(row=2 if not is_detached else 1, column=0, columnspan=2, sticky='ew', pady=(10, 0))
+    # ✅ Placer les boutons globaux SOUS les dialogues (row 2 en mode détaché)
+    if is_detached:
+        buttons_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(10, 8), padx=(0, 8))
+    else:
+        buttons_frame.grid(row=2, column=0, columnspan=2, sticky='ew', pady=(10, 0))
 
     # Frame pour aligner les boutons à droite
     right_buttons_frame = tk.Frame(buttons_frame, bg=theme["bg"])
@@ -1221,6 +1349,50 @@ def reset_font_size_to_default(main_interface):
     main_interface.editor_font_size_var.set(10)
     update_editor_font_size(main_interface)
 
+def _calculate_detached_window_size(dialogue_info: Dict) -> str:
+    """
+    Calcule la taille optimale de la fenêtre détachée en fonction du contenu.
+    
+    Args:
+        dialogue_info: Informations sur le dialogue/menu actuel
+        
+    Returns:
+        Géométrie au format "WIDTHxHEIGHT" (ex: "1200x450")
+    """
+    # Constantes de dimensionnement
+    BASE_HEIGHT = 120        # Hauteur pour les contrôles (header + boutons)
+    CELL_HEIGHT = 150        # Hauteur d'une cellule de grille (widget + label + boutons)
+    MIN_HEIGHT = 300         # Hauteur minimale
+    MAX_HEIGHT = 900         # Hauteur maximale (ne pas dépasser l'écran)
+    DEFAULT_WIDTH = 1200
+    
+    try:
+        if dialogue_info.get('is_menu'):
+            # Menu de choix : calculer selon le nombre de choix
+            nb_choices = len(dialogue_info.get('choices', []))
+            grid_cols = 2  # Grille sur 2 colonnes
+            grid_rows = (nb_choices + grid_cols - 1) // grid_cols  # Arrondi supérieur
+            height = BASE_HEIGHT + (grid_rows * CELL_HEIGHT)
+            
+        elif dialogue_info.get('is_multiple_group'):
+            # Dialogues multiples : utiliser grid_rows déjà calculé
+            grid_rows = dialogue_info.get('grid_rows', 1)
+            height = BASE_HEIGHT + (grid_rows * CELL_HEIGHT)
+            
+        else:
+            # Dialogue simple : taille par défaut
+            height = MIN_HEIGHT
+        
+        # Limiter entre min et max
+        height = max(MIN_HEIGHT, min(height, MAX_HEIGHT))
+        
+        return f"{DEFAULT_WIDTH}x{height}"
+        
+    except Exception as e:
+        log_message("ATTENTION", f"Erreur calcul taille fenêtre: {e}", category="realtime_editor")
+        return f"{DEFAULT_WIDTH}x{MIN_HEIGHT}"
+
+
 def detach_editor(main_interface):
     """Détache l'éditeur dans une fenêtre Toplevel en conservant l'affichage visible."""
     # Si déjà détaché : on met au premier plan
@@ -1237,15 +1409,27 @@ def detach_editor(main_interface):
         main_interface.realtime_edit_main.destroy()
     main_interface.realtime_edit_frame.pack_forget()
 
-    # Construire la fenêtre détachée
+    # Construire la fenêtre détachée avec taille adaptative
+    theme = theme_manager.get_theme()
     window = tk.Toplevel(main_interface.window)
     window.title("Éditeur Temps Réel")
-    window.geometry("1200x300")
+    
+    # ✅ Appliquer le thème à la fenêtre Toplevel
+    window.configure(bg=theme["bg"])
+    
+    # ✅ Calculer la taille optimale selon le contenu actuel
+    if hasattr(main_interface, 'current_dialogue_info') and main_interface.current_dialogue_info:
+        geometry = _calculate_detached_window_size(main_interface.current_dialogue_info)
+    else:
+        geometry = "1200x300"
+    
+    window.geometry(geometry)
     window.minsize(500, 200)
     main_interface.detached_editor_window = window
 
     main_interface.realtime_edit_main = _build_editor_panel(window, main_interface, is_detached=True)
-    main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=10, pady=10)
+    # ✅ Réduire les paddings pour éviter les zones blanches
+    main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=0, pady=0)
 
     # --- RESTORE de l'état visuel ---
     _restore_editor_visible_state(main_interface, getattr(main_interface, "_editor_state_snapshot", None))
@@ -1325,11 +1509,11 @@ def install_monitoring_module(main_interface):
                 ]
                 
                 show_custom_messagebox(
+                    "warning",
                     "Version Ren'Py inconnue",
                     warning_message,
                     theme_manager.get_theme(),
-                    parent=main_interface.window,
-                    type_box="warning"
+                    parent=main_interface.window
                 )
         else:
             error_message = " / ".join(result.get('errors', ["Erreur inconnue"]))
@@ -1380,6 +1564,9 @@ def start_monitoring(main_interface):
             main_interface.stop_monitor_btn.config(state='normal')
             main_interface.window.after(1000, lambda: check_and_offer_recovery(main_interface))
             log_message("INFO", "Appel de démarrage surveillance UI réussi", category="realtime_editor")
+            
+            # Mettre à jour le statut avec le nombre de modifications en attente
+            update_status_with_pending_count(main_interface)
         else:
             main_interface._show_notification(" / ".join(result.get('errors', ["Erreur inconnue"])), "error")
     except Exception as e:
@@ -1404,6 +1591,18 @@ def stop_monitoring(main_interface):
            main_interface.monitoring_active = False
            main_interface.start_monitor_btn.config(state='normal')
            main_interface.stop_monitor_btn.config(state='disabled')
+           
+           # Mettre à jour le statut avec le nombre de modifications en attente
+           update_status_with_pending_count(main_interface)
+           
+           # Afficher les informations de nettoyage
+           cleaned_files = result.get('cleaned_files', [])
+           if cleaned_files:
+               cleanup_msg = f"Surveillance arrêtée\n\nFichiers temporaires nettoyés:\n• " + "\n• ".join(cleaned_files)
+               main_interface._show_notification(cleanup_msg, "info")
+           else:
+               log_message("INFO", "Arrêt surveillance - aucun fichier temporaire à nettoyer", category="realtime_editor")
+           
            log_message("INFO", "Appel d'arrêt surveillance UI réussi", category="realtime_editor")
        else:
            main_interface._show_notification(" / ".join(result.get('errors', ["Erreur inconnue"])), "error")
@@ -1422,7 +1621,7 @@ def _ask_save_pending_modifications(main_interface):
         message_parts = [f"{count} modification{'s' if count > 1 else ''} en attente :"]
         by_type = summary['by_type']
         for mod_type, type_count in by_type.items():
-            type_name = {'simple': 'Modifications simples', 'split': 'Divisions', 'speaker_dialogue': 'Locuteur + dialogue', 'merge': 'Fusions'}.get(mod_type, f'Type {mod_type}')
+            type_name = {'simple': 'Modifications simples', 'split': 'Divisions', 'speaker_dialogue': 'Locuteur + dialogue', 'merge': 'Fusions', 'menu_choice': 'Choix de menu', 'multiple_dialogue': 'Dialogues multiples'}.get(mod_type, f'Type {mod_type}')
             message_parts.append(f"  • {type_count} {type_name}")
         message_parts.append("\nVoulez-vous les sauvegarder ?")
         
@@ -1494,21 +1693,27 @@ def update_dialogue_interface(main_interface, dialogue_info: Dict):
                 return
 
         if hasattr(main_interface, 'current_dialogue_info') and main_interface.current_dialogue_info:
-            if not main_interface.current_dialogue_info.get('is_menu', False):
-                _save_current_modification_if_changed(main_interface)
+            # ✅ Maintenant on gère aussi les menus dans _save_current_modification_if_changed
+            _save_current_modification_if_changed(main_interface)
 
         # --- DÉBUT DE LA LOGIQUE DE TRANSITION CORRIGÉE ---
         was_in_menu = getattr(main_interface, 'is_in_menu_mode', False)
         was_in_multiple = getattr(main_interface, 'is_in_multiple_mode', False)
+        was_in_split = getattr(main_interface, 'is_in_split_mode', False)
 
         is_currently_menu = dialogue_info.get('is_menu', False)
         is_currently_multiple = dialogue_info.get('is_multiple_group', False)
+        
+        # Déterminer si on est actuellement en mode split (speaker_dialogue ou multiline)
+        dialogue_structure = _analyze_dialogue_structure(main_interface, dialogue_info) if not (is_currently_menu or is_currently_multiple) else {'is_split': False}
+        is_currently_split = dialogue_structure.get('is_split', False) and dialogue_structure.get('split_type') in ['speaker_dialogue', 'multiline']
 
         main_interface.is_in_menu_mode = is_currently_menu
         main_interface.is_in_multiple_mode = is_currently_multiple
+        main_interface.is_in_split_mode = is_currently_split
 
-        # On reconstruit l'interface si on sort d'un mode spécial (Menu OU Multiple)
-        if (was_in_menu and not is_currently_menu) or (was_in_multiple and not is_currently_multiple):
+        # On reconstruit l'interface si on sort d'un mode spécial (Menu OU Multiple OU Split)
+        if (was_in_menu and not is_currently_menu) or (was_in_multiple and not is_currently_multiple) or (was_in_split and not is_currently_split):
             if hasattr(main_interface, 'realtime_edit_main') and main_interface.realtime_edit_main.winfo_exists():
                 main_interface.realtime_edit_main.destroy()
 
@@ -1523,8 +1728,16 @@ def update_dialogue_interface(main_interface, dialogue_info: Dict):
             
             is_detached = bool(main_interface.detached_editor_window and main_interface.detached_editor_window.winfo_exists())
             parent = main_interface.detached_editor_window or main_interface.realtime_edit_frame
+            
+            # ✅ Ajuster la taille de la fenêtre détachée lors de la reconstruction
+            if is_detached:
+                geometry = _calculate_detached_window_size(dialogue_info)
+                main_interface.detached_editor_window.geometry(geometry)
+            
             main_interface.realtime_edit_main = _build_editor_panel(parent, main_interface, is_detached)
-            main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=15, pady=15)
+            # ✅ Réduire les paddings pour éviter les zones blanches en mode détaché
+            padding = 0 if is_detached else 15
+            main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=padding, pady=padding)
         # --- FIN DE LA LOGIQUE DE TRANSITION ---
 
         # Aiguillage principal (inchangé)
@@ -1533,14 +1746,20 @@ def update_dialogue_interface(main_interface, dialogue_info: Dict):
         elif is_currently_multiple:
             _update_for_multiple_dialogue(main_interface, dialogue_info)
         else:
-            dialogue_structure = _analyze_dialogue_structure(main_interface, dialogue_info)
             original_text = dialogue_info.get('original_text', "")
+            
+            # ✅ Ajuster la taille de la fenêtre détachée pour les dialogues simples
+            is_detached = bool(main_interface.detached_editor_window and main_interface.detached_editor_window.winfo_exists())
+            if is_detached:
+                geometry = _calculate_detached_window_size(dialogue_info)
+                main_interface.detached_editor_window.geometry(geometry)
+            
             if dialogue_structure.get('split_type') == 'speaker_dialogue':
                 vo_type_analysis = _analyze_original_text_type(original_text, dialogue_structure)
-                _handle_unnamed_speaker_update(main_interface, vo_type_analysis, dialogue_structure)
+                _handle_unnamed_speaker_update(main_interface, vo_type_analysis, dialogue_structure, dialogue_info)
             elif dialogue_structure.get('is_split') and dialogue_structure.get('split_type') == 'multiline':
                 vo_type_analysis = {'type': 'multiline', 'dialogue': original_text}
-                _handle_multiline_update(main_interface, vo_type_analysis, dialogue_structure, original_text)
+                _handle_multiline_update(main_interface, vo_type_analysis, dialogue_structure, original_text, dialogue_info)
             else:
                 vo_type_analysis = _analyze_original_text_type(original_text, {})
                 _handle_simple_dialogue_update(main_interface, vo_type_analysis, original_text, dialogue_info)
@@ -1562,8 +1781,16 @@ def _update_for_menu_choices(main_interface, menu_info: Dict):
     # Créer la nouvelle interface pour les choix
     is_detached = bool(main_interface.detached_editor_window and main_interface.detached_editor_window.winfo_exists())
     parent = main_interface.detached_editor_window or main_interface.realtime_edit_frame
+    
+    # ✅ Si fenêtre détachée, ajuster sa taille selon le nombre de choix
+    if is_detached:
+        geometry = _calculate_detached_window_size(menu_info)
+        main_interface.detached_editor_window.geometry(geometry)
+    
     main_interface.realtime_edit_main = _build_menu_choices_interface(parent, main_interface, menu_info, is_detached)
-    main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=15, pady=15)
+    # ✅ Réduire les paddings pour éviter les zones blanches en mode détaché
+    padding = 0 if is_detached else 15
+    main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=padding, pady=padding)
 
 def _build_menu_choices_interface(parent_container, main_interface, menu_info, is_detached=False):
     """
@@ -1574,6 +1801,23 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
     editor_font = ('Segoe UI', main_interface.editor_font_size_var.get())
     
     edit_main = tk.Frame(parent_container, bg=theme["bg"])
+
+    # ✅ HEADER SEULEMENT POUR LA FENÊTRE DÉTACHÉE
+    if is_detached:
+        header_frame = tk.Frame(edit_main, bg=theme["bg"])
+        header_frame.pack(fill='x', padx=15, pady=(5, 10))
+
+        if hasattr(main_interface, 'monitor_status_label'):
+            current_text = main_interface.monitor_status_label.cget("text")
+            current_fg = main_interface.monitor_status_label.cget("fg")
+        else:
+            current_text = "⭕ Surveillance arrêtée"
+            current_fg = '#dc3545'
+        
+        status_label = tk.Label(header_frame, text=current_text, font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=current_fg)
+        status_label.pack(side='left')
+
+        _build_editor_controls(header_frame, main_interface, is_detached=True)
 
     # --- Titre principal ---
     title_frame = tk.Frame(edit_main, bg=theme["bg"])
@@ -1595,6 +1839,8 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
     # --- Colonne gauche : VO ---
     vo_grid_frame = tk.Frame(text_areas_frame, bg=theme["bg"])
     vo_grid_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
+    vo_grid_frame.configure(height=280)  # Hauteur fixe pour empêcher les textes de pousser les boutons (augmentée)
+    vo_grid_frame.grid_propagate(False)
     tk.Label(vo_grid_frame, text="Choix Originaux (VO)", font=('Segoe UI', 10, 'bold'),
              bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 5))
     vo_grid_container = tk.Frame(vo_grid_frame, bg=theme["bg"])
@@ -1603,6 +1849,8 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
     # --- Colonne droite : VF ---
     vf_grid_frame = tk.Frame(text_areas_frame, bg=theme["bg"])
     vf_grid_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
+    vf_grid_frame.configure(height=280)  # Hauteur fixe pour empêcher les textes de pousser les boutons (augmentée)
+    vf_grid_frame.grid_propagate(False)
     lang_name = main_interface.realtime_language_var.get().title()
     tk.Label(vf_grid_frame, text=f"Traductions ({lang_name})", font=('Segoe UI', 10, 'bold'),
              bg=theme["bg"], fg=theme["fg"]).pack(anchor='w', pady=(0, 5))
@@ -1628,7 +1876,9 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         # VO
         vo_container = tk.Frame(vo_grid_container, bg=theme["bg"])
         vo_container.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
-        vo_container.grid_rowconfigure(1, weight=1)
+        vo_container.grid_rowconfigure(0, weight=0, minsize=25)  # Label
+        vo_container.grid_rowconfigure(1, weight=1, minsize=50)  # Text widget
+        vo_container.grid_rowconfigure(2, weight=0, minsize=40)  # Boutons
         vo_container.grid_columnconfigure(0, weight=1)
 
         tk.Label(vo_container, text=f"Choix {i+1}", font=('Segoe UI', 9, 'normal'),
@@ -1637,7 +1887,7 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         vo_text = tk.Text(
             vo_container, wrap='word', font=editor_font,
             bg=theme["entry_bg"], fg=theme["fg"],
-            relief='solid', borderwidth=1, height=3, state='disabled',
+            relief='solid', borderwidth=1, height=1, state='disabled',
             highlightbackground='#666666'
         )
         vo_text.grid(row=1, column=0, sticky='nsew', padx=3, pady=2)
@@ -1662,7 +1912,9 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         # VF
         vf_container = tk.Frame(vf_grid_container, bg=theme["bg"])
         vf_container.grid(row=row, column=col, sticky='nsew', padx=2, pady=2)
-        vf_container.grid_rowconfigure(1, weight=1)
+        vf_container.grid_rowconfigure(0, weight=0, minsize=25)  # Label
+        vf_container.grid_rowconfigure(1, weight=1, minsize=50)  # Text widget
+        vf_container.grid_rowconfigure(2, weight=0, minsize=40)  # Bouton
         vf_container.grid_columnconfigure(0, weight=1)
 
         tk.Label(vf_container, text=f"Traduction {i+1}", font=('Segoe UI', 9, 'normal'),
@@ -1671,7 +1923,7 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         vf_text = tk.Text(
             vf_container, wrap='word', font=editor_font,
             bg=theme["entry_bg"], fg=theme["accent"],
-            relief='solid', borderwidth=1, height=3,
+            relief='solid', borderwidth=1, height=1,
             insertbackground='#1976d2', highlightbackground='#666666'
         )
         vf_text.grid(row=1, column=0, sticky='nsew', padx=3, pady=2)
@@ -1685,7 +1937,11 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
 
     # --- Boutons globaux ---
     buttons_frame = tk.Frame(edit_main, bg=theme["bg"])
-    buttons_frame.pack(fill='x', pady=(10, 0))
+    # ✅ Ajouter un petit espace en bas et à droite en mode détaché
+    if is_detached:
+        buttons_frame.pack(fill='x', pady=(10, 8), padx=(0, 8))
+    else:
+        buttons_frame.pack(fill='x', pady=(10, 0))
 
     right_buttons_frame = tk.Frame(buttons_frame, bg=theme["bg"])
     right_buttons_frame.pack(side='right')
@@ -1793,17 +2049,25 @@ def _update_for_multiple_dialogue(main_interface, dialogue_info):
     
     is_detached = main_interface.detached_editor_window and main_interface.detached_editor_window.winfo_exists()
     parent = main_interface.detached_editor_window if is_detached else main_interface.realtime_edit_frame
+    
+    # ✅ Si fenêtre détachée, ajuster sa taille selon le nombre de dialogues
+    if is_detached:
+        geometry = _calculate_detached_window_size(dialogue_info)
+        main_interface.detached_editor_window.geometry(geometry)
             
     main_interface.realtime_edit_main = _build_editor_panel(parent, main_interface, is_detached)
-    main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=15, pady=15)
+    # ✅ Réduire les paddings pour éviter les zones blanches en mode détaché
+    padding = 0 if is_detached else 15
+    main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=padding, pady=padding)
     
     _populate_multiple_widgets_separated(main_interface, dialogue_info)
 
 # ### REFACTORISATION ###: Fonction spécialisée pour le cas "Locuteur non défini"
-def _handle_unnamed_speaker_update(main_interface, dialogue_type, dialogue_structure):
+def _handle_unnamed_speaker_update(main_interface, dialogue_type, dialogue_structure, dialogue_info):
     """Met à jour l'UI pour un dialogue de type 'locuteur' 'dialogue'."""
-    # Récupérer les textes originaux (VO)
-    original_full_text = main_interface.current_dialogue_info.get('original_text', '')
+    # ✅ CORRECTION : Utiliser dialogue_info passé en paramètre au lieu de current_dialogue_info
+    # (car current_dialogue_info contient encore l'ancien dialogue)
+    original_full_text = dialogue_info.get('original_text', '')
     
     # Si on a le texte original complet, l'analyser pour séparer locuteur/dialogue
     if original_full_text and '"' in original_full_text:
@@ -1834,14 +2098,15 @@ def _handle_unnamed_speaker_update(main_interface, dialogue_type, dialogue_struc
     )
 
 # ### REFACTORISATION ###: Fonction spécialisée pour le cas "Dialogue multi-lignes"
-def _handle_multiline_update(main_interface, dialogue_type, dialogue_structure, original_text):
+def _handle_multiline_update(main_interface, dialogue_type, dialogue_structure, original_text, dialogue_info):
     """Met à jour l'UI pour un dialogue divisé sur plusieurs lignes."""
     if getattr(main_interface, 'vo_split_mode', False):
         _create_normal_vo_interface_with_grid(main_interface)
     
-    # Récupérer le vrai texte original (VO)
-    vo_display_text = main_interface.current_dialogue_info.get('original_text', original_text)
-    if not vo_display_text or vo_display_text == main_interface.current_dialogue_info.get('displayed_text', ''):
+    # ✅ CORRECTION : Utiliser dialogue_info passé en paramètre au lieu de current_dialogue_info
+    # (car current_dialogue_info contient encore l'ancien dialogue)
+    vo_display_text = dialogue_info.get('original_text', original_text)
+    if not vo_display_text or vo_display_text == dialogue_info.get('displayed_text', ''):
         vo_display_text = _get_clean_vo_display_text(dialogue_type, original_text)
     
     # Afficher le texte VO
@@ -1864,8 +2129,9 @@ def _handle_multiline_update(main_interface, dialogue_type, dialogue_structure, 
 # ### REFACTORISATION ###: Fonction spécialisée pour le cas "Dialogue simple"
 def _handle_simple_dialogue_update(main_interface, dialogue_type, original_text, dialogue_info):
     """Met à jour l'UI pour un dialogue simple avec VO/VF distincts."""
-    if getattr(main_interface, 'vo_split_mode', False):
-        _create_normal_vo_interface_with_grid(main_interface)
+    # ✅ CORRECTION : Toujours recréer l'interface VO normale pour un dialogue simple
+    # (même logique que pour l'interface VF, sans condition)
+    _create_normal_vo_interface_with_grid(main_interface)
     
     # Récupérer le vrai texte original (VO) depuis dialogue_info
     vo_display_text = dialogue_info.get('original_text', original_text)
@@ -1948,13 +2214,16 @@ def _populate_multiple_widgets_separated(main_interface, dialogue_info):
                 if i < len(vo_dialogues) and vo_widget and vo_widget.winfo_exists():
                     # Récupérer le texte original depuis vo_dialogues
                     vo_dialogue_data = vo_dialogues[i]
-                    original_text = vo_dialogue_data.get('original_text', vo_dialogue_data.get('dialogue_text', ''))
                     
-                    # Si pas de texte original distinct, utiliser le système de formatage
-                    if not original_text or original_text == vo_dialogue_data.get('dialogue_text', ''):
-                        formatted_text = _format_vo_text_for_display(vo_dialogue_data.get('dialogue_text', ''))
-                    else:
-                        formatted_text = _format_vo_text_for_display(original_text)
+                    # CORRECTION : Pour la VO, toujours utiliser 'original_text' en priorité
+                    # Si original_text n'existe pas, fallback sur dialogue_text
+                    original_text = vo_dialogue_data.get('original_text', '')
+                    if not original_text:
+                        # Fallback : utiliser dialogue_text si original_text n'est pas renseigné
+                        original_text = vo_dialogue_data.get('dialogue_text', '')
+                    
+                    # Formater le texte pour l'affichage
+                    formatted_text = _format_vo_text_for_display(original_text)
                     
                     vo_widget.config(state='normal')
                     vo_widget.delete('1.0', tk.END)
@@ -2101,6 +2370,50 @@ def _save_current_modification_if_changed(main_interface):
         if not hasattr(main_interface, 'current_dialogue_info') or not main_interface.current_dialogue_info: return
         
         biz = main_interface._get_realtime_editor_business()
+        
+        # ✅ NOUVEAU : Gérer les menus de choix
+        if main_interface.current_dialogue_info.get('is_menu', False):
+            if not hasattr(main_interface, 'menu_vf_widgets'):
+                return
+            
+            for i, vf_widget in enumerate(main_interface.menu_vf_widgets):
+                if not (vf_widget and vf_widget.winfo_exists()):
+                    continue
+                
+                try:
+                    current_text = vf_widget.get('1.0', tk.END).strip()
+                    choice_info = vf_widget.choice_info
+                    original_text = choice_info.get('translated_text', '').strip()
+                    
+                    # Vérifier si le texte a changé
+                    if current_text != original_text:
+                        # Chaque choix a son propre tl_file et tl_line
+                        single_choice_info = {
+                            'tl_file': choice_info.get('tl_file'),
+                            'tl_line': choice_info.get('tl_line'),
+                            'original_text': choice_info.get('original_text'),
+                            'displayed_text': original_text,
+                            'is_menu': False  # Pour la sauvegarde, traiter comme dialogue simple
+                        }
+                        
+                        mod_data = {
+                            'type': 'menu_choice',
+                            'content': current_text,
+                            'original_structure': {
+                                'was_split': False,
+                                'original_text': original_text
+                            }
+                        }
+                        
+                        biz.add_pending_modification(single_choice_info, mod_data)
+                        
+                except Exception as e:
+                    log_message("ERREUR", f"Erreur sauvegarde choix {i+1} en attente: {e}", category="realtime_editor")
+            
+            # Mettre à jour le statut avec le nombre de modifications en attente
+            update_status_with_pending_count(main_interface)
+            return
+        
         if main_interface.current_multiple_group:
             vf_dialogues = main_interface.current_multiple_group.get('vf_dialogues', [])
             for i, widget in enumerate(main_interface.multiple_vf_widgets):
@@ -2108,8 +2421,10 @@ def _save_current_modification_if_changed(main_interface):
                 current_text, original_info = widget.get('1.0', tk.END).strip(), vf_dialogues[i]
                 if current_text != original_info.get('dialogue_text', '').strip():
                     single_dialogue_info = {**main_interface.current_multiple_group, **original_info, 'tl_line': original_info['line_index'] + 1}
-                    mod_data = {'type': 'simple', 'content': current_text, 'original_structure': {'was_split': False, 'original_text': original_info.get('dialogue_text', '')}}
+                    mod_data = {'type': 'multiple_dialogue', 'content': current_text, 'original_structure': {'was_split': False, 'original_text': original_info.get('dialogue_text', '')}}
                     biz.add_pending_modification(single_dialogue_info, mod_data)
+            # Mettre à jour le statut avec le nombre de modifications en attente
+            update_status_with_pending_count(main_interface)
             return
 
         dialogue_structure = _analyze_dialogue_structure(main_interface, main_interface.current_dialogue_info)
@@ -2135,6 +2450,8 @@ def _save_current_modification_if_changed(main_interface):
         
         if modification_data:
             biz.add_pending_modification(main_interface.current_dialogue_info, modification_data)
+            # Mettre à jour le statut avec le nombre de modifications en attente
+            update_status_with_pending_count(main_interface)
     except Exception as e:
         log_message("ERREUR", f"Erreur sauvegarde modification actuelle: {e}", category="realtime_editor")
 
@@ -2159,6 +2476,8 @@ def check_and_offer_recovery(main_interface):
                 result = biz.load_recovery_data(recovery_info['recovery_file'])
                 if result.get('success'):
                     main_interface._show_notification(f"{result.get('recovered_count', 0)} modifications récupérées !", "success")
+                    # ✅ CORRECTION : Mettre à jour le compteur après la récupération
+                    update_status_with_pending_count(main_interface)
                 else:
                     # ### CORRECTION FINALE ###
                     # On prépare la variable avant pour éviter les conflits de guillemets.
@@ -2186,7 +2505,7 @@ def _update_pending_status(main_interface):
             if len(by_type) > 1:
                 type_details = []
                 for mod_type, count in by_type.items():
-                    type_name = {'simple': 'simple', 'split': 'division', 'speaker_dialogue': 'locuteur+dialogue', 'merge': 'fusion'}.get(mod_type, mod_type)
+                    type_name = {'simple': 'simple', 'split': 'division', 'speaker_dialogue': 'locuteur+dialogue', 'merge': 'fusion', 'menu_choice': 'choix', 'multiple_dialogue': 'multiple'}.get(mod_type, mod_type)
                     type_details.append(f"{count} {type_name}")
                 status_parts.append(f"({', '.join(type_details)})")
             main_interface._update_status(" ".join(status_parts))
@@ -2216,6 +2535,9 @@ def save_translation(main_interface):
             if errors_count > 0:
                 error_summary = f"{errors_count} erreur(s) lors de la sauvegarde:\n" + "\n".join(result['errors'][:5])
                 main_interface._show_notification(error_summary, "warning")
+            
+            # Mettre à jour le statut avec le nombre de modifications en attente
+            update_status_with_pending_count(main_interface)
         else:
             # ### CORRECTION FINALE ###
             # On prépare la variable avant pour éviter les conflits de guillemets.
@@ -2240,7 +2562,11 @@ def scan_available_languages(main_interface, lang_combo):
             main_interface._update_status("⚠️ Aucune langue avec fichiers trouvée"); return
         
         languages.sort(key=lambda x: (0 if x.lower() == 'french' else 1, x.lower()))
-        lang_combo['values'] = languages
+        
+        # Réinitialiser complètement la combobox
+        lang_combo['values'] = []  # Vider d'abord
+        main_interface.realtime_language_var.set('')  # Réinitialiser la variable
+        lang_combo['values'] = languages  # Puis remplir avec les nouvelles valeurs
         main_interface.realtime_language_var.set('french' if 'french' in languages else languages[0])
         update_vf_label_text(main_interface)
         main_interface._update_status(f"✅ {len(languages)} langues détectées: {', '.join(languages)}")

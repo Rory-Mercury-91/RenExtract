@@ -85,12 +85,8 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="vue-ensemble-parametres">
             <h2>⚙️ Vue d'Ensemble des Paramètres</h2>
             
-            {generator._get_image_html("07_parametres", "001", 
-                "Interface complète des paramètres", 
-                "Vue d'ensemble de l'onglet Interface & Application avec ses 4 sections")}
-            
             <h3>Qu'est-ce que c'est ?</h3>
-            <p>L'interface des <strong>Paramètres</strong> est ton centre de configuration pour personnaliser RenExtract selon tes besoins. 
+            <p>L'interface des <strong>Paramètres</strong> est votre centre de configuration pour personnaliser RenExtract selon vos besoins. 
             Elle regroupe <strong>tous les réglages de l'application</strong> dans une interface claire et organisée.</p>
             
             <p>Cette interface te permet de :</p>
@@ -114,13 +110,16 @@ def generate_content(generator, language=None, translations=None):
             
             <div class="tip-box">
                 <h4>💡 Sauvegarde automatique</h4>
-                <p>Tous tes changements sont <strong>sauvegardés automatiquement</strong> lorsque tu fermes la fenêtre. 
+                <p>Tous vos changements sont <strong>sauvegardés automatiquement</strong> lorsque vous fermes la fenêtre. 
                 Tu recevras une notification de confirmation "✅ Tous les paramètres ont été sauvegardés".</p>
             </div>
             
             <div class="info-box">
                 <h4>🔑 Accès rapide</h4>
-                <p>Pour ouvrir les paramètres, clique sur le bouton <strong>"⚙️ Paramètres"</strong> dans le header de RenExtract.</p>
+                <p>Pour ouvrir les paramètres, cliquez sur le bouton "⚙️ Paramètres" dans le header de RenExtract.</p>
+                {generator._get_image_html("07_tab_settings", "001", 
+                    "Bouton d'accès aux paramètres", 
+                    "Accès aux paramètres depuis l'interface principale")}
             </div>
         </div>
     """
@@ -133,14 +132,18 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="onglet-interface">
             <h2>🎨 Onglet Interface & Application</h2>
             
+            {generator._get_image_html("07_tab_settings/applications_tab", "001", 
+                "Fenêtre principale de l'onglet Applications", 
+                "Vue d'ensemble de l'onglet Interface & Application")}
+            
             <p>Cet onglet regroupe tous les paramètres liés au <strong>comportement et à l'apparence</strong> de RenExtract. 
             Il est divisé en <strong>4 sections</strong> principales.</p>
             
             <h3>🚀 Ouvertures automatiques</h3>
             
-            {generator._get_image_html("07_parametres", "002", 
+            {generator._get_image_html("07_tab_settings/applications_tab", "002", 
                 "Section ouvertures automatiques", 
-                "4 checkboxes pour configurer les ouvertures automatiques")}
+                "Checkboxes pour configurer les ouvertures automatiques")}
             
             <div class="info-box">
                 <h4>🔧 Configuration des ouvertures</h4>
@@ -150,31 +153,27 @@ def generate_content(generator, language=None, translations=None):
                         <ul>
                             <li><strong>🚀 Fichiers</strong> : Ouvre les fichiers générés après extraction/reconstruction</li>
                             <li><strong>📁 Dossiers</strong> : Ouvre le dossier de sortie après certaines opérations</li>
-                            <li><strong>📊 Rapport cohérence</strong> : Ouvre automatiquement le rapport HTML après vérification</li>
                         </ul>
                     </div>
                     <div style="margin: 0;">
                         <ul>
+                            <li><strong>📊 Rapport cohérence</strong> : Ouvre automatiquement le rapport HTML après vérification</li>
                             <li><strong>📂 Champ de sortie</strong> : Affiche le chemin de sortie dans l'interface principale</li>
                         </ul>
                     </div>
-                </div>
-                
-                <div class="tip-box" style="margin-top: 15px;">
-                    <p><strong>💡 Note importante :</strong> La synchronisation des projets entre les différentes interfaces (principale, maintenance, etc.) est maintenant <strong>toujours activée automatiquement</strong>. Quand tu sélectionnes un projet dans l'interface principale, il est automatiquement synchronisé avec les outils de maintenance et vice versa.</p>
                 </div>
             </div>
             
             <h3>🎨 Apparence et notifications</h3>
             
-            {generator._get_image_html("07_parametres", "003", 
+            {generator._get_image_html("07_tab_settings/applications_tab", "003", 
                 "Section apparence et notifications", 
                 "Configuration du mode sombre, notifications et debug")}
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 <div class="info-box" style="margin: 0;">
                     <h4>🔔 Mode de notification</h4>
-                    <p>Choisis comment RenExtract te notifie des résultats :</p>
+                    <p>Choisissez comment RenExtract te notifie des résultats :</p>
                     <ul>
                         <li><strong>Statut seulement</strong> : Notifications discrètes dans la barre de statut</li>
                         <li><strong>Popups détaillés</strong> : Fenêtres de confirmation avec détails complets</li>
@@ -183,35 +182,47 @@ def generate_content(generator, language=None, translations=None):
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>🌙 Mode sombre</h4>
-                    <p>Active ou désactive le thème sombre de l'interface.</p>
+                    <p>Activez ou désactivez le thème sombre de l'interface.</p>
                     <p>✅ <strong>Recommandé :</strong> Mode sombre activé pour réduire la fatigue oculaire lors de longues sessions de travail.</p>
                 </div>
             </div>
             
             <div class="warning-box">
                 <h4>🐛 Mode debug</h4>
-                <p><strong>Pour utilisateurs avancés uniquement !</strong> Le mode debug affiche des informations techniques détaillées dans les logs. 
-                Active-le uniquement si tu rencontres des problèmes ou si un développeur te le demande.</p>
+                <p>Le mode debug affiche des informations techniques détaillées dans les logs. 
+                <strong>⚠️ Attention :</strong> Ce mode peut ralentir l'application. Activez-le uniquement si vous rencontres des problèmes ou si un développeur te le demande.</p>
             </div>
             
             <h3>📝 Éditeur de code</h3>
             
-            {generator._get_image_html("07_parametres", "004", 
+            {generator._get_image_html("07_tab_settings/applications_tab", "004", 
                 "Section éditeur de code", 
                 "Sélection de l'éditeur de code par défaut")}
             
             <div class="info-box">
                 <h4>🔧 Choix de l'éditeur</h4>
-                <p>Définis quel éditeur de code utiliser pour ouvrir les fichiers :</p>
+                <p>Définis quel éditeur de code utiliser pour ouvrir les fichiers (uniquement lié au rapport de nettoyage et à l'éditeur en temps réel) :</p>
                 <ul>
-                    <li><strong>Défaut Windows</strong> : Utilise le programme par défaut du système</li>
-                    <li><strong>Éditeur détecté</strong> : Si tu as configuré un éditeur personnalisé dans l'onglet "Chemins d'accès", il apparaîtra ici</li>
+                    <li><strong>Défaut Windows</strong> : Utilisez le programme par défaut du système</li>
+                    <li><strong>Éditeur détecté</strong> : Si vous as configuré un éditeur personnalisé dans l'onglet "Chemins d'accès", il apparaîtra ici</li>
             </ul>
         </div>
         
+            <h3>🤖 Graq AI</h3>
+            
+            {generator._get_image_html("07_tab_settings/applications_tab", "005", 
+                "Section Graq AI", 
+                "Configuration de l'intégration Graq AI avec bouton d'aide")}
+            
+            <div class="info-box">
+                <h4>🔧 Configuration Graq AI</h4>
+                <p>Cette section te permet de configurer l'intégration avec Graq AI pour l'assistance à la traduction.</p>
+                <p><strong>💡 Documentation complète :</strong> Une documentation précise est disponible en appuyant sur le bouton d'aide de cette section.</p>
+            </div>
+            
             <h3>⚙️ Actions système</h3>
             
-            {generator._get_image_html("07_parametres", "005", 
+            {generator._get_image_html("07_tab_settings/applications_tab", "006", 
                 "Section actions système", 
                 "Boutons de nettoyage et réinitialisation")}
             
@@ -225,7 +236,7 @@ def generate_content(generator, language=None, translations=None):
                 <div class="warning-box" style="margin: 0;">
                     <h4>🔄 Réinitialiser l'application</h4>
                     <p><strong>⚠️ Action irréversible !</strong></p>
-                    <p>Remet tous les paramètres à leurs valeurs par défaut, efface le cache <strong>et nettoie les fichiers temporaires</strong>. Utilise ceci uniquement en cas de problème grave.</p>
+                    <p>Remet tous les paramètres à leurs valeurs par défaut, efface le cache <strong>et nettoie les fichiers temporaires</strong>. Utilisez ceci uniquement en cas de problème grave.</p>
                 </div>
             </div>
         </div>
@@ -239,16 +250,16 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="onglet-extraction">
             <h2>🛡️ Onglet Extraction & Protection</h2>
             
-            {generator._get_image_html("07_parametres", "006", 
+            {generator._get_image_html("07_tab_settings/extraction_tab", "001", 
                 "Vue d'ensemble onglet Extraction & Protection", 
                 "Interface complète avec options de protection et patterns")}
             
             <p>Cet onglet te permet de configurer finement le <strong>processus d'extraction</strong> et les <strong>protections automatiques</strong> 
-            qui préservent tes codes Ren'Py lors de la traduction.</p>
+            qui préservent vos codes Ren'Py lors de la traduction.</p>
             
             <h3>🛡️ Options de protection + Limite + Mode de sauvegarde</h3>
             
-            {generator._get_image_html("07_parametres", "007", 
+            {generator._get_image_html("07_tab_settings/extraction_tab", "002", 
                 "Sections options, limite et mode sauvegarde regroupées", 
                 "Options de protection, limite de lignes et mode de sauvegarde")}
             
@@ -256,7 +267,7 @@ def generate_content(generator, language=None, translations=None):
                 <h4>🔧 Options de protection</h4>
                 <ul>
                     <li><strong>🔍 Détecter et gérer les doublons</strong> : Évite les traductions en double (recommandé)</li>
-                    <li><strong>📊 Suivi de progression</strong> : Surveille l'avancement de tes projets de traduction</li>
+                    <li><strong>📊 Suivi de progression</strong> : Surveille l'avancement de vos projets de traduction</li>
                     <li><strong>⚙️ Paramètres cohérence</strong> : Ouvre une fenêtre pour configurer les vérifications (voir ci-dessous)</li>
                 </ul>
             </div>
@@ -271,7 +282,7 @@ def generate_content(generator, language=None, translations=None):
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>💾 Mode de sauvegarde</h4>
-                    <p>Choisis comment les fichiers sont enregistrés :</p>
+                    <p>Choisissez comment les fichiers sont enregistrés :</p>
                     <ul>
                         <li><strong>Écraser l'original</strong> : Remplace le fichier existant</li>
                         <li><strong>Créer nouveau fichier</strong> : Génère un fichier <code>&lt;File_Name&gt;_translated.rpy</code></li>
@@ -281,9 +292,9 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>⚙️ Paramètres de cohérence</h3>
             
-            {generator._get_image_html("07_parametres", "008", 
-                "Fenêtre paramètres rapides de cohérence", 
-                "Configuration des 8 vérifications de cohérence")}
+            {generator._get_image_html("07_tab_settings/extraction_tab", "004", 
+                "Bouton paramètres cohérence", 
+                "Accès aux paramètres de vérification de cohérence")}
             
             <div class="info-box">
                 <h4>✅ Configuration des vérifications</h4>
@@ -313,20 +324,21 @@ def generate_content(generator, language=None, translations=None):
             <div class="tip-box">
                 <h4>💡 Boutons rapides</h4>
                 <ul>
-                    <li><strong>✅ Tout sélectionner</strong> : Active toutes les vérifications (recommandé pour une analyse complète)</li>
-                    <li><strong>❌ Tout désélectionner</strong> : Désactive toutes les vérifications</li>
-                    <li><strong>💾 Sauvegarder</strong> : Sauvegarde ta configuration et ferme automatiquement la fenêtre</li>
+                    <li><strong>✅ Tout sélectionner</strong> : Activez toutes les vérifications (recommandé pour une analyse complète)</li>
+                    <li><strong>❌ Tout désélectionner</strong> : Désactivez toutes les vérifications</li>
+                    <li><strong>💾 Sauvegarder</strong> : Sauvegarde votre configuration et ferme automatiquement la fenêtre</li>
                 </ul>
             </div>
             
             <h3>🔧 Patterns de protection</h3>
             
-            {generator._get_image_html("07_parametres", "009", 
+            {generator._get_image_html("07_tab_settings/extraction_tab", "003", 
                 "Patterns avec incrémentation visible", 
                 "Exemples de patterns personnalisés montrant clairement l'incrémentation automatique")}
             
-            <p>Les patterns sont des <strong>placeholders personnalisés</strong> qui protègent tes codes Ren'Py lors de l'extraction. 
-            Ils remplacent temporairement les codes, variables et caractères spéciaux pour éviter qu'ils soient modifiés par les outils de traduction.</p>
+            <p>Les patterns sont des <strong>placeholders personnalisés</strong> qui protègent vos codes Ren'Py lors de l'extraction. 
+            Ils remplacent temporairement les codes, variables et caractères spéciaux pour éviter au maximum qu'ils soient modifiés par les outils de traduction. 
+            N'étant pas fiable à 100%, par sécurité un rapport de cohérence est généré après reconstruction pour signaler les erreurs.</p>
             
             <div class="info-box">
                 <h4>🛡️ Les 3 types de patterns</h4>
@@ -352,18 +364,18 @@ def generate_content(generator, language=None, translations=None):
                     <li><code>(B1)-1</code> → <code>(B1)-1, (B1)-2, (B1)-3</code> : Pattern avec lettre, chiffre et tiret</li>
                     <li><code>(C1)1</code> → <code>(C1)1_001, (C1)1_002, (C1)1_003</code> : Pattern avec suffixe numérique</li>
                 </ul>
-                <p>💡 <strong>L'incrémentation s'adapte intelligemment</strong> à ton pattern ! Elle détecte automatiquement les chiffres et génère 
+                <p>💡 <strong>L'incrémentation s'adapte intelligemment</strong> à votre pattern ! Elle détecte automatiquement les chiffres et génère 
                 la suite logique pour chaque code protégé.</p>
             </div>
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 <div class="info-box" style="margin: 0;">
                     <h4>🧪 Tester les patterns</h4>
-                    <p>Le bouton <strong>"🧪 Tester"</strong> vérifie :</p>
+                    <p>Le bouton <strong>"🧪 Tester"</strong> vérifiez :</p>
                     <ul>
-                        <li>✅ Patterns validés</li>
-                        <li>❌ Détection des doublons</li>
-                        <li>✅ Génération correcte</li>
+                        <li>✅ <strong>Tous les patterns sont valides</strong></li>
+                        <li>❌ <strong>X Doublons détectés :</strong> (placeholders) 
+                            <br><small>💡 Une notification signale en direct la détection des doublons avant le test</small></li>
                     </ul>
                 </div>
                 
@@ -382,20 +394,16 @@ def generate_content(generator, language=None, translations=None):
                 <h4>⚠️ Règles importantes</h4>
                 <ul>
                     <li><strong>Pas de doublons</strong> : Les 3 patterns doivent être différents</li>
-                    <li><strong>Évite les caractères protégés</strong> : N'utilise pas de caractères que RenExtract tente déjà de protéger comme <code>[ ] {{ }} \\ /</code>, etc. Reste sur des lettres, chiffres et underscore pour éviter les conflits.</li>
+                    <li><strong>Évite les caractères protégés</strong> : N'utilisez pas de caractères que RenExtract tente déjà de protéger comme <code>[ ] {{ }} \\ /</code>, etc. Reste sur des lettres, chiffres et underscore pour éviter les conflits.</li>
                     <li><strong>Suffixe numérique recommandé</strong> : Termine par <code>_001</code> pour faciliter l'incrémentation automatique (voir aperçu temps réel pour comprendre son utilité).</li>
             </ul>
         </div>
         
             <h3>📚 Aide complète - Extraction & Protection</h3>
             
-            {generator._get_image_html("07_parametres", "026", 
-                "Fenêtre aide Extraction & Protection", 
-                "Guide complet des options d'extraction et de protection")}
-            
             <div class="tip-box">
                 <h4>💡 Besoin d'aide ?</h4>
-                <p>Pour accéder à cette fenêtre d'aide directement depuis l'application, clique sur le bouton <strong>"À quoi ça sert ?"</strong> 
+                <p>Pour accéder à cette fenêtre d'aide directement depuis l'application, cliquez sur le bouton <strong>"À quoi ça sert ?"</strong> 
                 présent dans l'onglet Extraction & Protection. Tu y trouveras toutes les explications détaillées sur chaque option.</p>
             </div>
         </div>
@@ -409,16 +417,16 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="onglet-couleurs">
             <h2>🎨 Onglet Couleurs des Boutons</h2>
             
-            {generator._get_image_html("07_parametres", "010", 
+            {generator._get_image_html("07_tab_settings/colors_tab", "001", 
                 "Vue d'ensemble onglet Couleurs", 
                 "Interface complète de personnalisation des couleurs")}
             
             <p>Cet onglet te permet de <strong>personnaliser complètement les couleurs</strong> de tous les boutons de RenExtract. 
-            Tu peux utiliser des <strong>presets prédéfinis</strong> ou créer ta propre palette personnalisée !</p>
+            Tu peux utiliser des <strong>presets prédéfinis</strong> ou créer votre propre palette personnalisée !</p>
             
             <h3>🎨 Presets de couleurs</h3>
             
-            {generator._get_image_html("07_parametres", "011", 
+            {generator._get_image_html("07_tab_settings/colors_tab", "002", 
                 "Section presets et bouton reset", 
                 "Sélection de presets et bouton de réinitialisation")}
             
@@ -426,8 +434,8 @@ def generate_content(generator, language=None, translations=None):
                 <h4>✨ Utiliser un preset</h4>
                 <p>Les presets sont des <strong>combinaisons de couleurs prédéfinies</strong> harmonieuses et testées.</p>
                 <ol>
-                    <li>Sélectionne un preset dans la liste déroulante</li>
-                    <li>Clique sur <strong>"✅ Appliquer le preset"</strong></li>
+                    <li>Sélectionnez un preset dans la liste déroulante</li>
+                    <li>Cliquez sur <strong>"✅ Appliquer le preset"</strong></li>
                     <li>Les couleurs sont appliquées</li>
                 </ol>
                 <p><strong>💡 Recommandation :</strong> Pour que les changements de couleurs soient parfaitement visibles, 
@@ -437,12 +445,12 @@ def generate_content(generator, language=None, translations=None):
             <div class="tip-box">
                 <h4>🔄 Remettre par défaut</h4>
                 <p>Le bouton <strong>"Par défaut"</strong> restaure les couleurs d'origine de RenExtract. 
-                Une confirmation te sera demandée car cette action supprime toutes tes personnalisations.</p>
+                Une confirmation te sera demandée car cette action supprime toutes vos personnalisations.</p>
             </div>
             
             <h3>🖌️ Personnalisation des couleurs</h3>
             
-            {generator._get_image_html("07_parametres", "012", 
+            {generator._get_image_html("07_tab_settings/colors_tab", "003", 
                 "Grille des boutons colorés", 
                 "8 boutons de couleur personnalisables")}
             
@@ -469,17 +477,17 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>🎨 Utiliser le color picker</h3>
             
-            {generator._get_image_html("07_parametres", "013", 
-                "Color picker en action", 
-                "Fenêtre de sélection de couleur")}
+            {generator._get_image_html("07_tab_settings/colors_tab", "004", 
+                "Color picker", 
+                "Interface du sélecteur de couleurs")}
             
             <div class="step-box">
                 <h4>📝 Étapes pour changer une couleur</h4>
                 <ol>
-                    <li>Clique sur le bouton de couleur que tu veux modifier</li>
+                    <li>Cliquez sur le bouton de couleur que vous veux modifier</li>
                     <li>Une fenêtre de sélection de couleur s'ouvre</li>
-                    <li>Choisis ta nouvelle couleur (palette, hexadécimal, RGB...)</li>
-                    <li>Valide ta sélection</li>
+                    <li>Choisissez votre nouvelle couleur (palette, hexadécimal, RGB...)</li>
+                    <li>Valide votre sélection</li>
                     <li>La couleur est appliquée</li>
                 </ol>
                 <p><strong>💡 Recommandation :</strong> Comme pour les presets, il est recommandé de <strong>fermer et rouvrir l'application</strong> 
@@ -489,22 +497,18 @@ def generate_content(generator, language=None, translations=None):
             <div class="tip-box">
                 <h4>💡 Astuces couleurs</h4>
                 <ul>
-                    <li><strong>Contraste :</strong> Choisis des couleurs suffisamment contrastées pour une bonne lisibilité</li>
-                    <li><strong>Cohérence :</strong> Utilise une palette harmonieuse (couleurs complémentaires ou analogues)</li>
+                    <li><strong>Contraste :</strong> Choisissez des couleurs suffisamment contrastées pour une bonne lisibilité</li>
+                    <li><strong>Cohérence :</strong> Utilisez une palette harmonieuse (couleurs complémentaires ou analogues)</li>
                     <li><strong>Accessibilité :</strong> Évite les combinaisons difficiles à lire (ex: jaune sur blanc)</li>
-                    <li><strong>Test :</strong> Teste tes couleurs sur différentes parties de l'interface avant de valider</li>
+                    <li><strong>Test :</strong> Teste vos couleurs sur différentes parties de l'interface avant de valider</li>
             </ul>
             </div>
             
             <h3>📚 Aide complète - Personnalisation des couleurs</h3>
             
-            {generator._get_image_html("07_parametres", "024", 
-                "Fenêtre aide Personnalisation des couleurs", 
-                "Guide complet de la personnalisation des couleurs des boutons")}
-            
             <div class="tip-box">
                 <h4>💡 Besoin d'aide ?</h4>
-                <p>Pour accéder à cette fenêtre d'aide directement depuis l'application, clique sur le bouton <strong>"À quoi ça sert ?"</strong> 
+                <p>Pour accéder à cette fenêtre d'aide directement depuis l'application, cliquez sur le bouton <strong>"À quoi ça sert ?"</strong> 
                 présent dans l'onglet Couleurs des boutons. Tu y trouveras le détail complet de chaque catégorie de boutons.</p>
             </div>
         </div>
@@ -518,16 +522,15 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="onglet-chemins">
             <h2>🛠️ Onglet Chemins d'Accès</h2>
             
-            {generator._get_image_html("07_parametres", "014", 
+            {generator._get_image_html("07_tab_settings/paths_tab", "001", 
                 "Vue d'ensemble onglet Chemins d'accès", 
                 "Configuration du SDK et des éditeurs")}
             
-            <p>Cet onglet te permet de configurer les <strong>chemins vers les outils externes</strong> utilisés par RenExtract : 
-            le SDK Ren'Py pour la compilation et les éditeurs de code pour ouvrir tes fichiers.</p>
+            <p>Cet onglet te permet de configurer les <strong>chemins vers les outils externes</strong> utilisés par RenExtract.</p>
             
             <h3>🛠️ SDK Ren'Py</h3>
             
-            {generator._get_image_html("07_parametres", "015", 
+            {generator._get_image_html("07_tab_settings/paths_tab", "002", 
                 "Section SDK Ren'Py", 
                 "Configuration du chemin vers le SDK")}
             
@@ -543,21 +546,21 @@ def generate_content(generator, language=None, translations=None):
             <div class="step-box">
                 <h4>📝 Configuration du SDK</h4>
                 <ol>
-                    <li>Clique sur le bouton <strong>"📁 Parcourir"</strong></li>
+                    <li>Cliquez sur le bouton <strong>"📁 Parcourir"</strong></li>
                     <li>Navigue jusqu'au dossier contenant le SDK Ren'Py</li>
-                    <li>Sélectionne le dossier (pas le fichier <code>renpy.exe</code> directement !)</li>
+                    <li>Sélectionnez le dossier (pas le fichier <code>renpy.exe</code> directement !)</li>
                     <li>Le chemin est automatiquement sauvegardé</li>
                 </ol>
             </div>
             
             <div class="tip-box">
                 <h4>💡 Télécharger le SDK</h4>
-                <p>Si tu n'as pas encore le SDK Ren'Py, télécharge-le depuis <a href="https://www.renpy.org/release_list.html" target="_blank" style="color: var(--accent); text-decoration: underline;"><strong>renpy.org/release_list</strong></a> et installe-le dans un dossier accessible.</p>
+                <p>Si vous n'as pas encore le SDK Ren'Py, télécharge-le depuis <a href="https://www.renpy.org/release_list.html" target="_blank" style="color: var(--accent); text-decoration: underline;"><strong>renpy.org/release_list</strong></a> et installe-le dans un dossier accessible.</p>
             </div>
             
             <h3>✏️ Éditeur personnalisé</h3>
             
-            {generator._get_image_html("07_parametres", "016", 
+            {generator._get_image_html("07_tab_settings/paths_tab", "003", 
                 "Section Éditeur personnalisé", 
                 "Configuration d'un éditeur de code personnalisé")}
             
@@ -574,21 +577,12 @@ def generate_content(generator, language=None, translations=None):
             <div class="step-box">
                 <h4>📝 Configuration de l'éditeur</h4>
                 <ol>
-                    <li>Entre le chemin manuellement dans le champ <strong>Entry</strong> ou clique sur <strong>"📁 Parcourir"</strong></li>
-                    <li>Sélectionne l'exécutable de ton éditeur (ex: <code>Code.exe</code> pour VS Code)</li>
-                    <li>Utilise le bouton <strong>"🧪 Test"</strong> pour vérifier que le chemin est valide</li>
+                    <li>Entre le chemin manuellement dans le champ <strong>Entry</strong> ou cliquez sur <strong>"📁 Parcourir"</strong></li>
+                    <li>Sélectionnez l'exécutable de votre éditeur (ex: <code>Code.exe</code> pour VS Code)</li>
+                    <li>Utilisez le bouton <strong>"🧪 Test"</strong> pour vérifier que le chemin est valide</li>
                     <li>Le nom de l'éditeur est détecté automatiquement</li>
                     <li>Il apparaîtra dans la liste des éditeurs de l'onglet "Interface & Application"</li>
                 </ol>
-            </div>
-            
-            <div class="info-box">
-                <h4>🔧 Contrôles disponibles</h4>
-                <ul>
-                    <li>📝 <strong>Entry</strong> : Champ pour entrer ou modifier le chemin de l'éditeur</li>
-                    <li>📁 <strong>Bouton "Parcourir"</strong> : Sélectionner l'exécutable dans l'explorateur</li>
-                    <li>🧪 <strong>Bouton "Test"</strong> : Vérifier que le chemin configuré est valide</li>
-                </ul>
             </div>
             
             <h3>🔔 Notifications de validation</h3>
@@ -596,40 +590,27 @@ def generate_content(generator, language=None, translations=None):
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 <div class="warning-box" style="margin: 0;">
                     <h4>⚠️ Aucun chemin configuré</h4>
-                    {generator._get_image_html("07_parametres", "018", 
-                        "Toast aucun éditeur", 
-                        "Message d'avertissement quand aucun chemin n'est configuré")}
-                    <p>Si tu testes un éditeur sans avoir configuré de chemin, tu verras ce message.</p>
+                    <p>Si vous testes un éditeur sans avoir configuré de chemin, vous verras un message d'avertissement.</p>
                 </div>
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>✅ Chemin valide</h4>
-                    {generator._get_image_html("07_parametres", "019", 
-                        "Toast chemin validé", 
-                        "Message de succès après validation du chemin")}
-                    <p>Quand le chemin est valide, tu reçois une confirmation.</p>
+                    <p>Quand le chemin est valide, vous reçois une confirmation.</p>
                 </div>
             </div>
             
             <div class="tip-box">
                 <h4>🔄 Réinitialiser</h4>
-                {generator._get_image_html("07_parametres", "017", 
-                    "Toast reset réussi", 
-                    "Confirmation du reset des chemins")}
                 <p>Le bouton <strong>"Réinitialiser"</strong> efface les chemins personnalisés du SDK et de l'éditeur. 
                 Les valeurs par défaut seront restaurées.</p>
             </div>
             
             <h3>📚 Aide complète - Chemins d'accès</h3>
             
-            {generator._get_image_html("07_parametres", "025", 
-                "Fenêtre aide Chemins d'accès", 
-                "Guide complet de la configuration des chemins SDK et éditeur")}
-            
             <div class="tip-box">
                 <h4>💡 Besoin d'aide ?</h4>
-                <p>Pour accéder à cette fenêtre d'aide directement depuis l'application, clique sur le bouton <strong>"À quoi ça sert ?"</strong> 
-                présent dans l'onglet Chemins d'accès. Tu y trouveras toutes les explications détaillées sur la configuration du SDK et de ton éditeur préféré.</p>
+                <p>Pour accéder à cette fenêtre d'aide directement depuis l'application, cliquez sur le bouton <strong>"À quoi ça sert ?"</strong> 
+                présent dans l'onglet Chemins d'accès. Tu y trouveras toutes les explications détaillées sur la configuration du SDK et de votre éditeur préféré.</p>
             </div>
         </div>
     """
@@ -642,10 +623,10 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="footer-parametres">
             <h2>📋 Footer et Actions Globales</h2>
             
-            <p>En bas de la fenêtre des paramètres, tu trouveras <strong>3 boutons</strong> toujours accessibles, 
+            <p>En bas de la fenêtre des paramètres, vous trouveras <strong>3 boutons</strong> toujours accessibles, 
             quel que soit l'onglet actif.</p>
             
-            {generator._get_image_html("07_parametres", "021", 
+            {generator._get_image_html("07_tab_settings", "002", 
                 "Footer avec boutons", 
                 "Barre de footer avec À propos, Par défaut et Fermer")}
             
@@ -663,15 +644,11 @@ def generate_content(generator, language=None, translations=None):
                 
                 <div class="info-box" style="margin: 0;">
                     <h4>❌ Fermer</h4>
-                    <p>Ferme la fenêtre et <strong>sauvegarde automatiquement</strong> tous tes changements.</p>
+                    <p>Ferme la fenêtre et <strong>sauvegarde automatiquement</strong> tous vos changements.</p>
                 </div>
             </div>
             
             <h3>ℹ️ Fenêtre À propos</h3>
-            
-            {generator._get_image_html("07_parametres", "020", 
-                "Popup À propos", 
-                "Informations sur RenExtract")}
             
             <div class="info-box">
                 <h4>📊 Informations affichées</h4>
@@ -694,14 +671,10 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="notifications-parametres">
             <h2>🔔 Notifications et Toasts</h2>
             
-            <p>RenExtract utilise des <strong>notifications toast</strong> (petits messages temporaires) pour te tenir informé 
-            des actions effectuées et des résultats. Voici les principaux types que tu rencontreras dans les paramètres.</p>
+            <p>RenExtract utilisez des <strong>notifications toast</strong> (petits messages temporaires) pour te tenir informé 
+            des actions effectuées et des résultats. Voici les principaux types que vous rencontreras dans les paramètres.</p>
             
             <h3>✅ Toasts de succès</h3>
-            
-            {generator._get_image_html("07_parametres", "023", 
-                "Toast succès", 
-                "Notification de sauvegarde réussie")}
             
             <div class="info-box">
                 <h4>💚 Actions confirmées</h4>
@@ -716,13 +689,9 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>⚠️ Toasts d'avertissement</h3>
             
-            {generator._get_image_html("07_parametres", "022", 
-                "Toast avertissement", 
-                "Notification de détection de doublons")}
-            
             <div class="warning-box">
                 <h4>🟠 Attention requise</h4>
-                <p>Les toasts <strong>jaune orangé</strong> signalent des problèmes non-bloquants qui nécessitent ton attention :</p>
+                <p>Les toasts <strong>jaune orangé</strong> signalent des problèmes non-bloquants qui nécessitent votre attention :</p>
                 <ul>
                     <li>"⚠️ Attention: doublons détectés" (patterns identiques)</li>
                     <li>"⚠️ Aucun chemin configuré pour [Éditeur]" (test d'un chemin vide)</li>
@@ -746,17 +715,17 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="astuces-parametres">
             <h2>💡 Astuces et Bonnes Pratiques</h2>
             
-            <p>Voici quelques conseils pour <strong>optimiser ta configuration</strong> de RenExtract :</p>
+            <p>Voici quelques conseils pour <strong>optimiser votre configuration</strong> de RenExtract :</p>
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 1.5rem 0;">
                 
                 <div class="tip-box" style="margin: 0;">
                     <h4>🎨 Configuration initiale</h4>
                     <ul>
-                        <li>Active le <strong>mode sombre</strong> pour le confort visuel</li>
-                        <li>Configure ton <strong>éditeur préféré</strong> dès le départ</li>
-                        <li>Choisis un <strong>preset de couleurs</strong> qui te plaît</li>
-                        <li>Active les <strong>ouvertures automatiques</strong> selon tes besoins</li>
+                        <li>Activez le <strong>mode sombre</strong> pour le confort visuel</li>
+                        <li>Configurez votre <strong>éditeur préféré</strong> dès le départ</li>
+                        <li>Choisissez un <strong>preset de couleurs</strong> qui te plaît</li>
+                        <li>Activez les <strong>ouvertures automatiques</strong> selon vos besoins</li>
                     </ul>
                 </div>
                 
@@ -764,28 +733,28 @@ def generate_content(generator, language=None, translations=None):
                     <h4>🛡️ Protection optimale</h4>
                     <ul>
                         <li><strong>Garde les patterns par défaut</strong> sauf besoin spécifique</li>
-                        <li>Active la <strong>détection des doublons</strong></li>
-                        <li>Configure les <strong>vérifications de cohérence</strong> selon ton workflow</li>
-                        <li>Teste tes patterns avant de les utiliser en production</li>
+                        <li>Activez la <strong>détection des doublons</strong></li>
+                        <li>Configurez les <strong>vérifications de cohérence</strong> selon votre workflow</li>
+                        <li>Teste vos patterns avant de les utiliser en production</li>
                     </ul>
                 </div>
                 
                 <div class="tip-box" style="margin: 0;">
                     <h4>🎨 Personnalisation</h4>
                     <ul>
-                        <li>Utilise les <strong>presets</strong> comme base avant de personnaliser</li>
-                        <li>Teste tes couleurs sur <strong>différentes actions</strong></li>
+                        <li>Utilisez les <strong>presets</strong> comme base avant de personnaliser</li>
+                        <li>Teste vos couleurs sur <strong>différentes actions</strong></li>
                         <li>Garde un <strong>bon contraste</strong> pour la lisibilité</li>
-                        <li>N'hésite pas à <strong>remettre par défaut</strong> si tu n'es pas satisfait</li>
+                        <li>N'hésite pas à <strong>remettre par défaut</strong> si vous n'es pas satisfait</li>
                     </ul>
                 </div>
                 
                 <div class="tip-box" style="margin: 0;">
                     <h4>🛠️ Chemins et outils</h4>
                     <ul>
-                        <li>Configure le <strong>SDK Ren'Py</strong> si tu fais de la compilation</li>
+                        <li>Configurez le <strong>SDK Ren'Py</strong> si vous fais de la compilation</li>
                         <li>Teste les chemins avec le <strong>bouton Test</strong></li>
-                        <li>Utilise un <strong>éditeur moderne</strong> (VS Code, Sublime...)</li>
+                        <li>Utilisez un <strong>éditeur moderne</strong> (VS Code, Sublime...)</li>
                         <li>Garde les chemins à jour après les mises à jour d'outils</li>
             </ul>
                 </div>
@@ -795,10 +764,10 @@ def generate_content(generator, language=None, translations=None):
             <div class="info-box">
                 <h4>🔄 Workflow recommandé</h4>
                 <ol>
-                    <li><strong>Première utilisation</strong> : Configure les paramètres de base (éditeur, couleurs, SDK)</li>
-                    <li><strong>Avant chaque projet</strong> : Vérifie que tes patterns et vérifications sont adaptés</li>
-                    <li><strong>Régulièrement</strong> : Nettoie les fichiers temporaires et vérifie les chemins</li>
-                    <li><strong>En cas de problème</strong> : Active le mode debug et consulte les logs</li>
+                    <li><strong>Première utilisation</strong> : Configurez les paramètres de base (éditeur, couleurs, SDK)</li>
+                    <li><strong>Avant chaque projet</strong> : Vérifiez que vos patterns et vérifications sont adaptés</li>
+                    <li><strong>Régulièrement</strong> : Nettoie les fichiers temporaires et vérifiez les chemins</li>
+                    <li><strong>En cas de problème</strong> : Activez le mode debug et consulte les logs</li>
                 </ol>
             </div>
         </div>

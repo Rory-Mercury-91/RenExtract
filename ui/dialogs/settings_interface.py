@@ -1472,13 +1472,6 @@ Configuration :
     def _show_coherence_quick_settings(self):
         """Affiche les paramètres rapides de cohérence"""
         try:
-            from ui.shared.coherence_quick_settings import CoherenceQuickSettingsWindow
-            
-            # Ouvrir la fenêtre de paramètres rapides de cohérence
-            CoherenceQuickSettingsWindow(self.window, self)
-            
-        except ImportError:
-            # Si le module n'existe pas, créer une fenêtre simple
             self._create_simple_coherence_settings()
         except Exception as e:
             log_message("ERREUR", f"Erreur paramètres cohérence: {e}", category="ui_settings")

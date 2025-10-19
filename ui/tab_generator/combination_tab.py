@@ -48,50 +48,17 @@ def _create_combination_backup(source_folder, output_file, main_interface):
             'files_count': len(os.listdir(source_folder))
         }
         
-        # Créer un dossier temporaire pour l'archive avec métadonnées
-        temp_dir = tempfile.mkdtemp()
-        
-        # Créer un fichier de métadonnées dans le dossier temporaire
-        import json
-        metadata_file = os.path.join(temp_dir, '_renextract_restore_info.json')
-        with open(metadata_file, 'w', encoding='utf-8') as f:
-            json.dump(metadata_content, f, indent=2, ensure_ascii=False)
-        
-        # Copier tout le contenu du dossier source vers le temp
-        for item in os.listdir(source_folder):
-            s = os.path.join(source_folder, item)
-            d = os.path.join(temp_dir, item)
-            if os.path.isdir(s):
-                shutil.copytree(s, d)
-            else:
-                shutil.copy2(s, d)
-        
-        # Créer l'archive du dossier temporaire (avec métadonnées)
-        folder_name = os.path.basename(source_folder)
-        zip_name = f"{folder_name}_backup_{timestamp}"
-        temp_zip_base = os.path.join(tempfile.gettempdir(), zip_name)
-        
-        log_message("INFO", f"Création archive complète du dossier: {source_folder}", category="renpy_generator_combine_tl")
-        archive_path = shutil.make_archive(temp_zip_base, 'zip', temp_dir)
-        
-        # Nettoyer le dossier temporaire
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        
-        # Créer la sauvegarde de l'archive avec le nom du jeu correct
+        # Créer la sauvegarde ZIP complète du dossier source directement
         folder_name = os.path.basename(source_folder)  # "french", "english", etc.
-        result = backup_manager.create_backup(
-            archive_path,
+        log_message("INFO", f"Création archive complète du dossier: {source_folder}", category="renpy_generator_combine_tl")
+        
+        result = backup_manager.create_zip_backup(
+            source_folder,  # Utiliser le dossier source original
             backup_type=BackupType.BEFORE_COMBINATION,
             description=f"Sauvegarde complète du dossier avant combinaison ({metadata_content['files_count']} fichiers)",
             override_game_name=game_name,  # Ex: "WastelandGuardians-0.6-pc"
             override_file_name=folder_name  # Ex: "french"
         )
-        
-        # Nettoyer l'archive temporaire
-        try:
-            os.remove(archive_path)
-        except:
-            pass
         
         if result.get('success'):
             log_message("INFO", f"✅ Sauvegarde complète créée avant combinaison: {result.get('backup_path')}", category="renpy_generator_combine_tl")

@@ -2,15 +2,23 @@
 """
 Générateur de tutoriel HTML pour RenExtract (version française uniquement)
 Fichier unique optimisé sans système multilingue
+Images téléchargées depuis GitHub en arrière-plan
 """
 
 import os
 import sys
-import base64
+import json
+import threading
+import urllib.request
+import urllib.error
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from infrastructure.logging.logging import log_message
 from infrastructure.config.constants import FOLDERS
+
+# Configuration GitHub
+GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Rory-Mercury-91/Stockage/main/tutorial_images"
+GITHUB_MANIFEST_URL = "https://raw.githubusercontent.com/Rory-Mercury-91/Stockage/main/tutorial_images/manifest.json"
 
 
 class TutorialGenerator:
@@ -18,7 +26,7 @@ class TutorialGenerator:
 
     def __init__(self):
         self.tutorial_dir = self._get_tutorial_directory()
-        self.images_dir = self._get_images_directory()
+        self.images_dir = self._get_local_images_directory()
         self._ensure_directories()
         
         # Import du cache et du monitor de performance
@@ -26,6 +34,14 @@ class TutorialGenerator:
         from .utils import PerformanceMonitor
         self.cache = get_tutorial_cache()
         self.performance_monitor = PerformanceMonitor()
+        
+        # État du téléchargement
+        self.download_in_progress = False
+        self.download_complete = False
+        self.manifest_data = None  # Stocke le manifest téléchargé
+        
+        # Lancer le téléchargement des images en arrière-plan
+        self._start_background_download()
 
     def _get_tutorial_directory(self) -> str:
         """Répertoire de sortie du fichier HTML"""
@@ -34,113 +50,228 @@ class TutorialGenerator:
         except Exception:
             return os.path.join(".", "04_Configs")
 
-    def _get_images_directory(self) -> str:
-        """Répertoire des images (structure simplifiée sans multilingue)"""
-        try:
-            if getattr(sys, 'frozen', False):
-                # Version exécutable
-                base_path = sys._MEIPASS
-                images_path = os.path.join(base_path, "tutorial_images")
-                if os.path.exists(images_path):
-                    log_message("INFO", f"Images trouvées dans l'exe: {images_path}", category="tutorial_generator")
-                    return images_path
-                # Fallback si pas dans l'exe
-                exe_dir = os.path.dirname(sys.executable)
-                return os.path.join(exe_dir, "tutorial_images")
-            else:
-                # Version développement
-                return os.path.join(".", "tutorial_images")
-        except Exception as e:
-            log_message("ERREUR", f"Erreur détermination dossier images: {e}", category="tutorial_generator")
-            return os.path.join(".", "tutorial_images")
+    def _get_local_images_directory(self) -> str:
+        """Répertoire local dans .renextract_tools pour les images"""
+        tools_dir = os.path.join(os.path.expanduser("~"), ".renextract_tools")
+        images_dir = os.path.join(tools_dir, "tutorial_images")
+        return images_dir
+    
+    def _get_version_file_path(self) -> str:
+        """Chemin du fichier de version des images"""
+        return os.path.join(self.images_dir, ".image_version")
 
     def _ensure_directories(self):
         """Création des répertoires nécessaires"""
         try:
             Path(self.tutorial_dir).mkdir(parents=True, exist_ok=True)
+            Path(self.images_dir).mkdir(parents=True, exist_ok=True)
             log_message("INFO", f"Répertoire tutoriel configuré: {self.tutorial_dir}", category="tutorial_generator")
+            log_message("INFO", f"Répertoire images configuré: {self.images_dir}", category="tutorial_generator")
         except Exception as e:
             log_message("ATTENTION", f"Erreur configuration répertoires: {e}", category="tutorial_generator")
 
+    def _start_background_download(self):
+        """Lance le téléchargement des images en arrière-plan"""
+        download_thread = threading.Thread(target=self._download_tutorial_images, daemon=True)
+        download_thread.start()
+        log_message("INFO", "Téléchargement des images tutoriel lancé en arrière-plan", category="tutorial_generator")
+    
+    def _should_redownload_images(self, current_version: str) -> bool:
+        """Vérifie si les images doivent être re-téléchargées"""
+        version_file = self._get_version_file_path()
+        
+        # Si le fichier de version n'existe pas, télécharger
+        if not os.path.exists(version_file):
+            log_message("INFO", "Aucune version d'images trouvée, téléchargement nécessaire", category="tutorial_generator")
+            return True
+        
+        try:
+            with open(version_file, 'r', encoding='utf-8') as f:
+                stored_version = f.read().strip()
+            
+            # Si la version a changé, re-télécharger
+            if stored_version != current_version:
+                log_message("INFO", f"Version changée ({stored_version} → {current_version}), re-téléchargement", category="tutorial_generator")
+                return True
+            
+            log_message("INFO", f"Images à jour (version {current_version})", category="tutorial_generator")
+            return False
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lecture version: {e}, re-téléchargement par sécurité", category="tutorial_generator")
+            return True
+    
+    def _save_current_version(self, version: str):
+        """Sauvegarde la version actuelle des images"""
+        try:
+            version_file = self._get_version_file_path()
+            with open(version_file, 'w', encoding='utf-8') as f:
+                f.write(version)
+            log_message("INFO", f"Version {version} sauvegardée", category="tutorial_generator")
+        except Exception as e:
+            log_message("ERREUR", f"Erreur sauvegarde version: {e}", category="tutorial_generator")
+    
+    def _download_tutorial_images(self):
+        """Télécharge les images depuis GitHub (exécuté en thread)"""
+        try:
+            self.download_in_progress = True
+            log_message("INFO", "🔽 Vérification des images tutoriel depuis GitHub...", category="tutorial_generator")
+            
+            # Télécharger le manifest
+            manifest = self._download_manifest()
+            if not manifest:
+                log_message("ATTENTION", "Impossible de télécharger le manifest, utilisation du cache local", category="tutorial_generator")
+                self.download_complete = True
+                self.download_in_progress = False
+                return
+            
+            # Stocker le manifest pour utilisation ultérieure
+            self.manifest_data = manifest
+            
+            # Vérifier la version
+            manifest_version = manifest.get("version", "unknown")
+            
+            # Récupérer la version de l'application (depuis FOLDERS ou autre source)
+            from infrastructure.config.constants import __version__ as app_version
+            
+            # Si la version de l'app a changé, forcer le re-téléchargement
+            if not self._should_redownload_images(app_version):
+                log_message("INFO", "✅ Images tutoriel déjà à jour", category="tutorial_generator")
+                self.download_complete = True
+                self.download_in_progress = False
+                return
+            
+            # Télécharger les images
+            # Format du manifest: {"images": {"section/filename.ext": {"url": "...", "hash": "...", ...}, ...}}
+            images_dict = manifest.get("images", {})
+            total = len(images_dict)
+            downloaded = 0
+            skipped = 0
+            failed = 0
+            
+            log_message("INFO", f"📦 Téléchargement de {total} images...", category="tutorial_generator")
+            
+            for idx, (img_relative_path, image_info) in enumerate(images_dict.items(), 1):
+                # img_relative_path est de la forme "section/filename.ext"
+                # Extraire le nom de fichier et la section
+                parts = img_relative_path.split('/')
+                if len(parts) < 2:
+                    log_message("ATTENTION", f"Chemin image invalide dans manifest: {img_relative_path}", category="tutorial_generator")
+                    failed += 1
+                    continue
+                
+                # Si le chemin contient plusieurs niveaux de dossiers (ex: "05_tools/clean/001.png")
+                section = '/'.join(parts[:-1])  # Tout sauf le dernier élément
+                filename = parts[-1]  # Dernier élément
+                
+                url = image_info.get("url") or f"{GITHUB_RAW_BASE}/{img_relative_path}"
+                local_path = os.path.join(self.images_dir, img_relative_path)
+                
+                # Créer le sous-dossier si nécessaire
+                Path(os.path.dirname(local_path)).mkdir(parents=True, exist_ok=True)
+                
+                # Télécharger si le fichier n'existe pas ou si on force le re-téléchargement
+                if not os.path.exists(local_path) or self._should_redownload_images(app_version):
+                    if self._download_file(url, local_path):
+                        downloaded += 1
+                        if idx % 5 == 0 or idx == total:  # Log tous les 5 ou le dernier
+                            log_message("INFO", f"📥 Progression: {idx}/{total} ({section}/{filename})", category="tutorial_generator")
+                    else:
+                        failed += 1
+                        log_message("ERREUR", f"❌ Échec: {section}/{filename}", category="tutorial_generator")
+                else:
+                    skipped += 1
+            
+            # Sauvegarder la version
+            self._save_current_version(app_version)
+            
+            log_message("INFO", f"✅ Téléchargement terminé: {downloaded} téléchargées, {skipped} ignorées, {failed} échecs", category="tutorial_generator")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur téléchargement images: {e}", category="tutorial_generator")
+            import traceback
+            log_message("ERREUR", f"Traceback: {traceback.format_exc()}", category="tutorial_generator")
+        finally:
+            self.download_complete = True
+            self.download_in_progress = False
+    
+    def _download_manifest(self) -> Optional[Dict]:
+        """Télécharge le fichier manifest depuis GitHub"""
+        try:
+            log_message("DEBUG", f"Téléchargement manifest: {GITHUB_MANIFEST_URL}", category="tutorial_generator")
+            with urllib.request.urlopen(GITHUB_MANIFEST_URL, timeout=10) as response:
+                data = response.read().decode('utf-8')
+                manifest = json.loads(data)
+                log_message("INFO", f"✅ Manifest téléchargé (version {manifest.get('version', 'N/A')})", category="tutorial_generator")
+                return manifest
+        except urllib.error.URLError as e:
+            log_message("ERREUR", f"Erreur réseau téléchargement manifest: {e}", category="tutorial_generator")
+            return None
+        except json.JSONDecodeError as e:
+            log_message("ERREUR", f"Erreur parsing JSON manifest: {e}", category="tutorial_generator")
+            return None
+        except Exception as e:
+            log_message("ERREUR", f"Erreur téléchargement manifest: {e}", category="tutorial_generator")
+            return None
+    
+    def _download_file(self, url: str, local_path: str) -> bool:
+        """Télécharge un fichier depuis une URL"""
+        try:
+            urllib.request.urlretrieve(url, local_path)
+            return True
+        except urllib.error.URLError as e:
+            log_message("ERREUR", f"Erreur réseau téléchargement {url}: {e}", category="tutorial_generator")
+            return False
+        except Exception as e:
+            log_message("ERREUR", f"Erreur téléchargement {url}: {e}", category="tutorial_generator")
+            return False
+
     def _get_image_html(self, section: str, image_number: str, 
                        alt_text: str = "", caption_text: str = "") -> str:
-        """Génère le HTML pour une image collapsible"""
-        import time
-        start_time = time.time()
-        
-        # Clé de cache unique
-        cache_key = f"{section}_{image_number}"
-        
-        # Vérifier le cache
-        cached_image = self.cache.get_image(cache_key)
-        if cached_image:
-            self.performance_monitor.cache_stats['cache_hits'] += 1
-            return self._generate_collapsible_html(section, image_number, cached_image, 
-                                                 alt_text, caption_text)
-
-        self.performance_monitor.cache_stats['cache_misses'] += 1
-
+        """Génère le HTML pour une image collapsible (avec URL locale file://)"""
         # Chercher l'image
         image_path = self._find_image(section, image_number)
         
         if not image_path:
             return self._generate_placeholder_html(section, image_number, alt_text)
 
-        # Encoder l'image en base64
-        base64_data = self._encode_image_to_base64(image_path)
-        if not base64_data:
-            return self._generate_placeholder_html(section, image_number, alt_text)
-
-        # Mettre en cache
-        self.cache.set_image(cache_key, base64_data)
-        encode_time = time.time() - start_time
-        self.performance_monitor.record_image_cache(cache_key, encode_time, len(base64_data))
-
-        return self._generate_collapsible_html(section, image_number, base64_data, 
+        # Convertir le chemin en URL file:// pour le navigateur
+        file_url = Path(image_path).as_uri()
+        
+        return self._generate_collapsible_html(section, image_number, file_url, 
                                              alt_text, caption_text)
 
     def _find_image(self, section: str, image_number: str) -> Optional[str]:
         """Cherche une image dans le dossier tutorial_images"""
-        # Essayer d'abord .gif, puis .png, puis .webp (pour compatibilité)
-        for ext in ['.gif', '.png', '.webp']:
-            image_path = os.path.join(self.images_dir, section, f"{image_number}{ext}")
-            if os.path.exists(image_path):
-                return image_path
+        # Essayer d'abord .gif, puis .png, puis .webp, puis .jpg (pour compatibilité)
+        for ext in ['.gif', '.png', '.webp', '.jpg', '.jpeg']:
+            # Utiliser Path pour gérer correctement les slashes sur tous les OS
+            image_path = Path(self.images_dir) / section / f"{image_number}{ext}"
+            if image_path.exists():
+                log_message("DEBUG", f"Image trouvée: {image_path}", category="tutorial_generator")
+                return str(image_path)
+        
+        log_message("DEBUG", f"Image non trouvée: {section}/{image_number} (cherché dans {self.images_dir})", category="tutorial_generator")
         return None
-
-    def _encode_image_to_base64(self, image_path: str) -> Optional[str]:
-        """Encode une image en base64"""
-        try:
-            with open(image_path, "rb") as f:
-                encoded = base64.b64encode(f.read()).decode('utf-8')
-            
-            # Déterminer le type MIME selon l'extension
-            ext = os.path.splitext(image_path)[1].lower()
-            if ext == '.gif':
-                mime_type = "image/gif"
-            elif ext == '.png':
-                mime_type = "image/png"
-            elif ext == '.webp':
-                mime_type = "image/webp"
-            else:
-                mime_type = "image/png"  # Fallback
-            
-            return f"data:{mime_type};base64,{encoded}"
-        except Exception as e:
-            log_message("ERREUR", f"Erreur encodage image {image_path}: {e}", category="tutorial_generator")
-            return None
 
     def _generate_placeholder_html(self, section: str, image_number: str, alt_text: str) -> str:
         """Génère un placeholder pour image manquante"""
-        # Essayer d'abord .gif, puis .png, puis .webp
-        for ext in ['.gif', '.png', '.webp']:
-            expected_path = os.path.join(self.images_dir, section, f"{image_number}{ext}")
-            if not os.path.exists(expected_path):
-                continue
-            break
-        else:
-            # Si aucun fichier n'existe, utiliser .png par défaut
-            expected_path = os.path.join(self.images_dir, section, f"{image_number}.png")
+        # Déterminer l'extension depuis le manifest si disponible
+        extension = ".png"  # Par défaut
+        if self.manifest_data:
+            images_dict = self.manifest_data.get("images", {})
+            # Chercher l'image dans le manifest
+            # Format: "section/filename.ext" -> {"url": "...", "hash": "...", ...}
+            for img_path, img_info in images_dict.items():
+                # Vérifier si ce chemin correspond à notre section et image_number
+                if img_path.startswith(f"{section}/{image_number}"):
+                    extension = os.path.splitext(img_path)[1]
+                    break
+        
+        expected_path = os.path.join(self.images_dir, section, f"{image_number}.(gif|png|webp)")
+        github_url = f"{GITHUB_RAW_BASE}/{section}/{image_number}{extension}"
+        
+        status_msg = "⏳ Téléchargement en cours..." if self.download_in_progress else "❌ Image non trouvée"
         
         return f'''
         <div class="image-placeholder">
@@ -149,15 +280,16 @@ class TutorialGenerator:
                 <div class="placeholder-text">
                     <strong>[Image: {section}/{image_number}]</strong>
                     <br><small>{alt_text}</small>
-                    <br><small style="opacity: 0.6;">Placez l'image dans:<br>{expected_path}</small>
+                    <br><small style="opacity: 0.6;">{status_msg}</small>
+                    <br><small style="opacity: 0.4;">Source: {github_url}</small>
                 </div>
             </div>
         </div>
         '''
 
-    def _generate_collapsible_html(self, section: str, image_number: str, base64_data: str,
+    def _generate_collapsible_html(self, section: str, image_number: str, image_src: str,
                                  alt_text: str, caption_text: str) -> str:
-        """Génère le HTML pour une image collapsible"""
+        """Génère le HTML pour une image collapsible (avec URL file://)"""
         # ID unique pour éviter les conflits
         safe_id = f"{section}_{image_number}".replace('/', '_').replace('-', '_')
         
@@ -170,7 +302,7 @@ class TutorialGenerator:
                 <span class="toggle-text">Cliquez pour voir =>  {display_text}</span>
             </div>
             <div class="tutorial-image" id="img_{safe_id}" style="display: none;">
-                <img src="{base64_data}" alt="{alt_text}" class="responsive-image" onclick="openLightbox(this.src, '{alt_text}')" style="cursor: zoom-in;" title="Cliquer pour agrandir" />
+                <img src="{image_src}" alt="{alt_text}" class="responsive-image" onclick="openLightbox(this.src, '{alt_text}')" style="cursor: zoom-in;" title="Cliquer pour agrandir" />
                 {f'<p class="image-caption">{caption_text}</p>' if caption_text else ''}
             </div>
         </div>
@@ -179,12 +311,6 @@ class TutorialGenerator:
     def generate_tutorial_html(self, version: str = "Unknown") -> Optional[str]:
         """Génère le fichier HTML du guide (français uniquement)"""
         try:
-            # Vider le cache d'images pour forcer le rechargement
-            from .cache import clear_tutorial_cache, get_tutorial_cache
-            clear_tutorial_cache()
-            self.cache = get_tutorial_cache()  # Récupérer la nouvelle instance
-            log_message("DEBUG", "Cache d'images vidé pour génération fraîche", category="tutorial_generator")
-            
             tutorial_name = "renextract_guide_complet.html"
             tutorial_path = os.path.join(self.tutorial_dir, tutorial_name)
 
@@ -196,6 +322,13 @@ class TutorialGenerator:
                 f.write(html_content)
             
             log_message("INFO", f"Guide généré: {tutorial_path}", category="tutorial_generator")
+            
+            # Afficher le statut du téléchargement
+            if self.download_in_progress:
+                log_message("INFO", "⏳ Téléchargement des images en cours en arrière-plan...", category="tutorial_generator")
+            elif self.download_complete:
+                log_message("INFO", "✅ Images tutoriel disponibles", category="tutorial_generator")
+            
             return tutorial_path
 
         except Exception as e:
@@ -207,9 +340,11 @@ class TutorialGenerator:
         log_message("INFO", "=== DÉBUT GÉNÉRATION HTML ===", category="tutorial_generator")
         
         try:
-            # Charger les modules de contenu
+            # Charger les modules de contenu (skip tab_08 - technique moved to wiki)
             content_modules = {}
             for i in range(1, 10):
+                if i == 8:  # Skip tab_08 (technical details moved to GitHub wiki)
+                    continue
                 try:
                     module_name = f"ui.tutorial.content.tab_{i:02d}"
                     content_modules[i] = __import__(module_name, fromlist=[f'tab_{i:02d}'])
@@ -218,9 +353,12 @@ class TutorialGenerator:
                     log_message("ERREUR", f"❌ Module tab_{i:02d} ÉCHEC: {e}", category="tutorial_generator")
                     content_modules[i] = None
 
-            # Générer le contenu par onglet
+            # Générer le contenu par onglet (skip tab_08)
             tab_contents = {}
             for tab_num in range(1, 10):
+                if tab_num == 8:  # Skip tab_08
+                    tab_contents[tab_num] = ""  # Empty content for technical tab
+                    continue
                 module = content_modules.get(tab_num)
                 if module is None:
                     tab_contents[tab_num] = self._get_fallback_tab_content(tab_num)
@@ -287,15 +425,20 @@ class TutorialGenerator:
         for logo_name in logo_names:
             logo_path = self._find_image("Logo", logo_name)
             if logo_path:
-                logo_base64 = self._encode_image_to_base64(logo_path)
-                if logo_base64:
-                    log_message("INFO", f"Logo trouvé: {logo_path}", category="tutorial_generator")
-                    return f'''<a href="#support-contact" onclick="switchToTabDirect(8); setTimeout(() => {{ document.getElementById('support-contact').scrollIntoView({{ behavior: 'smooth', block: 'start' }}); }}, 300); return false;" style="cursor: pointer; display: block;" title="📧 Contacter l'équipe de développement">
-                        <img src="{logo_base64}" alt="RenExtract Logo" class="header-logo">
-                    </a>'''
+                # Convertir en URL file://
+                logo_url = Path(logo_path).as_uri()
+                log_message("INFO", f"Logo trouvé: {logo_path}", category="tutorial_generator")
+                return f'''<a href="#support-contact" onclick="switchToTabDirect(9, true); setTimeout(() => {{ 
+                    const supportSection = document.getElementById('support-contact');
+                    if (supportSection) {{
+                        supportSection.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+                    }}
+                }}, 100); return false;" style="cursor: pointer; display: block;" title="📧 Contacter l'équipe de développement">
+                <img src="{logo_url}" alt="RenExtract Logo" class="header-logo">
+                </a>'''
         
         log_message("ATTENTION", "Aucun logo trouvé, placeholder utilisé", category="tutorial_generator")
-        return '<a href="#support-contact" onclick="switchToTabDirect(8); setTimeout(() => { document.getElementById(\'support-contact\').scrollIntoView({ behavior: \'smooth\', block: \'start\' }); }, 300); return false;" style="cursor: pointer; display: block;" title="📧 Contacter l\'équipe de développement"><div class="logo-placeholder">RenExtract</div></a>'
+        return '<a href="#support-contact" onclick="switchToTabDirect(9, true); setTimeout(() => { const supportSection = document.getElementById(\'support-contact\'); if (supportSection) { supportSection.scrollIntoView({ behavior: \'smooth\', block: \'start\' }); } }, 100); return false;" style="cursor: pointer; display: block;" title="📧 Contacter l\'équipe de développement"><div class="logo-placeholder">RenExtract</div></a>'
 
     def _get_fallback_tab_content(self, tab_num: int) -> str:
         """Contenu de fallback pour un onglet"""
@@ -329,13 +472,12 @@ class TutorialGenerator:
 
     <nav class="nav-tabs">
         <button class="nav-tab active" data-tab="1">📋 Sommaire</button>
-        <button class="nav-tab" data-tab="2">🔄 Workflow</button>
+        <button class="nav-tab disabled" data-tab="2" disabled title="En cours de révision">🔄 Workflow 🚧</button>
         <button class="nav-tab" data-tab="3">🖥️ Interface</button>
         <button class="nav-tab" data-tab="4">🎮 Générateur</button>
         <button class="nav-tab" data-tab="5">🛠️ Outils</button>
         <button class="nav-tab" data-tab="6">💾 Sauvegardes</button>
         <button class="nav-tab" data-tab="7">⚙️ Paramètres</button>
-        <button class="nav-tab" data-tab="8">🔧 Technique</button>
         <button class="nav-tab" data-tab="9">❓ FAQ</button>
     </nav>
 
@@ -347,7 +489,6 @@ class TutorialGenerator:
         <div class="tab-content" id="tab-5">{tab_content_5}</div>
         <div class="tab-content" id="tab-6">{tab_content_6}</div>
         <div class="tab-content" id="tab-7">{tab_content_7}</div>
-        <div class="tab-content" id="tab-8">{tab_content_8}</div>
         <div class="tab-content" id="tab-9">{tab_content_9}</div>
     </main>
 
@@ -448,6 +589,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .nav-tab.active { 
   background: var(--accent); color: white; transform: translateY(-2px); 
   box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3); 
+}
+.nav-tab.disabled { 
+  background: transparent; color: var(--sep); cursor: not-allowed; 
+  opacity: 0.5; transform: none !important; 
+}
+.nav-tab.disabled:hover { 
+  background: transparent; transform: none; 
+  border-bottom-color: transparent; 
 }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
@@ -847,21 +996,28 @@ ul {
     const contents = document.querySelectorAll('.tab-content');
     tabs.forEach((tab, i) => {
       tab.addEventListener('click', () => {
+        // Ignorer le clic si l'onglet est désactivé
+        if (tab.classList.contains('disabled')) {
+          return;
+        }
         tabs.forEach(t => t.classList.remove('active'));
         contents.forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
         if (contents[i]) contents[i].classList.add('active');
         save('activeTab', i);
-        // AUTO-SCROLL EN HAUT lors du changement d'onglet
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // AUTO-SCROLL EN HAUT lors du changement d'onglet (instantané)
+        window.scrollTo({ top: 0, behavior: 'instant' });
       });
     });
     const saved = load('activeTab', 0);
-    if (tabs[saved] && contents[saved]) { 
+    if (tabs[saved] && contents[saved] && !tabs[saved].classList.contains('disabled')) { 
       tabs.forEach(t => t.classList.remove('active')); 
       contents.forEach(c => c.classList.remove('active')); 
       tabs[saved].classList.add('active'); 
       contents[saved].classList.add('active'); 
+    } else if (tabs[saved] && tabs[saved].classList.contains('disabled')) {
+      // Si l'onglet sauvegardé est désactivé, retourner au sommaire
+      save('activeTab', 0);
     }
   }
   
@@ -903,21 +1059,32 @@ ul {
       }
     });
     
-    function switchToTabDirect(tabNumber) {
-      document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      
+    function switchToTabDirect(tabNumber, skipScrollToTop = false) {
       const targetTab = document.querySelector(`.nav-tab[data-tab="${tabNumber}"]`);
       const targetContent = document.getElementById(`tab-${tabNumber}`);
+      
+      // Ignorer si l'onglet est désactivé
+      if (targetTab && targetTab.classList.contains('disabled')) {
+        console.warn(`Impossible d'accéder à l'onglet ${tabNumber} : onglet désactivé`);
+        return;
+      }
+      
+      document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
       
       if (targetTab && targetContent) {
         targetTab.classList.add('active');
         targetContent.classList.add('active');
         save('activeTab', tabNumber - 1);
-        // AUTO-SCROLL EN HAUT lors de la navigation directe
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // AUTO-SCROLL EN HAUT seulement si pas explicitement désactivé (instantané)
+        if (!skipScrollToTop) {
+          window.scrollTo({ top: 0, behavior: 'instant' });
+        }
       }
     }
+    
+    // Rendre la fonction accessible globalement
+    window.switchToTabDirect = switchToTabDirect;
   }
   
   window.toggleImage = function(id) {

@@ -3,10 +3,12 @@
 Module de contenu pour l'onglet 1 : Sommaire - Table des matières avec navigation
 """
 
-def generate_content(generator, language, translations):
+def generate_content(generator, language=None, translations=None):
     """Génère le contenu de l'onglet Sommaire"""
     
-    # Récupérer les traductions spécifiques au sommaire
+    # Récupérer les traductions spécifiques au sommaire (si disponibles)
+    if translations is None:
+        translations = {}
     section_t = translations.get('tabs', {}).get('summary', {})
     
     def get_text(key, fallback=""):

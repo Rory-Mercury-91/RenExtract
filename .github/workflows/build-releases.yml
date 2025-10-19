@@ -77,7 +77,6 @@ jobs:
             --add-data "infrastructure;infrastructure" `
             --add-data "ui;ui" `
             --add-data "04_Configs;04_Configs" `
-            --add-data "tutorial_images;tutorial_images" `
             --hidden-import=groq `
             --hidden-import=typing_extensions `
             main.py
@@ -153,7 +152,6 @@ jobs:
             --add-data "infrastructure:infrastructure" \
             --add-data "ui:ui" \
             --add-data "04_Configs:04_Configs" \
-            --add-data "tutorial_images:tutorial_images" \
             --hidden-import=groq \
             --hidden-import=typing_extensions \
             main.py
@@ -327,38 +325,43 @@ jobs:
           
           ---
           
-          ### 🆕 Nouveautés v1.1.0
+          ### 🆕 Nouveautés v1.2.0
           
-          #### 🎯 Groq AI Contextualisé
-          - 👥 **Définition de personnages** : Spécifiez le genre et le nom des personnages pour des traductions plus précises
-          - 📝 **Profils de prompts** : Sauvegardez et rechargez vos configurations (instructions, style, personnages)
-          - 🔍 **Scanner de personnages** : Détection automatique des `Character()` dans les fichiers `.rpy`
-          - 📜 **Contexte conversationnel** : Le dialogue précédent est envoyé à l'IA pour plus de cohérence
-          - 🎨 **Interface collapsible** : Sections pliables pour une interface épurée
+          #### 🔍 Rapport de Cohérence Interactif
+          - ☑️ **Exclusions interactives** : Marquez les lignes à ignorer directement dans le rapport HTML avec des checkboxes cliquables
+          - 🌐 **Serveur HTTP local** : Communication temps réel entre navigateur et application (port dynamique 8000-8099)
+          - 💾 **Persistence intelligente** : Sauvegarde automatique des exclusions dans `config.json` par projet/fichier/ligne
+          - ✨ **Feedback visuel** : Animation fade-out et mise à jour instantanée des états (☐ → ✓ Ignoré)
+          - 🎯 **Labels cliquables** : UX améliorée avec "Cliquer pour ignorer" / "✓ Ignoré"
+          - ⚡ **Cache JavaScript** : Performances optimales avec cache côté client (Set)
+          - 🖥️ **Support WSL** : Détection automatique et binding `0.0.0.0` pour dev Linux/exécution Windows
           
-          #### 🛠️ Module Ren'Py Multi-versions
-          - 🔧 **Système modulaire** : Support de plusieurs versions Ren'Py (8.1.2, 8.2.1+)
-          - 🔄 **Détection automatique** : Identifie la version du projet et charge le bon module
-          - 🛡️ **Protection robuste** : Prévention des conflits de noms et erreurs de récursion
-          - 📦 **Installation simplifiée** : Module `.rpy` prêt à l'emploi pour l'éditeur temps réel
+          #### 🗂️ Gestionnaire d'Exclusions
+          - 🪟 **Interface modale** : Fenêtre Tkinter thématisée avec `ExclusionsManagerDialog`
+          - 📊 **Treeview avancé** : Tableau multi-colonnes (Projet | Fichier | Ligne | Texte | Date) avec tri
+          - ☑️ **Sélection multiple** : Checkboxes par ligne + header "☐/☑" pour sélection globale
+          - 🔍 **Double filtrage** : Filtres dynamiques cascadés par projet ET par fichier (2 colonnes)
+          - 🧠 **Filtre intelligent** : Liste de fichiers mise à jour automatiquement selon le projet sélectionné
+          - 🗑️ **Suppression batch** : Supprimez plusieurs exclusions en un clic avec feedback progressif
+          - 📈 **Statistiques dynamiques** : Compteur avec filtres actifs `📊 X exclusion(s) (projet: Y, fichier: Z)`
+          - ⚙️ **Intégration seamless** : Accessible depuis l'onglet Cohérence via "⚙️ Gérer les exclusions de lignes"
           
-          #### 💾 Gestionnaire de Sauvegardes Amélioré
-          - 🗄️ **Sauvegarde ZIP complète** : Backup de dossiers entiers avec métadonnées
-          - 🔄 **Restauration intelligente** : Extraction vers l'emplacement d'origine ou choisi
-          - ☑️ **Suppression par lot** : Sélection multiple avec checkboxes
-          - 🧹 **Nettoyage automatique** : Suppression des dossiers vides après suppression
-          - 📊 **Types de sauvegardes** : Avant combinaison, édition temps réel, nettoyage, etc.
+          #### 🎨 Rapport HTML - Améliorations UX
+          - 🔽 **Flèches animées** : Rotation correcte (↓ → ↑) lors ouverture/fermeture des sections
+          - 🔄 **Réinitialiser global** : Un bouton pour réinitialiser tous les filtres ET fermer toutes les sections
+          - 🛠️ **Corrections CSS/JS** : Résolution erreurs console navigateur + réorganisation scope fonctions
           
-          #### 🚀 Navigation & Interface
-          - ⚡ **Navigation rapide** : Boutons Précédent/Suivant dans l'interface principale
-          - 📊 **Compteurs de fichiers** : Affichage du nombre de fichiers passés/restants
-          - 🔄 **Synchronisation bidirectionnelle** : Partage de projet entre fenêtres
-          - 🎯 **Chargement automatique** : Affiche le premier fichier à l'ouverture d'un projet
+          #### 📖 Tutoriel - Professionnalisation Continue
+          - ✅ **Tab 03 validée** : Révision complète de l'onglet Traduction et outils
+          - 🎯 **Ton formel maintenu** : Utilisation du "vous" pour cohérence professionnelle
+          - 📸 **Images optimisées** : Structure `tutorial_images/03_main_interface/00X.png`
+          - 🗂️ **Documentation structurée** : Mise à jour `images_guide.txt` + push vers repo Stockage GitHub
           
-          #### 🧹 Nettoyage de Code
-          - ✅ **0 code mort** : Suppression de ~320 lignes de code obsolète
-          - 🔧 **Unification des modes** : Simplification de la détection "Simple/Optimisé"
-          - 📝 **Documentation mise à jour** : Reflet exact du code actuel
+          #### 🔧 Corrections Techniques
+          - 🚦 **Bouton "Annuler"** : État actif/inactif correct (cohérence = opération non-bloquante)
+          - 📦 **Gestion imports** : Résolution `ImportError` pour `get_window_manager` lors arrêt application
+          - 🎨 **Aperçu polices custom** : Support Pillow pour rendu correct des polices .ttf/.otf personnalisées
+          - 🧹 **Nettoyage build** : Suppression `tutorial_images/` du .exe (téléchargement GitHub au démarrage)
           
           Consultez le [CHANGELOG](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md) pour tous les détails.
           

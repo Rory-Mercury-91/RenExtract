@@ -32,6 +32,7 @@ class UnifiedCoherenceChecker:
         self.total_issues = 0
         self.files_analyzed = 0
         self.results_by_file = {}
+        self.project_path = None  # 🆕 Stocke le chemin du projet pour les exclusions
         
         # Chargement des options depuis la config (sans valeurs par défaut codées)
         self.check_variables = config_manager.get('coherence_check_variables')
@@ -50,9 +51,6 @@ class UnifiedCoherenceChecker:
         self.check_line_structure = config_manager.get('coherence_check_line_structure')
         # Placeholders désactivés - validation redondante
         self.check_placeholders = False
-        
-        # Liste d'exclusions depuis la config
-        self.custom_exclusions = config_manager.get('coherence_custom_exclusions')
         
         # Exclusions de fichiers depuis la config
         self.excluded_files = config_manager.get('coherence_excluded_files')
@@ -73,6 +71,9 @@ class UnifiedCoherenceChecker:
         """
         # MODIFICATION N°1 : On mémorise le chemin d'origine ici
         self.original_analysis_path = path
+        
+        # 🆕 Déterminer le chemin du projet pour les exclusions
+        self.project_path = _find_project_root(path)
         
         self.start_time = time.time()
         self.total_issues = 0
@@ -338,7 +339,7 @@ class UnifiedCoherenceChecker:
         issues = []
         
         # 1. Vérifier les lignes non traduites (si activé) - PRIORITÉ MAXIMALE
-        if self.check_untranslated and self._is_untranslated_line(old_text, new_text):
+        if self.check_untranslated and self._is_untranslated_line(old_text, new_text, file_path, new_line_num):
             issues.append({
                 'line': new_line_num,
                 'type': 'UNTRANSLATED_LINE',
@@ -428,8 +429,11 @@ class UnifiedCoherenceChecker:
         
         return issues  # Aucune erreur trouvée
     
-    def _is_untranslated_line(self, old_text, new_text):
-        """Vérifie si une ligne est probablement non traduite"""
+    def _is_untranslated_line(self, old_text, new_text, file_path, line_num):
+        """
+        Vérifie si une ligne est probablement non traduite.
+        🆕 Version avec exclusions précises (projet+fichier+ligne).
+        """
         if old_text.strip() != new_text.strip():
             return False
         
@@ -439,9 +443,19 @@ class UnifiedCoherenceChecker:
         if self._is_auto_excluded(text):
             return False
         
-        # Exclusions personnalisées
-        if text in self.custom_exclusions:
-            return False
+        # 🆕 Vérifier les exclusions précises (projet+fichier+ligne)
+        if self.project_path:
+            exclusions = config_manager.get_coherence_exclusions(self.project_path)
+            
+            # Extraire le nom relatif du fichier
+            file_relative = self._get_relative_file_path(file_path)
+            
+            for excl in exclusions:
+                # Vérifier si cette exclusion correspond
+                if (excl['line'] == line_num and 
+                    excl['text'] == text and 
+                    file_relative.endswith(excl['file'])):
+                    return False  # Exclu
         
         # Si le texte est court et contient peu de mots, probablement OK
         if len(text) <= 3 or len(text.split()) <= 1:
@@ -449,6 +463,29 @@ class UnifiedCoherenceChecker:
         
         # Sinon, considérer comme non traduit
         return True
+    
+    def _get_relative_file_path(self, file_path):
+        """Retourne le chemin relatif du fichier depuis le dossier tl"""
+        try:
+            # Trouver la position de 'tl/' dans le chemin
+            if '/tl/' in file_path:
+                parts = file_path.split('/tl/')
+                if len(parts) > 1:
+                    # Retourner ce qui est après tl/langue/
+                    sub_parts = parts[1].split('/', 1)
+                    if len(sub_parts) > 1:
+                        return sub_parts[1].replace('\\', '/')
+            elif '\\tl\\' in file_path:
+                parts = file_path.split('\\tl\\')
+                if len(parts) > 1:
+                    sub_parts = parts[1].split('\\', 1)
+                    if len(sub_parts) > 1:
+                        return sub_parts[1].replace('\\', '/')
+            
+            # Fallback: retourner le nom du fichier
+            return os.path.basename(file_path)
+        except Exception:
+            return os.path.basename(file_path)
     
     def _is_auto_excluded(self, text):
         """Vérifie les auto-exclusions par défaut"""
@@ -1228,7 +1265,7 @@ class UnifiedCoherenceChecker:
         
         return issues_by_type
 
-    def _create_unified_report(self, execution_time, analysis_path=None):
+    def _create_unified_report(self, execution_time, analysis_path=None, selection_info=None):
         """Crée le rapport unifié HTML avec support du mode harmonisé"""
         try:
             ensure_folders_exist()
@@ -1258,6 +1295,11 @@ class UnifiedCoherenceChecker:
                 },
                 'results_by_file': self.results_by_file
             }
+            
+            # 🆕 AJOUT : Inclure selection_info si disponible
+            if selection_info:
+                results_data['selection_info'] = selection_info
+                log_message("DEBUG", f"🎯 selection_info ajouté au rapport: {selection_info}", category="report")
             
             # Générer le rapport HTML
             rapport_path = create_html_coherence_report(
@@ -1369,6 +1411,12 @@ def check_coherence_unified(target_path, return_details=False, selection_info=No
         # UTILISER VOTRE CLASSE EXISTANTE
         checker = UnifiedCoherenceChecker()
         
+        # 🆕 Déterminer le chemin du projet pour les exclusions
+        if selection_info and selection_info.get('project_path'):
+            checker.project_path = selection_info['project_path']
+        else:
+            checker.project_path = _find_project_root(target_path)
+        
         # Déterminer les fichiers à analyser selon la sélection
         if selection_info and selection_info.get('file_paths'):
             # Mode harmonisé : récupérer tous les fichiers .rpy du dossier (même les techniques)
@@ -1404,7 +1452,7 @@ def check_coherence_unified(target_path, return_details=False, selection_info=No
             
             # Générer le rapport avec vos méthodes existantes
             execution_time = (datetime.now() - start_time).total_seconds()
-            rapport_path = checker._create_unified_report(execution_time, target_path)
+            rapport_path = checker._create_unified_report(execution_time, target_path, selection_info)
             
         else:
             # Mode traditionnel : utiliser votre méthode existante telle quelle
@@ -1505,12 +1553,17 @@ def get_coherence_options():
         'check_isolated_percent': config_manager.get('coherence_check_isolated_percent', True),
         'check_french_quotes': config_manager.get('coherence_check_french_quotes', True),
         'check_line_structure': config_manager.get('coherence_check_line_structure', True),
-        'custom_exclusions': config_manager.get('coherence_custom_exclusions', ["OK", "Menu", "Continue", "Level", "HP", "MP"]),
-        'auto_open_report': config_manager.is_coherence_auto_open_report_enabled()  # 🆕 NOUVEAU
+        'custom_exclusions': config_manager.get('coherence_custom_exclusions', {}),  # 🆕 Dictionnaire (projet → exclusions)
+        'auto_open_report': config_manager.is_coherence_auto_open_report_enabled()
     }
 
 def set_coherence_options(options):
-    """Sauvegarde les options de cohérence"""
+    """
+    Sauvegarde les options de cohérence.
+    
+    NOTE: coherence_custom_exclusions n'est PLUS sauvegardée ici.
+    Elle est gérée exclusivement via l'API HTTP du rapport interactif.
+    """
     config_manager.set('coherence_check_variables', options.get('check_variables', True))
     config_manager.set('coherence_check_tags', options.get('check_tags', True))
     config_manager.set('coherence_check_special_codes', options.get('check_special_codes', True))
@@ -1525,29 +1578,26 @@ def set_coherence_options(options):
     config_manager.set('coherence_check_isolated_percent', options.get('check_isolated_percent', True))
     config_manager.set('coherence_check_french_quotes', options.get('check_french_quotes', True))
     config_manager.set('coherence_check_line_structure', options.get('check_line_structure', True))
-    config_manager.set('coherence_custom_exclusions', options.get('custom_exclusions', []))
+    # 🆕 NE PLUS sauvegarder coherence_custom_exclusions ici
+    # Elle est gérée exclusivement via add_coherence_exclusion() et remove_coherence_exclusion()
     
-    # 🆕 NOUVEAU: Sauvegarder l'option d'ouverture automatique
+    # Sauvegarder l'option d'ouverture automatique
     if 'auto_open_report' in options:
         config_manager.set_coherence_auto_open_report(options['auto_open_report'])
 
-def add_custom_exclusion(text):
-    """Ajoute un texte à la liste d'exclusions personnalisées"""
-    current_exclusions = config_manager.get('coherence_custom_exclusions', [])
-    if text not in current_exclusions:
-        current_exclusions.append(text)
-        config_manager.set('coherence_custom_exclusions', current_exclusions)
-        return True
-    return False
+def add_custom_exclusion(project_path, file_path, line, text):
+    """
+    Ajoute une exclusion précise (projet+fichier+ligne).
+    🆕 Nouvelle version avec contrôle précis.
+    """
+    return config_manager.add_coherence_exclusion(project_path, file_path, line, text)
 
-def remove_custom_exclusion(text):
-    """Supprime un texte de la liste d'exclusions personnalisées"""
-    current_exclusions = config_manager.get('coherence_custom_exclusions', [])
-    if text in current_exclusions:
-        current_exclusions.remove(text)
-        config_manager.set('coherence_custom_exclusions', current_exclusions)
-        return True
-    return False
+def remove_custom_exclusion(project_path, file_path, line, text):
+    """
+    Supprime une exclusion précise.
+    🆕 Nouvelle version avec contrôle précis.
+    """
+    return config_manager.remove_coherence_exclusion(project_path, file_path, line, text)
 
 def _find_project_root(target_path):
     """Trouve la racine du projet Ren'Py depuis un chemin"""

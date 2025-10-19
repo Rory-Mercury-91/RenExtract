@@ -18,6 +18,8 @@ import json
 import glob
 import time
 import pickle
+import zipfile
+import fnmatch
 from typing import List, Dict, Optional
 from pathlib import Path
 from infrastructure.config.constants import FOLDERS, ensure_folders_exist
@@ -443,9 +445,20 @@ class UnifiedBackupManager:
             # Chercher dans l'index des métadonnées (O(1) au lieu de O(n))
             backup_id_from_index = self._metadata_index.get(backup_path)
             if backup_id_from_index:
-                return self.metadata.get(backup_id_from_index)
+                metadata = self.metadata.get(backup_id_from_index)
+                if metadata:
+                    return metadata
             
-            # Créer de nouvelles métadonnées
+            # Si pas de métadonnées trouvées, chercher par pattern dans les métadonnées existantes
+            # pour les sauvegardes récentes qui pourraient ne pas être dans l'index
+            for backup_id, metadata in self.metadata.items():
+                if (metadata.get('backup_path') == backup_path and 
+                    metadata.get('game_name') == game_name and 
+                    metadata.get('file_name') == file_name and 
+                    metadata.get('type') == backup_type):
+                    return metadata
+            
+            # Créer de nouvelles métadonnées seulement si aucune n'existe
             stats = os.stat(backup_path)
             created_time = datetime.datetime.fromtimestamp(stats.st_ctime)
             backup_id = f"{game_name}_{file_name}_{created_time.strftime('%Y%m%d_%H%M%S')}_{backup_type}"
@@ -589,3 +602,150 @@ class UnifiedBackupManager:
         except Exception as e:
             log_message("ERREUR", f"Erreur nettoyage dossiers vides: {e}", category="backup_cleanup")
             return 0
+    
+    def create_zip_backup(self, source_path: str, backup_type: str = BackupType.SECURITY,
+                         description: str = None, override_game_name: str = None, 
+                         override_file_name: str = None, include_patterns: list = None,
+                         exclude_patterns: list = None) -> Dict[str, any]:
+        """Crée une sauvegarde ZIP complète d'un dossier ou fichier
+        
+        Args:
+            source_path: Chemin du fichier/dossier source à sauvegarder
+            backup_type: Type de sauvegarde (BackupType.*)
+            description: Description optionnelle
+            override_game_name: Nom de jeu à utiliser au lieu de l'extraction automatique
+            override_file_name: Nom de fichier à utiliser au lieu de l'extraction automatique
+            include_patterns: Patterns d'inclusion (ex: ["**.rpy", "**.png"])
+            exclude_patterns: Patterns d'exclusion (ex: ["**~", "**.bak"])
+        """
+        result = {
+            'success': False,
+            'backup_path': None,
+            'backup_id': None,
+            'error': None,
+            'files_count': 0,
+            'total_size': 0
+        }
+        
+        try:
+            if not source_path or not os.path.exists(source_path):
+                result['error'] = "Fichier/dossier source introuvable"
+                return result
+            
+            if backup_type not in self.BACKUP_DESCRIPTIONS:
+                backup_type = BackupType.SECURITY
+                log_message("ATTENTION", f"Type de backup invalide, utilisation de SECURITY par défaut", category="backup_zip")
+            
+            # Extraire le nom du jeu et du fichier (avec override si fourni)
+            game_name = override_game_name if override_game_name else extract_game_name(source_path)
+            file_name = override_file_name if override_file_name else Path(source_path).stem
+            
+            # Créer la structure hiérarchique: Game_name/file_name/backup_type/
+            backup_folder = os.path.join(self.backup_root, game_name, file_name, backup_type)
+            os.makedirs(backup_folder, exist_ok=True)
+            
+            timestamp = datetime.datetime.now()
+            timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S")
+            
+            # Nom du fichier ZIP de sauvegarde
+            zip_filename = f"{file_name}_{timestamp_str}.zip"
+            zip_path = os.path.join(backup_folder, zip_filename)
+            
+            # Patterns par défaut si non fournis
+            if include_patterns is None:
+                include_patterns = [
+                    "**.*"  # Tous les fichiers par défaut
+                ]
+            
+            if exclude_patterns is None:
+                exclude_patterns = [
+                    "**~", "**.bak", "**/.**", "**/#**", "**/thumbs.db",
+                    "**/__pycache__/**", "**/*.pyc"
+                ]
+            
+            # Créer l'archive ZIP
+            files_count = 0
+            total_size = 0
+            
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                if os.path.isfile(source_path):
+                    # Fichier unique
+                    if self._should_include_file(os.path.basename(source_path), include_patterns, exclude_patterns):
+                        zipf.write(source_path, os.path.basename(source_path))
+                        files_count = 1
+                        total_size = os.path.getsize(source_path)
+                else:
+                    # Dossier complet
+                    for root, dirs, files in os.walk(source_path):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            
+                            # Vérifier les patterns d'inclusion/exclusion
+                            if self._should_include_file(file, include_patterns, exclude_patterns):
+                                # Chemin relatif dans l'archive
+                                arcname = os.path.relpath(file_path, source_path)
+                                zipf.write(file_path, arcname)
+                                files_count += 1
+                                total_size += os.path.getsize(file_path)
+            
+            # Créer les métadonnées
+            backup_id = f"{game_name}_{file_name}_{timestamp_str}_{backup_type}_zip"
+            
+            backup_metadata = {
+                'id': backup_id,
+                'source_path': source_path,
+                'backup_path': zip_path,
+                'game_name': game_name,
+                'file_name': file_name,
+                'type': backup_type,
+                'created': timestamp.isoformat(),
+                'size': os.path.getsize(zip_path),
+                'description': description or f"Sauvegarde ZIP {self.BACKUP_DESCRIPTIONS[backup_type]}",
+                'source_filename': os.path.basename(source_path),
+                'backup_filename': zip_filename,
+                'files_count': files_count,
+                'total_size': total_size,
+                'is_zip': True,
+                'include_patterns': include_patterns,
+                'exclude_patterns': exclude_patterns
+            }
+            
+            self.metadata[backup_id] = backup_metadata
+            self._save_metadata()
+            
+            result['success'] = True
+            result['backup_path'] = zip_path
+            result['backup_id'] = backup_id
+            result['files_count'] = files_count
+            result['total_size'] = total_size
+            
+            log_message("INFO", f"Backup ZIP créé: {game_name}/{file_name}/{backup_type}/{zip_filename} ({files_count} fichiers, {total_size} bytes)", category="backup_zip")
+            
+            # Invalider le cache après création d'une sauvegarde
+            self._invalidate_cache()
+            
+        except Exception as e:
+            result['error'] = str(e)
+            log_message("ERREUR", f"Erreur création backup ZIP: {e}", category="backup_zip")
+        
+        return result
+    
+    def _should_include_file(self, filename: str, include_patterns: list, exclude_patterns: list) -> bool:
+        """Vérifie si un fichier doit être inclus selon les patterns"""
+        try:
+            # Vérifier les patterns d'exclusion d'abord
+            for pattern in exclude_patterns:
+                if fnmatch.fnmatch(filename.lower(), pattern.lower()):
+                    return False
+            
+            # Vérifier les patterns d'inclusion
+            for pattern in include_patterns:
+                if fnmatch.fnmatch(filename.lower(), pattern.lower()):
+                    return True
+            
+            # Si aucun pattern d'inclusion ne correspond, exclure
+            return False
+            
+        except Exception as e:
+            log_message("ATTENTION", f"Erreur vérification patterns pour {filename}: {e}", category="backup_zip")
+            return True  # Inclure par défaut en cas d'erreur

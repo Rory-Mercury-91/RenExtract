@@ -482,6 +482,26 @@ Statistics:
         # Sauvegarder le dossier utilisé
         set_last_game_directory(game_folder_path)
         
+        # NOUVEAU : Sauvegarde ZIP complète du dossier tl avant nettoyage
+        try:
+            from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
+            backup_manager = UnifiedBackupManager()
+            
+            # Créer une sauvegarde ZIP complète du dossier tl
+            backup_result = backup_manager.create_zip_backup(
+                tl_folder_path,
+                BackupType.CLEANUP,
+                f"Sauvegarde ZIP complète avant nettoyage ({len(selected_languages)} langues)"
+            )
+            
+            if backup_result['success']:
+                log_message("INFO", f"✅ Sauvegarde ZIP complète créée avant nettoyage: {backup_result['files_count']} fichiers", category="renpy_generator_clean_tl")
+            else:
+                log_message("ATTENTION", f"Échec sauvegarde ZIP complète: {backup_result.get('error', 'erreur inconnue')}", category="renpy_generator_clean_tl")
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur sauvegarde ZIP complète: {e}", category="renpy_generator_clean_tl")
+        
         results = {
             'success': True,
             'total_languages_processed': 0,
@@ -693,28 +713,11 @@ Statistics:
         """Crée une sauvegarde unifiée du fichier avant tout traitement"""
         # Vérifier si ce fichier a déjà été sauvegardé
         if file_path in self.backed_up_files:
-                        return self.backed_up_files[file_path]
+            return self.backed_up_files[file_path]
         
-        try:
-            # Utiliser le gestionnaire unifié
-            manager = UnifiedBackupManager()
-            result = manager.create_backup(
-                file_path, 
-                BackupType.CLEANUP, 
-                "Sauvegarde avant nettoyage automatique"
-            )
-            
-            if result['success']:
-                # Enregistrer le backup créé
-                self.backed_up_files[file_path] = result['backup_path']
-                return result['backup_path']
-            else:
-                log_message("ATTENTION", f"Échec backup unifié: {result['error']}", category="renpy_generator_clean_tl")
-                return None
-                
-        except Exception as e:
-            log_message("ERREUR", f"Erreur backup unifié pour {file_path} : {e}", category="renpy_generator_clean_tl")
-            return None
+        # Plus besoin de sauvegarde individuelle car on fait une sauvegarde ZIP complète au début
+        # Retourner None pour indiquer qu'aucune sauvegarde individuelle n'est nécessaire
+        return None
 
     def _clean_file_unified(self, file_path: str, lint_file_path: str, game_folder_path: str) -> Dict[str, any]:
         """
@@ -930,7 +933,7 @@ Statistics:
         return cleaned_lines, blocks_to_remove
     
     def _detect_translate_blocks_for_lint(self, lines: List[str]) -> List[Dict]:
-        """Détecte tous les blocs translate dans le fichier"""
+        """Détecte tous les blocs translate dans le fichier (ID et strings)"""
         blocks = []
         current_block = None
         
@@ -944,14 +947,21 @@ Statistics:
                     blocks.append(current_block)
                 
                 # Commencer un nouveau bloc
-                block_id = self._extract_block_id(stripped_line)
+                if self._is_translate_strings_line(stripped_line):
+                    # Bloc translate strings - utiliser "strings" comme ID
+                    block_id = "strings"
+                else:
+                    # Bloc translate ID normal
+                    block_id = self._extract_block_id(stripped_line)
+                
                 current_block = {
                     'start_line': i + 1,
                     'translate_line': line,
                     'id': block_id,
                     'lines': [line],
                     'line_indices': [i],
-                    'reference_line': None
+                    'reference_line': None,
+                    'is_strings_block': self._is_translate_strings_line(stripped_line)
                 }
             else:
                 # Ajouter la ligne au bloc courant s'il existe
@@ -970,8 +980,9 @@ Statistics:
         return blocks
     
     def _is_block_start(self, line: str) -> bool:
-        """Vérifie si une ligne est le début d'un bloc translate"""
-        return re.match(r'^translate\s+\w+\s+\w+:', line) is not None
+        """Vérifie si une ligne est le début d'un bloc translate (ID ou strings)"""
+        return (re.match(r'^translate\s+\w+\s+\w+:', line) is not None or 
+                self._is_translate_strings_line(line))
     
     def _extract_block_id(self, line: str) -> str:
         """Extrait l'ID d'un bloc translate"""
@@ -981,10 +992,10 @@ Statistics:
     # ===== MÉTHODES POUR LE NETTOYAGE PAR CHAÎNES =====
     
     def _clean_blocks_by_strings(self, lines: List[str], game_folder_path: str) -> Tuple[List[str], List[Dict]]:
-        """Nettoie les blocs en vérifiant la correspondance des chaînes - VERSION CORRIGÉE"""
+        """Nettoie les blocs en vérifiant la correspondance des chaînes - VERSION CORRIGÉE AVEC SUPPORT STRINGS"""
         log_message("INFO", f"🔍 Début nettoyage par chaînes - {len(lines)} lignes à analyser", category="renpy_generator_clean_tl")
         
-        # ✅ NOUVELLE APPROCHE : Parcourir ligne par ligne au lieu d'utiliser _detect_translation_blocks
+        # ✅ NOUVELLE APPROCHE : Traiter les blocs translate strings ET les lignes old isolées
         cleaned_lines = []
         removed_blocks_details = []
         i = 0
@@ -992,8 +1003,16 @@ Statistics:
         while i < len(lines):
             line = lines[i].strip()
             
-            # Si c'est une ligne old, analyser le bloc complet
-            if line.startswith('old '):
+            # ✅ NOUVEAU : Détecter les blocs translate strings
+            if self._is_translate_strings_line(line):
+                # Traiter le bloc translate strings complet
+                block_result = self._process_translate_strings_block(lines, i, game_folder_path)
+                cleaned_lines.extend(block_result['kept_lines'])
+                removed_blocks_details.extend(block_result['removed_blocks'])
+                i = block_result['next_index']
+                
+            # Si c'est une ligne old isolée (hors bloc translate strings), analyser le bloc complet
+            elif line.startswith('old '):
                 # Extraire le texte entre guillemets
                 old_text = self._extract_text_from_quotes(line)
                 
@@ -1048,6 +1067,73 @@ Statistics:
         log_message("INFO", f"📊 Nettoyage terminé: {len(cleaned_lines)} lignes conservées, {len(removed_blocks_details)} blocs supprimés", category="renpy_generator_clean_tl")
         
         return cleaned_lines, removed_blocks_details
+    
+    def _process_translate_strings_block(self, lines: List[str], start_index: int, game_folder_path: str) -> Dict[str, any]:
+        """Traite un bloc translate strings complet en analysant chaque paire old/new"""
+        kept_lines = []
+        removed_blocks = []
+        
+        # Ajouter la ligne translate strings
+        kept_lines.append(lines[start_index])
+        i = start_index + 1
+        
+        # Parcourir le bloc jusqu'à la fin ou au prochain bloc translate
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Arrêter si on trouve un autre bloc translate
+            if (self._is_translate_strings_line(line) or 
+                self._is_translate_id_line(line) or
+                line.startswith('# TODO:')):
+                break
+            
+            # Si c'est une ligne old, analyser la paire old/new
+            if line.startswith('old '):
+                old_text = self._extract_text_from_quotes(line)
+                
+                if old_text:
+                    # Vérifier si le texte existe dans le jeu
+                    exists_in_game = self._string_exists_in_game(old_text, game_folder_path)
+                    
+                    if exists_in_game:
+                        # Conserver la paire old/new
+                        kept_lines.append(lines[i])  # old
+                        
+                        # Ajouter la ligne new suivante si elle existe
+                        if i + 1 < len(lines) and lines[i+1].strip().startswith('new '):
+                            kept_lines.append(lines[i+1])  # new
+                            i += 2  # Passer old et new
+                        else:
+                            i += 1  # Passer seulement old
+                    else:
+                        # Supprimer la paire old/new (texte introuvable)
+                        new_text = ""
+                        if i + 1 < len(lines) and lines[i+1].strip().startswith('new '):
+                            new_text = self._extract_text_from_quotes(lines[i+1].strip())
+                            i += 2  # Passer old et new
+                        else:
+                            i += 1  # Passer seulement old
+                        
+                        removed_blocks.append({
+                            'old_text': old_text,
+                            'new_text': new_text,
+                            'line_number': i + 1,  # +1 car on commence à 0
+                            'block_lines': [lines[i-1] if i > 0 and lines[i-1].strip().startswith('# game/') else '', lines[i-1], lines[i] if i < len(lines) else '']
+                        })
+                else:
+                    # Pas de texte extrait, conserver la ligne
+                    kept_lines.append(lines[i])
+                    i += 1
+            else:
+                # Ligne normale dans le bloc (commentaires, lignes vides, etc.)
+                kept_lines.append(lines[i])
+                i += 1
+        
+        return {
+            'kept_lines': kept_lines,
+            'removed_blocks': removed_blocks,
+            'next_index': i
+        }
     
     def _extract_text_from_quotes(self, line: str) -> str:
         """Extrait le texte entre guillemets d'une ligne old/new"""

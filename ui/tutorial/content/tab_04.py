@@ -16,6 +16,10 @@ def generate_content(generator, language=None, translations=None):
         <div class="quick-nav-section" style="background: var(--card-bg); padding: 20px; margin-bottom: 30px; border-radius: 8px; border-left: 4px solid var(--accent);">
             <h3 style="margin-top: 0;">🧭 Navigation rapide</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 15px; margin-top: 15px;">
+                <a href="#gen-vue-ensemble" class="nav-card" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; cursor: pointer;">
+                    <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">🎮 Vue d'ensemble</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Présentation du Générateur</div>
+                </a>
                 <a href="#gen-extraction-rpa" class="nav-card" style="display: block; padding: 12px 16px; background: var(--button-bg); border-radius: 6px; text-decoration: none; color: var(--text-color); border: 1px solid var(--border-color); transition: all 0.3s ease; cursor: pointer;">
                     <div style="font-weight: bold; margin-bottom: 4px; color: var(--accent);">📦 Extraction & Compilation RPA</div>
                     <div style="font-size: 0.9em; opacity: 0.8;">Décompiler les archives du jeu</div>
@@ -47,29 +51,29 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="gen-vue-ensemble">
             <h2>🎮 Générateur Ren'Py - Vue d'ensemble</h2>
             
-            <p>Le <strong>Générateur Ren'Py</strong> est une interface séparée qui te permet de gérer l'infrastructure complète de ton projet de traduction. Contrairement à l'<strong>Interface Principale</strong> qui traite les fichiers un par un, le Générateur orchestre les opérations globales.</p>
+            <p>Le <strong>Générateur Ren'Py</strong> est une interface séparée qui vous permet de gérer l'infrastructure complète de votre projet de traduction. Contrairement à l'<strong>Interface Principale</strong> qui traite les fichiers un par un, le Générateur orchestre les opérations globales.</p>
             
             <h3>📍 Comment accéder au Générateur</h3>
             
-            {generator._get_image_html("04_generateur", "001", "Accès au Générateur depuis l'interface principale", "Bouton Générateur Ren'Py dans l'onglet PRÉPARATION")}
+            {generator._get_image_html("04_generator", "001", "Accès au Générateur depuis l'interface principale", "Bouton Générateur Ren'Py dans l'onglet PRÉPARATION")}
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent); margin: 20px 0;">
                 <h4 style="margin-top: 0;">🚀 Accès rapide</h4>
                 <ol style="margin-bottom: 0;">
-                    <li>Dans l'interface principale, clique sur l'onglet <strong>PRÉPARATION</strong> (bleu)</li>
-                    <li>Clique sur le bouton <strong>🎮 Générateur Ren'Py</strong></li>
+                    <li>Dans l'interface principale, cliquez sur l'onglet <strong>PRÉPARATION</strong> (bleu)</li>
+                    <li>Cliquez sur le bouton <strong>🎮 Générateur Ren'Py</strong></li>
                     <li>Une nouvelle fenêtre s'ouvre avec le Générateur</li>
                 </ol>
             </div>
             
             <h3>🖥️ Vue d'ensemble de l'interface</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Rpa", "001", "Vue d'ensemble du Générateur", "Fenêtre complète du Générateur avec l'onglet Extraction RPA actif")}
+            {generator._get_image_html("04_generator/extraction_rpa", "001", "Vue d'ensemble du Générateur", "Fenêtre complète du Générateur avec l'onglet Extraction RPA actif")}
             
-            <p>L'interface du Générateur s'organise en <strong>5 onglets principaux</strong> accessibles en haut de la fenêtre. Chaque onglet regroupe des fonctionnalités spécifiques pour gérer différents aspects de ton projet de traduction.</p>
+            <p>L'interface du Générateur s'organise en <strong>5 onglets principaux</strong> accessibles en haut de la fenêtre. Chaque onglet regroupe des fonctionnalités spécifiques pour gérer différents aspects de votre projet de traduction.</p>
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 15px 0;">
-                <p style="margin: 0;"><strong>ℹ️ À noter :</strong> L'onglet <strong>📊 Extraction Résultats</strong> n'apparaît que si tu as effectué une analyse d'extraction Config. Pas d'inquiétude s'il est absent au premier lancement !</p>
+                <p style="margin: 0;"><strong>ℹ️ À noter :</strong> L'onglet <strong>📊 Extraction Résultats</strong> n'apparaît que si vous avez effectué une analyse d'extraction Config. Pas d'inquiétude s'il est absent au premier lancement !</p>
             </div>
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -104,7 +108,7 @@ def generate_content(generator, language=None, translations=None):
             
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <h4 style="margin-top: 0;">🛠️ Construction RPA Personnalisée</h4>
-                    <p style="margin-bottom: 0;">Recompile tes traductions en archives .rpa optimisées pour distribution ou test dans le jeu original.</p>
+                    <p style="margin-bottom: 0;">Recompile vos traductions en archives .rpa optimisées pour distribution ou test dans le jeu original.</p>
             </div>
         </div>
         
@@ -128,7 +132,7 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>📂 Section Extraction RPA/RPYC</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Rpa", "002", "Onglet Extraction RPA - Vue complète", "Interface d'extraction avec projet configuré et options disponibles")}
+            {generator._get_image_html("04_generator/extraction_rpa", "002", "Onglet Extraction RPA - Vue complète", "Interface d'extraction avec projet configuré et options disponibles")}
             
             <h4>🔧 Workflow en 3 phases</h4>
             <ol>
@@ -166,7 +170,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>🛠️ Section Construction RPA Personnalisée</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Rpa", "003", "Configuration construction RPA", "Interface de paramétrage pour créer une archive RPA personnalisée")}
+            {generator._get_image_html("04_generator/extraction_rpa", "003", "Configuration construction RPA", "Interface de paramétrage pour créer une archive RPA personnalisée")}
             
             <h4>Configuration avancée :</h4>
             
@@ -203,7 +207,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>⚡ Déroulement des opérations</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Rpa", "004", "Extraction en cours", "Interface pendant l'extraction avec barre de progression et statut détaillé")}
+            {generator._get_image_html("04_generator/extraction_rpa", "004", "Extraction en cours", "Interface pendant l'extraction avec barre de progression et statut détaillé")}
             
             <h4>Phase d'extraction :</h4>
             <ol>
@@ -216,7 +220,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>📊 Résultats et rapports</h3>
         
-            {generator._get_image_html("04_generateur/Extraction_Rpa", "005", "Popup de résultats détaillé", "Fenêtre de résultats après extraction avec statistiques et temps d'exécution")}
+            {generator._get_image_html("04_generator/extraction_rpa", "005", "Popup de résultats détaillé", "Fenêtre de résultats après extraction avec statistiques et temps d'exécution")}
             
             <p>Si le mode <strong>"Popup détaillé"</strong> est activé, une fenêtre affiche à la fin de l'opération :</p>
         
@@ -246,10 +250,10 @@ def generate_content(generator, language=None, translations=None):
         <div class="section" id="gen-generation-tl">
             <h2>⚙️ Génération TL - Guide Détaillé</h2>
             
-            {generator._get_image_html("04_generateur/Generation", "001", "Onglet Génération - Vue complète", "Interface complète avec configuration langue, options et polices GUI")}
+            {generator._get_image_html("04_generator/generator_tl", "001", "Onglet Génération - Vue complète", "Interface complète avec configuration langue, options et polices GUI")}
             
             <h3>🎯 À quoi ça sert ?</h3>
-            <p>L'onglet <strong>Génération</strong> est ton centre de contrôle pour créer l'arborescence de traduction complète (dossier <code>tl/[langue]/</code>) avec tous les fichiers nécessaires. Il combine la génération de base avec des modules optionnels selon tes besoins.</p>
+            <p>L'onglet <strong>Génération</strong> est votre centre de contrôle pour créer l'arborescence de traduction complète (dossier <code>tl/[langue]/</code>) avec tous les fichiers nécessaires. Il combine la génération de base avec des modules optionnels selon vos besoins.</p>
             
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; text-align: center; border: 2px solid var(--border-color);">
@@ -280,7 +284,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h4>📋 Options d'intégration</h4>
             
-            {generator._get_image_html("04_generateur/Generation", "002", "Options d'intégration", "Grille avec cases à cocher et boutons d'aide alignés")}
+            {generator._get_image_html("04_generator/generator_tl", "002", "Options d'intégration", "Grille avec cases à cocher et boutons d'aide alignés")}
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin: 20px 0;">
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px;">
@@ -314,7 +318,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h4>⚙️ Options Screen Preferences (fenêtre modale)</h4>
             
-            {generator._get_image_html("04_generateur/Generation", "005", "Fenêtre modale Options Screen Preferences", "Fenêtre de configuration avancée des fonctionnalités à intégrer au jeu")}
+            {generator._get_image_html("04_generator/generator_tl", "005", "Fenêtre modale Options Screen Preferences", "Fenêtre de configuration avancée des fonctionnalités à intégrer au jeu")}
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
                 <p>En cliquant sur le bouton <strong>"Options screen preferences"</strong>, une fenêtre modale s'ouvre pour configurer des fonctionnalités avancées à intégrer dans le menu Préférences du jeu :</p>
@@ -331,19 +335,19 @@ def generate_content(generator, language=None, translations=None):
             
             <h4>👀 Aperçu des polices</h4>
             
-            {generator._get_image_html("04_generateur/Generation", "003", "Aperçu des polices", "Sélecteur avec texte de test français pour prévisualiser les polices")}
+            {generator._get_image_html("04_generator/generator_tl", "003", "Aperçu des polices", "Sélecteur avec texte de test français pour prévisualiser les polices")}
             
             <p>Zone de prévisualisation avec le texte test : <em>"Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."</em></p>
             <ul>
-                <li><strong>📋 Sélecteur de police :</strong> Liste déroulante avec toutes les polices système compatibles</li>
-                <li><strong>➕ Polices personnalisées :</strong> Tu peux ajouter tes propres polices au projet si nécessaire</li>
-                <li><strong>⚡ Aperçu en temps réel :</strong> Le texte change immédiatement selon la police sélectionnée</li>
-                <li><strong>🔤 Test d'accents :</strong> Les polices par défaut supportent les accents français. Pour les polices personnalisées, ce test permet de vérifier leur compatibilité</li>
+                    <li><strong>📋 Sélecteur de police :</strong> Liste déroulante avec toutes les polices système compatibles</li>
+                    <li><strong>➕ Polices personnalisées :</strong> Vous pouvez ajouter vos propres polices au projet si nécessaire</li>
+                    <li><strong>⚡ Aperçu en temps réel :</strong> Le texte change immédiatement selon la police sélectionnée</li>
+                    <li><strong>🔤 Test d'accents :</strong> Les polices par défaut supportent les accents français. Pour les polices personnalisées, ce test permet de vérifier leur compatibilité</li>
         </ul>
         
             <h4>🎛️ Configuration individuelle</h4>
             
-            {generator._get_image_html("04_generateur/Generation", "004", "Grille de polices GUI", "Configuration individuelle des 5 éléments GUI avec cases et listes déroulantes alignées")}
+            {generator._get_image_html("04_generator/generator_tl", "004", "Grille de polices GUI", "Configuration individuelle des 5 éléments GUI avec cases et listes déroulantes alignées")}
             
             <p>Chaque élément GUI peut être configuré séparément :</p>
             
@@ -372,7 +376,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>⚡ Boutons d'action</h3>
             
-            {generator._get_image_html("04_generateur/Generation", "006", "Focus sur les boutons d'action", "Boutons de génération avec leurs fonctions spécifiques")}
+            {generator._get_image_html("04_generator/generator_tl", "006", "Focus sur les boutons d'action", "Boutons de génération avec leurs fonctions spécifiques")}
             
             <p>Les boutons d'action sont organisés en <strong>2 lignes</strong> pour une navigation claire :</p>
             
@@ -416,7 +420,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>🎬 Démonstration en action</h3>
             
-            {generator._get_image_html("04_generateur/Generation", "007", "Génération en cours", "Animation montrant l'exécution de la génération avec progression")}
+            {generator._get_image_html("04_generator/generator_tl", "007", "Génération en cours", "Animation montrant l'exécution de la génération avec progression")}
             
             <p>Ce GIF animé montre le déroulement complet d'une opération de génération, avec la progression en temps réel et les différentes étapes du processus.</p>
     </div>
@@ -425,7 +429,7 @@ def generate_content(generator, language=None, translations=None):
     <div class="section" id="gen-extraction-config">
             <h2>🔧 Extraction des Textes Oubliés - Guide Complet</h2>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "001", "Aperçu de l'onglet Extraction Config", "Vue complète de l'interface avec toutes les sections configurables")}
+            {generator._get_image_html("04_generator/extraction_config_results", "001", "Aperçu de l'onglet Extraction Config", "Vue complète de l'interface avec toutes les sections configurables")}
             
             <h3>🎯 À quoi ça sert ?</h3>
             <p>Cette fonctionnalité trouve et extrait <strong>des textes non détectés par le SDK Ren'Py officiel</strong>. Grâce à des patterns de détection personnalisables (textbuttons, input, notify, etc.), elle analyse en profondeur tous les fichiers pour identifier les chaînes traduisibles manquées.</p>
@@ -457,7 +461,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>🌐 Sélection de langue</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "002", "Sélection de la langue à analyser", "Menu déroulant avec détection automatique des langues disponibles")}
+            {generator._get_image_html("04_generator/extraction_config_results", "002", "Sélection de la langue à analyser", "Menu déroulant avec détection automatique des langues disponibles")}
             
             <h4>🔍 Détection automatique des langues</h4>
             <ul>
@@ -471,7 +475,7 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>🎯 Système de détection avancé</h3>
             
-            <p>Le système utilise un <strong>ensemble de patterns de détection</strong> pour identifier les textes traduisibles dans ton projet.</p>
+            <p>Le système utilise un <strong>ensemble de patterns de détection</strong> pour identifier les textes traduisibles dans votre projet.</p>
             
             <div style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); padding: 20px; border-radius: 8px; border: 2px solid var(--success); margin: 20px 0;">
                 <h4 style="margin-top: 0; color: var(--success);">🔸 Patterns de détection intégrés</h4>
@@ -496,7 +500,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>🚫 Système d'exclusions intelligent</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "003", "Configuration des fichiers à exclure", "Interface de gestion des exclusions avec liste éditable et exclusions par défaut")}
+            {generator._get_image_html("04_generator/extraction_config_results", "003", "Configuration des fichiers à exclure", "Interface de gestion des exclusions avec liste éditable et exclusions par défaut")}
         
             <h4>🔒 Exclusions automatiques (système)</h4>
             <p>Le système exclut automatiquement ses propres fichiers générés :</p>
@@ -515,7 +519,7 @@ def generate_content(generator, language=None, translations=None):
         
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success); margin: 20px 0;">
                 <h5 style="margin-top: 0;">💡 Conseil d'utilisation</h5>
-                <p style="margin-bottom: 0;">Commence avec les exclusions par défaut, puis ajuste selon tes besoins. Un fichier exclu ne sera jamais analysé.</p>
+                <p style="margin-bottom: 0;">Commencez avec les exclusions par défaut, puis ajustez selon vos besoins. Un fichier exclu ne sera jamais analysé.</p>
         </div>
         
             <h4>🛡️ Exclusions automatiques avancées</h4>
@@ -529,12 +533,12 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>🔧 Patterns Regex Personnalisés - Interface Regex101-like</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "004", "Treeview des Regex personnalisés", "Liste des patterns avec état activé/désactivé, boutons d'action et exemple intégré")}
+            {generator._get_image_html("04_generator/extraction_config_results", "004", "Treeview des Regex personnalisés", "Liste des patterns avec état activé/désactivé, boutons d'action et exemple intégré")}
             
             <h4>🎯 À quoi ça sert ?</h4>
-            <p>Les <strong>Patterns Regex Personnalisés</strong> te permettent de définir tes propres expressions régulières pour détecter des textes spécifiques dans tes fichiers Ren'Py. Chaque groupe de capture <code>()</code> crée un bloc old/new séparé dans les résultats.</p>
+            <p>Les <strong>Patterns Regex Personnalisés</strong> vous permettent de définir vos propres expressions régulières pour détecter des textes spécifiques dans vos fichiers Ren'Py. Chaque groupe de capture <code>()</code> crée un bloc old/new séparé dans les résultats.</p>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "005", "Fenêtre modale Pattern Regex", "Interface complète avec coloration syntaxique, zone de test et feedback temps réel")}
+            {generator._get_image_html("04_generator/extraction_config_results", "005", "Fenêtre modale Pattern Regex", "Interface complète avec coloration syntaxique, zone de test et feedback temps réel")}
             
             
             <div style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); padding: 20px; border-radius: 8px; border: 2px solid var(--success); margin: 20px 0;">
@@ -568,16 +572,16 @@ def generate_content(generator, language=None, translations=None):
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
                 <h5 style="margin-top: 0;">💡 Conseil d'utilisation</h5>
-                <p style="margin-bottom: 0;">Commence par modifier l'exemple intégré pour comprendre le système, puis crée tes propres patterns selon tes besoins spécifiques.</p>
+                <p style="margin-bottom: 0;">Commencez par modifier l'exemple intégré pour comprendre le système, puis créez vos propres patterns selon vos besoins spécifiques.</p>
             </div>
             
             <h3>🚀 Lancement de l'analyse</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "007", "Focus zone lancement analyse", "Interface de démarrage de l'analyse avec options et boutons d'action")}
+            {generator._get_image_html("04_generator/extraction_config_results", "007", "Focus zone lancement analyse", "Interface de démarrage de l'analyse avec options et boutons d'action")}
             
             <h3>📊 Onglet Extraction Résultats - Visualisation et Sélection</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "008", "Aperçu de l'onglet Extraction Résultats", "Vue complète avec les 3 catégories, statistiques et boutons d'action")}
+            {generator._get_image_html("04_generator/extraction_config_results", "008", "Aperçu de l'onglet Extraction Résultats", "Vue complète avec les 3 catégories, statistiques et boutons d'action")}
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--info); margin: 20px 0;">
                 <h5 style="margin-top: 0;">ℹ️ À noter</h5>
@@ -586,7 +590,7 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>📈 Statistiques d'analyse</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "009", "Focus sur les statistiques", "Métriques détaillées avec fichiers analysés, textes existants et résultats de détection")}
+            {generator._get_image_html("04_generator/extraction_config_results", "009", "Focus sur les statistiques", "Métriques détaillées avec fichiers analysés, textes existants et résultats de détection")}
             
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0;">
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
@@ -607,7 +611,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h4>📐 Organisation visuelle en colonnes</h4>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "010", "Focus sur les 3 catégories principales", "Colonnes avec boutons Tout Cocher/Décocher, cases cochées/décochées et barres de scroll")}
+            {generator._get_image_html("04_generator/extraction_config_results", "010", "Focus sur les 3 catégories principales", "Colonnes avec boutons Tout Cocher/Décocher, cases cochées/décochées et barres de scroll")}
             
             <p>L'interface des résultats s'organise en <strong>3 colonnes fixes</strong> avec scroll individuel pour optimiser l'espace et la lisibilité :</p>
             
@@ -645,7 +649,7 @@ def generate_content(generator, language=None, translations=None):
         
             <h3>⚡ Boutons d'action</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "011", "Focus sur les boutons d'action", "Boutons de génération du fichier final avec options de sélection globale")}
+            {generator._get_image_html("04_generator/extraction_config_results", "011", "Focus sur les boutons d'action", "Boutons de génération du fichier final avec options de sélection globale")}
             
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--success);">
@@ -666,12 +670,12 @@ def generate_content(generator, language=None, translations=None):
             
             <h3>💾 Génération du fichier final</h3>
             
-            {generator._get_image_html("04_generateur/Extraction_Plus", "012", "Dialogue de sauvegarde intelligent", "Fenêtre de sauvegarde avec suggestion automatique du dossier tl/langue")}
+            {generator._get_image_html("04_generator/extraction_config_results", "012", "Dialogue de sauvegarde intelligent", "Fenêtre de sauvegarde avec suggestion automatique du dossier tl/langue")}
             
             <h4>🎯 Suggestions intelligentes</h4>
             <ul>
                 <li><strong>📁 Dossier automatique :</strong> Le système propose le dossier <code>tl/[langue]</code> de la langue analysée</li>
-                <li><strong>📄 Nom par défaut :</strong> "textes_manquants.rpy" (modifiable selon tes besoins)</li>
+                <li><strong>📄 Nom par défaut :</strong> "textes_manquants.rpy" (modifiable selon vos besoins)</li>
                 <li><strong>📋 Métadonnées complètes :</strong> Le fichier généré contient des commentaires avec contexte (projet, langue, date)</li>
         </ul>
         
@@ -710,8 +714,8 @@ translate &lt;Langue&gt; strings:
         
             <h4>⚡ Astuces pour optimiser les résultats</h4>
             <ul>
-                <li><strong>🛡️ Anti-doublon efficace :</strong> Assure-toi d'avoir une langue de référence bien remplie</li>
-                <li><strong>🚫 Exclusions personnalisées :</strong> Ajoute tes fichiers de test ou temporaires</li>
+                <li><strong>🛡️ Anti-doublon efficace :</strong> Assurez-vous d'avoir une langue de référence bien remplie</li>
+                <li><strong>🚫 Exclusions personnalisées :</strong> Ajoutez vos fichiers de test ou temporaires</li>
         </ul>
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning); margin: 20px 0;">
@@ -727,7 +731,7 @@ new "[tooltip!t]"</code></pre>
     <div class="section" id="gen-combinaison">
             <h2>🔄 Combinaison & Division - Gestion des Fichiers</h2>
             
-            {generator._get_image_html("04_generateur/Combinaison", "001", "Générateur - Combinaison", "Interface de combinaison et division de fichiers de traduction")}
+            {generator._get_image_html("04_generator/combination", "001", "Générateur - Combinaison", "Interface de combinaison et division de fichiers de traduction")}
             
             <h3>🎯 Objectif</h3>
             <p>Fusionne plusieurs fichiers de traduction en un seul, puis redivise le fichier combiné nouvellement traduit pour le remettre dans sa structure d'origine.</p>
@@ -740,9 +744,9 @@ new "[tooltip!t]"</code></pre>
             <h3>⚙️ Comment ça fonctionne ?</h3>
             
             <h4>🚫 Exclusion des fichiers</h4>
-            <p>Avant de combiner, tu peux définir quels fichiers doivent être exclus de l'opération (fichiers système, fichiers spéciaux, etc.).</p>
+            <p>Avant de combiner, vous pouvez définir quels fichiers doivent être exclus de l'opération (fichiers système, fichiers spéciaux, etc.).</p>
             
-            {generator._get_image_html("04_generateur/Combinaison", "002", "Zone d'exclusion des fichiers", "Configuration des fichiers à exclure de la combinaison")}
+            {generator._get_image_html("04_generator/combination", "002", "Zone d'exclusion des fichiers", "Configuration des fichiers à exclure de la combinaison")}
             
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; margin: 20px 0;">
                 <p style="margin: 0;"><strong>💡 Astuce :</strong> Les fichiers système Ren'Py (common.rpy, screens.rpy, etc.) sont automatiquement exclus pour éviter les problèmes de compatibilité.</p>
@@ -750,22 +754,22 @@ new "[tooltip!t]"</code></pre>
             
             <h4>🔗 Étape 1 : Combinaison</h4>
             <ol>
-                <li><strong>Sélection automatique :</strong> RenExtract prend tous les fichiers du dossier, sauf ceux que tu as exclus</li>
+                <li><strong>Sélection automatique :</strong> RenExtract prend tous les fichiers du dossier, sauf ceux que vous avez exclus</li>
                 <li><strong>Fusion intelligente :</strong> RenExtract combine tous les fichiers en un seul et enregistre les <strong>métadonnées</strong> (informations sur l'origine de chaque fichier)</li>
-                <li><strong>Fichier unique :</strong> Tu obtiens un seul fichier à traduire, beaucoup plus simple à gérer</li>
+                <li><strong>Fichier unique :</strong> Vous obtenez un seul fichier à traduire, beaucoup plus simple à gérer</li>
         </ol>
         
-            {generator._get_image_html("04_generateur/Combinaison", "003", "Interface de combinaison", "Dossier source et fichier de sortie pour la combinaison")}
+            {generator._get_image_html("04_generator/combination", "003", "Interface de combinaison", "Dossier source et fichier de sortie pour la combinaison")}
         
             <h4>✂️ Étape 2 : Division</h4>
             <p><strong>⚠️ Important :</strong> La division <strong>ne fonctionne que sur les fichiers combinés</strong> par RenExtract, grâce aux métadonnées enregistrées lors de la combinaison.</p>
             <ol>
-                <li><strong>Traduction :</strong> Une fois le fichier combiné traduit (avec ton outil de traduction préféré)</li>
+                <li><strong>Traduction :</strong> Une fois le fichier combiné traduit (avec votre outil de traduction préféré)</li>
                 <li><strong>Re-division automatique :</strong> RenExtract utilise les métadonnées pour diviser le fichier traduit</li>
-                <li><strong>Restauration complète :</strong> Tu retrouves ta structure originale avec tous les fichiers traduits individuellement dans leurs dossiers d'origine</li>
+                <li><strong>Restauration complète :</strong> Vous retrouvez votre structure originale avec tous les fichiers traduits individuellement dans leurs dossiers d'origine</li>
         </ol>
         
-            {generator._get_image_html("04_generateur/Combinaison", "004", "Interface de division", "Fichier combiné et dossier de sortie pour la division")}
+            {generator._get_image_html("04_generator/combination", "004", "Interface de division", "Fichier combiné et dossier de sortie pour la division")}
         
             <h3>🛠️ Fonctionnalités clés</h3>
             
@@ -800,22 +804,22 @@ new "[tooltip!t]"</code></pre>
             <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--warning); margin: 20px 0;">
                 <h4 style="margin-top: 0;">⚠️ Points importants</h4>
                 <ul style="margin-bottom: 0;">
-                    <li><strong>💾 Sauvegarde préalable OBLIGATOIRE :</strong> Les fichiers sources sont supprimés après combinaison, fais une sauvegarde avant !</li>
-                    <li><strong>📋 Métadonnées essentielles :</strong> Ne supprime jamais les commentaires de métadonnées dans le fichier combiné</li>
+                    <li><strong>💾 Sauvegarde préalable OBLIGATOIRE :</strong> Les fichiers sources sont supprimés après combinaison, faites une sauvegarde avant !</li>
+                    <li><strong>📋 Métadonnées essentielles :</strong> Ne supprimez jamais les commentaires de métadonnées dans le fichier combiné</li>
                     <li><strong>✂️ Division uniquement sur fichiers combinés :</strong> La re-division ne fonctionne que sur les fichiers créés par la fonction de combinaison</li>
-                    <li><strong>🧪 Test après opération :</strong> Vérifie que tous les fichiers ont été correctement restaurés dans leurs dossiers</li>
+                    <li><strong>🧪 Test après opération :</strong> Vérifiez que tous les fichiers ont été correctement restaurés dans leurs dossiers</li>
         </ul>
         </div>
         
             <h4>📋 Workflow recommandé</h4>
             <ol>
-                <li><strong>💾 Sauvegarde :</strong> Fais une sauvegarde de ton projet avant de commencer</li>
-                <li><strong>🔗 Combinaison :</strong> Fusionne tous tes fichiers de traduction</li>
-                <li><strong>⚡ Extraction :</strong> Utilise l'application principale pour extraire les lignes traduisibles</li>
-                <li><strong>📝 Traduction :</strong> Traduis le fichier unique avec ton outil préféré</li>
-                <li><strong>🔄 Reconstruction :</strong> Utilise l'application principale pour reconstruire le fichier</li>
-                <li><strong>✂️ Re-division :</strong> Divise le fichier traduit pour restaurer la structure</li>
-                <li><strong>✅ Validation :</strong> Utilise le vérificateur de cohérence pour vérifier les traductions</li>
+                <li><strong>💾 Sauvegarde :</strong> Faites une sauvegarde de votre projet avant de commencer</li>
+                <li><strong>🔗 Combinaison :</strong> Fusionnez tous vos fichiers de traduction</li>
+                <li><strong>⚡ Extraction :</strong> Utilisez l'application principale pour extraire les lignes traduisibles</li>
+                <li><strong>📝 Traduction :</strong> Traduisez le fichier unique avec votre outil préféré</li>
+                <li><strong>🔄 Reconstruction :</strong> Utilisez l'application principale pour reconstruire le fichier</li>
+                <li><strong>✂️ Re-division :</strong> Divisez le fichier traduit pour restaurer la structure</li>
+                <li><strong>✅ Validation :</strong> Utilisez le vérificateur de cohérence pour vérifier les traductions</li>
         </ol>
     </div>
     """

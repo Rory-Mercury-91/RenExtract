@@ -474,6 +474,139 @@ class ConfigManager:
         """Sauvegarde les options avancées de screen preferences"""
         self.config["advanced_screen_options"] = options
         self.save_config()
+    
+    # ========== NOUVELLES MÉTHODES: Exclusions de cohérence précises (projet+fichier+ligne) ==========
+    
+    def get_coherence_exclusions(self, project_path=None):
+        """
+        Récupère les exclusions de cohérence.
+        Si project_path est fourni, retourne les exclusions pour ce projet.
+        Sinon, retourne toutes les exclusions (dict par projet).
+        
+        Source unique de vérité : les exclusions ajoutées via le rapport HTML interactif.
+        """
+        exclusions = self.config.get('coherence_custom_exclusions', {})
+        
+        # Garantir que c'est toujours un dictionnaire
+        if not isinstance(exclusions, dict):
+            log_message("ATTENTION", f"coherence_custom_exclusions n'est pas un dict ({type(exclusions).__name__}), réinitialisation", category="config")
+            exclusions = {}
+            self.config['coherence_custom_exclusions'] = exclusions
+            self.save_config()
+        
+        if project_path:
+            return exclusions.get(project_path, [])
+        return exclusions
+    
+    def add_coherence_exclusion(self, project_path, file_path, line, text):
+        """
+        Ajoute une exclusion spécifique pour un projet/fichier/ligne.
+        
+        Args:
+            project_path: Chemin du projet Ren'Py
+            file_path: Chemin relatif du fichier (ex: story/chapter_01.rpy)
+            line: Numéro de ligne
+            text: Texte à exclure
+        
+        Returns:
+            True si ajouté, False si déjà présent
+        """
+        from datetime import datetime
+        
+        exclusions = self.get_coherence_exclusions()
+        
+        if project_path not in exclusions:
+            exclusions[project_path] = []
+        
+        # Normaliser le chemin du fichier (remplacer les backslashes par des slashes)
+        file_path_normalized = file_path.replace('\\', '/')
+        
+        # Vérifier si déjà présent
+        for excl in exclusions[project_path]:
+            if (excl['file'] == file_path_normalized and 
+                excl['line'] == line and 
+                excl['text'] == text):
+                return False  # Déjà présent
+        
+        # Ajouter
+        exclusions[project_path].append({
+            'file': file_path_normalized,
+            'line': line,
+            'text': text,
+            'added_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        self.config['coherence_custom_exclusions'] = exclusions
+        self.save_config()
+        
+        log_message("INFO", f"Exclusion ajoutée: {file_path_normalized}:{line} - {text[:50]}", category="coherence_exclusion")
+        return True
+    
+    def remove_coherence_exclusion(self, project_path, file_path, line, text):
+        """
+        Supprime une exclusion spécifique.
+        
+        Returns:
+            True si supprimé, False si non trouvé
+        """
+        exclusions = self.get_coherence_exclusions()
+        
+        if project_path not in exclusions:
+            return False
+        
+        # Normaliser le chemin
+        file_path_normalized = file_path.replace('\\', '/')
+        
+        # Trouver et supprimer
+        for i, excl in enumerate(exclusions[project_path]):
+            if (excl['file'] == file_path_normalized and 
+                excl['line'] == line and 
+                excl['text'] == text):
+                exclusions[project_path].pop(i)
+                
+                # Supprimer le projet si plus d'exclusions
+                if not exclusions[project_path]:
+                    del exclusions[project_path]
+                
+                self.config['coherence_custom_exclusions'] = exclusions
+                self.save_config()
+                
+                log_message("INFO", f"Exclusion retirée: {file_path_normalized}:{line}", category="coherence_exclusion")
+                return True
+        
+        return False
+    
+    def clear_coherence_exclusions(self, project_path):
+        """
+        Supprime toutes les exclusions pour un projet.
+        
+        Returns:
+            Nombre d'exclusions supprimées
+        """
+        exclusions = self.get_coherence_exclusions()
+        
+        if project_path not in exclusions:
+            return 0
+        
+        count = len(exclusions[project_path])
+        del exclusions[project_path]
+        
+        self.config['coherence_custom_exclusions'] = exclusions
+        self.save_config()
+        
+        log_message("INFO", f"Toutes les exclusions supprimées pour le projet: {project_path} ({count} exclusions)", category="coherence_exclusion")
+        return count
+    
+    def get_exclusion_count(self, project_path=None):
+        """
+        Retourne le nombre d'exclusions.
+        Si project_path est fourni, compte pour ce projet uniquement.
+        """
+        if project_path:
+            return len(self.get_coherence_exclusions(project_path))
+        else:
+            exclusions = self.get_coherence_exclusions()
+            return sum(len(excl_list) for excl_list in exclusions.values())
 
 
 # Instance globale

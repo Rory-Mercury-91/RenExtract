@@ -189,13 +189,32 @@ def _create_coherence_content(parent, main_interface):
     exclusions_frame = tk.Frame(parent, bg=theme["bg"])
     exclusions_frame.pack(fill='x', padx=20, pady=(20, 10))
     
+    # Header avec titre et bouton de gestion des exclusions de lignes
+    exclusions_header = tk.Frame(exclusions_frame, bg=theme["bg"])
+    exclusions_header.pack(fill='x', pady=(0, 5))
+    
     tk.Label(
-        exclusions_frame,
+        exclusions_header,
         text="🚫 Fichiers à exclure :",
         font=('Segoe UI', 10, 'bold'),
         bg=theme["bg"],
         fg=theme["accent"]
-    ).pack(anchor='w', pady=(0, 5))
+    ).pack(side='left')
+    
+    # Bouton pour gérer les exclusions de lignes (à droite)
+    manage_exclusions_btn = tk.Button(
+        exclusions_header,
+        text="⚙️ Gérer les exclusions de lignes",
+        command=lambda: _open_exclusions_manager(main_interface),
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=2,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    manage_exclusions_btn.pack(side='right')
     
     main_interface.coherence_excluded_files_entry = tk.Entry(
         exclusions_frame,
@@ -266,7 +285,9 @@ def _create_coherence_content(parent, main_interface):
     )
     main_interface.coherence_analyze_btn.pack(side='left')
     
-    main_interface.operation_buttons.append(main_interface.coherence_analyze_btn)
+    # Note: Le bouton d'analyse de cohérence n'est PAS ajouté à operation_buttons
+    # car c'est un outil indépendant qui ne doit pas être bloqué par les opérations principales
+    # (extraction, reconstruction, génération TL, etc.)
     
     # Configurer la sauvegarde automatique des options avec délai pour éviter les notifications au démarrage
     _setup_auto_save_coherence_options(main_interface)
@@ -809,16 +830,9 @@ def _save_coherence_options(main_interface):
             exclusions_str = main_interface.coherence_excluded_files_var.get()
             main_interface.coherence_project_selector.set_exclusions(exclusions_str)
         
-        # Sauvegarder les exclusions personnalisées de lignes
-        exclusions_text = main_interface.custom_exclusions_var.get().strip()
-        if exclusions_text:
-            exclusions_list = [item.strip() for item in exclusions_text.split(',') if item.strip()]
-            cleaned_text = ', '.join(exclusions_list)
-            main_interface.custom_exclusions_var.set(cleaned_text)
-        else:
-            exclusions_list = []
-        
-        config_manager.set('coherence_custom_exclusions', exclusions_list)
+        # 🆕 NE PLUS sauvegarder coherence_custom_exclusions depuis cette interface
+        # Les exclusions sont maintenant gérées exclusivement via le rapport HTML interactif
+        # (structure dictionnaire par projet/fichier/ligne, pas une simple liste de textes)
         
         # Compter les options activées
         enabled_count = sum([
@@ -980,3 +994,24 @@ def _show_toast(main_interface, message, toast_type="info"):
     except Exception as e:
         log_message("ERREUR", f"Erreur _show_toast: {e}", category="coherence_tab")
         return False
+
+# ===== GESTIONNAIRE D'EXCLUSIONS DE LIGNES =====
+
+def _open_exclusions_manager(main_interface):
+    """Ouvre la fenêtre de gestion des exclusions de lignes"""
+    try:
+        from ui.dialogs.exclusions_manager_dialog import ExclusionsManagerDialog
+        
+        # Créer et afficher la fenêtre
+        dialog = ExclusionsManagerDialog(main_interface.window)
+        
+        log_message("INFO", "Fenêtre de gestion des exclusions ouverte", category="coherence_tab")
+        
+    except Exception as e:
+        log_message("ERREUR", f"Erreur ouverture gestionnaire exclusions: {e}", category="coherence_tab")
+        show_translated_messagebox(
+            'error',
+            'Erreur',
+            f'Impossible d\'ouvrir le gestionnaire d\'exclusions:\n\n{e}',
+            parent=main_interface.window
+        )

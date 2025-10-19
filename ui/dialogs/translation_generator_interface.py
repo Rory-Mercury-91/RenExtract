@@ -102,7 +102,7 @@ class TranslationGeneratorInterface:
             self.current_project_path = ""
             self.project_var = tk.StringVar(value="")
             self.status_var = tk.StringVar(value="Prêt")
-            self.auto_open_var = tk.BooleanVar(value=config_manager.is_auto_open_enabled())
+            self.auto_open_var = tk.BooleanVar(value=config_manager.get('auto_open_folders', True))
             self._updating_project = False
             
             # === VARIABLES ONGLET 1 : EXTRACTION/COMPILATION RPA ===
@@ -739,7 +739,7 @@ class TranslationGeneratorInterface:
             self.language_var.set(default_lang)
             
             # Auto-ouverture
-            self.auto_open_var.set(config_manager.is_auto_open_enabled())
+            self.auto_open_var.set(config_manager.get('auto_open_folders', True))
 
             # 🆕 PRIORITÉ : Charger le projet actuel du ProjectManager si disponible
             project_to_load = None
@@ -930,8 +930,15 @@ class TranslationGeneratorInterface:
                     self._update_status(f'✅ {operation_type} terminée avec succès', "success")
                 
                 # Auto-ouverture
-                if hasattr(self, 'auto_open_var') and self.auto_open_var.get():
-                    self._auto_open_results(results)
+                if hasattr(self, 'auto_open_var'):
+                    auto_open_enabled = self.auto_open_var.get()
+                    log_message("DEBUG", f"Auto-open var existe: {hasattr(self, 'auto_open_var')}, valeur: {auto_open_enabled}", category="renpy_generator")
+                    if auto_open_enabled:
+                        self._auto_open_results(results)
+                    else:
+                        log_message("DEBUG", "Auto-ouverture désactivée par l'utilisateur", category="renpy_generator")
+                else:
+                    log_message("DEBUG", "Auto-open var n'existe pas", category="renpy_generator")
                 
                 # ✅ AJOUT : Invalider le cache des langues après génération
                 self._invalidate_language_cache_after_generation(results)
@@ -1900,7 +1907,7 @@ class TranslationGeneratorInterface:
                 
                 # Auto-ouverture si activée
                 if hasattr(self, 'auto_open_var'):
-                    config_manager.set_renpy_auto_open_folder(self.auto_open_var.get())
+                    config_manager.set('auto_open_folders', self.auto_open_var.get())
 
                 # Suppression RPA
                 if hasattr(self, 'delete_rpa_var'):

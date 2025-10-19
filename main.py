@@ -13,6 +13,7 @@ import tkinter as tk
 import threading
 import subprocess
 import os
+import platform
 
 from infrastructure.config.constants import VERSION
 
@@ -159,8 +160,34 @@ class RenExtractApp:
         try:
             ensure_folders_exist()
             
+            # Lancer le pré-chargement des images du tutoriel en arrière-plan
+            self._preload_tutorial_images()
+            
         except Exception as e:
             log_message("ATTENTION", f"Impossible de vérifier/Créer les dossiers: {e}", category="main")
+    
+    def _preload_tutorial_images(self):
+        """Lance le téléchargement des images du tutoriel en arrière-plan au démarrage"""
+        try:
+            from ui.tutorial import TutorialGenerator
+            
+            # Créer une instance du générateur en arrière-plan
+            # Le téléchargement se lance automatiquement dans __init__
+            def preload_task():
+                try:
+                    log_message("DEBUG", "🖼️  Pré-chargement des images tutoriel en arrière-plan...", category="main")
+                    generator = TutorialGenerator()
+                    # Pas besoin de générer le HTML maintenant, juste lancer le téléchargement
+                    # Le générateur lance automatiquement _start_background_download() dans __init__
+                except Exception as e:
+                    log_message("DEBUG", f"Erreur pré-chargement images tutoriel: {e}", category="main")
+            
+            # Lancer dans un thread séparé pour ne pas bloquer le démarrage
+            preload_thread = threading.Thread(target=preload_task, daemon=True, name="TutorialImagePreload")
+            preload_thread.start()
+            
+        except Exception as e:
+            log_message("DEBUG", f"Impossible de pré-charger les images du tutoriel: {e}", category="main")
 
     def _create_root(self):
         try:
@@ -207,11 +234,26 @@ class RenExtractApp:
                 log_message("INFO", "Serveur d'édition désactivé par la configuration", category="main")
                 return False
 
-            host = config_manager.get('editor_server_host', '127.0.0.1')
+            # Détection automatique de l'environnement pour le développement WSL
+            system = platform.system()
+            release = platform.release().lower()
+            log_message("DEBUG", f"🔍 Détection OS: system={system}, release={release}", category="main")
+            
+            default_host = '127.0.0.1'
+            if system == 'Linux' and 'microsoft' in release:
+                # WSL détecté : utiliser 0.0.0.0 pour permettre l'accès depuis Windows
+                default_host = '0.0.0.0'
+                log_message("INFO", "🐧 WSL détecté : serveur accessible depuis Windows", category="main")
+            else:
+                log_message("DEBUG", f"❌ WSL non détecté (Linux={system == 'Linux'}, microsoft in release={'microsoft' in release})", category="main")
+            
+            host = config_manager.get('editor_server_host', default_host)
             try:
                 port = int(config_manager.get('editor_server_port', 8765))
             except Exception:
                 port = 8765
+            
+            log_message("DEBUG", f"Configuration serveur: host={host} (défaut: {default_host}), port={port}", category="main")
 
             # Vérifier si le serveur tourne déjà
             if self._check_server_running(port):
@@ -223,7 +265,7 @@ class RenExtractApp:
             
             def server_thread_func():
                 try:
-                    log_message("INFO", f"Démarrage serveur d'édition sur http://{host}:{port}", category="main")
+                    log_message("INFO", f"🚀 Démarrage serveur d'édition sur http://{host}:{port}", category="main")
                     run_server(host=host, port=port)
                 except Exception as e:
                     log_message("ATTENTION", f"Erreur serveur d'édition: {e}", category="main")

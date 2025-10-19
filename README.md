@@ -1,6 +1,7 @@
 # 🎮 RenExtract
 
-[![Build & Release](https://github.com/Rory-Mercury-91/RenExtract/actions/workflows/build-releases.yml/badge.svg)](https://github.com/Rory-Mercury-91/RenExtract/actions/workflows/build-releases.yml)
+[![Latest Release](https://img.shields.io/github/v/release/Rory-Mercury-91/RenExtract?label=Latest%20Release&color=brightgreen)](https://github.com/Rory-Mercury-91/RenExtract/releases/latest)
+[![Build Status](https://github.com/Rory-Mercury-91/RenExtract/actions/workflows/build-releases.yml/badge.svg)](https://github.com/Rory-Mercury-91/RenExtract/actions/workflows/build-releases.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 

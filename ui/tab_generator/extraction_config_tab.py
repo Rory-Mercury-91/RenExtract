@@ -649,7 +649,7 @@ def _load_custom_patterns(main_interface):
                 'pattern': '"QID_[^"]+"\\s*:\\s*\\[\\s*"([^"]+)"\\s*,\\s*"([^"]+)"\\s*,\\s*[\\s\\S]*?\\["hint",\\s*"([^"]+)"',
                 'flags': 'gms',
                 'description': 'Ceci est un exemple montrant comme fonctionne le système pour capturer de multiple groupes',
-                'enabled': True,
+                'enabled': False,
                 'test_text': '''"QID_MAIN_WAYHOME1": [
         "Find A Way Home",
         "Make your way to the Jumpgate to start your journey home...",

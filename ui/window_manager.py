@@ -6,6 +6,8 @@ import tkinter as tk
 from typing import Dict, Any, Optional
 from infrastructure.logging.logging import log_message
 
+__all__ = ['WindowManager', 'window_manager', 'get_window_manager']
+
 class WindowManager:
     """Gestionnaire global des fenêtres pour éviter les ouvertures multiples"""
     
@@ -178,6 +180,41 @@ class WindowManager:
             log_message("INFO", "Toutes les fenêtres fermées", category="window_manager")
         except Exception as e:
             log_message("ERREUR", f"Erreur fermeture fenêtres: {e}", category="window_manager")
+    
+    def clear_all_windows(self):
+        """Alias pour close_all_windows() - Ferme toutes les fenêtres"""
+        self.close_all_windows()
+    
+    def clear_persistent_states(self):
+        """Efface les états persistants des fenêtres (pour reset complet)"""
+        try:
+            # Pour l'instant, juste vider la liste des fenêtres actives
+            # Cette méthode peut être étendue pour supprimer des fichiers de cache si nécessaire
+            self._active_windows.clear()
+            log_message("DEBUG", "États persistants des fenêtres effacés", category="window_manager")
+        except Exception as e:
+            log_message("ERREUR", f"Erreur effacement états persistants: {e}", category="window_manager")
+    
+    def save_on_close(self):
+        """Sauvegarde les états des fenêtres avant fermeture de l'application"""
+        try:
+            # Pour l'instant, cette méthode ne fait rien de spécial
+            # Elle peut être étendue pour sauvegarder positions/tailles des fenêtres dans un fichier
+            log_message("DEBUG", "États des fenêtres prêts pour sauvegarde", category="window_manager")
+            
+            # Optionnel: Nettoyer les fenêtres avant de quitter
+            self.close_all_windows()
+        except Exception as e:
+            log_message("ERREUR", f"Erreur sauvegarde états fenêtres: {e}", category="window_manager")
 
 # Instance globale
 window_manager = WindowManager.get_instance()
+
+def get_window_manager() -> WindowManager:
+    """
+    Fonction d'accès pour récupérer l'instance du gestionnaire de fenêtres
+    
+    Returns:
+        Instance singleton de WindowManager
+    """
+    return window_manager

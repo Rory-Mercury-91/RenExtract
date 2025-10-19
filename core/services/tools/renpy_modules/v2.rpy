@@ -1,22 +1,20 @@
-# Module de surveillance RenExtract pour édition temps réel - VERSION 1
+# Module de surveillance RenExtract pour édition temps réel - VERSION 2
 # Langue cible: {language}
-# Compatibilité: Ren'Py 8.1.2, 8.2.1 et 8.3.7 (testés et validés)
-# Note: Testé sur Ren'Py 8.1.2 (Nudist Olivia), 8.2.1 (FamilyIsland) et 8.3.7
-# Pour d'autres versions, utilisez le module adapté correspondant
+# Compatibilité: Ren'Py 7.3.5 et versions antérieures (testés et validés)
+# Note: Compatible avec Ren'Py 7.3.5.606 (NoMoreMoney) et versions antérieures
+# Pour les versions Ren'Py 8+, utilisez le module v1 correspondant
+
 init python:
     import threading
     import os as _renextract_os  # Alias protégé pour éviter les conflits avec les personnages nommés 'os'
 
     _FOCUS_URL = "http://127.0.0.1:8765/focus"  # port fixe
 
-    # Compat Ren'Py 8 (py3) / Ren'Py 7 (py2) sans dépendances externes
+    # Compat Ren'Py 7 (py2) sans dépendances externes
     try:
-        import urllib.request as _urlreq  # Ren'Py 8 / Python 3
+        import urllib2 as _urlreq      # Ren'Py 7 / Python 2
     except Exception:
-        try:
-            import urllib2 as _urlreq      # Ren'Py 7 / Python 2
-        except Exception:
-            _urlreq = None
+        _urlreq = None
 
     def _hit_focus_endpoint():
         if _urlreq is None:
@@ -129,7 +127,7 @@ init -999 python:
     import re
     import traceback
 
-    print(u"Démarrage du module surveillance RenExtract v3 (logique simplifiée)")
+    print(u"Démarrage du module surveillance RenExtract v2 (compatible Ren'Py 7)")
 
     RENEXTRACT_TARGET_LANG = "{language}"
     RENEXTRACT_LOG_FILE = "renextract_dialogue_log.txt"
@@ -171,8 +169,11 @@ init -999 python:
         except Exception as e:
             return original_text or None, None, line_number
 
-    # Hook pour les menus - VERSION SIMPLIFIÉE avec protection contre récursion
-    if getattr(renpy.exports.menu, "__name__", "") != "patched_menu":
+    # Hook pour les menus - VERSION COMPATIBLE REN'PY 7
+    # Utilisation d'un dictionnaire pour éviter les problèmes d'attribution __name__
+    _patched_functions = {}
+    
+    if "menu" not in _patched_functions:
         def make_patched_menu(original):
             def patched_menu(items, *args, **kwargs):
                 try:
@@ -192,12 +193,13 @@ init -999 python:
                 except Exception as e:
                     print(u"Erreur dans patched_menu : {{0}}".format(e))
                 return original(items, *args, **kwargs)
-            patched_menu.__name__ = "patched_menu"  # Marquer pour éviter les réassignations multiples
             return patched_menu
+        
+        _patched_functions["menu"] = True
         renpy.exports.menu = make_patched_menu(renpy.exports.menu)
 
-    # Hook de la fonction say (inchangé)
-    if getattr(renpy_exports.say, "__name__", "") != "patched_say":
+    # Hook de la fonction say - VERSION COMPATIBLE REN'PY 7
+    if "say" not in _patched_functions:
         def make_patched_say(original):
             def patched_say(who, what, *args, **kwargs):
                 try:
@@ -214,7 +216,7 @@ init -999 python:
                 except Exception as e:
                     print(u"Erreur dans patched_say : {{0}}".format(e))
                     raise
-            patched_say.__name__ = "patched_say"  # Marquer pour éviter les réassignations multiples
             return patched_say
+        
+        _patched_functions["say"] = True
         renpy_exports.say = make_patched_say(renpy_exports.say)
-

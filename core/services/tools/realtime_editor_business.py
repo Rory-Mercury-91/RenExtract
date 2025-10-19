@@ -31,6 +31,8 @@ class RealTimeEditorBusiness:
     MODULE_COMPATIBILITY = {
         (8, 1, 2): "v1",  # Testé sur Nudist Olivia
         (8, 2, 1): "v1",  # Testé sur FamilyIsland
+        (8, 3, 7): "v1",  # Compatible avec le module v1
+        (7, 3, 5): "v2",  # Compatible avec le module v2 (Ren'Py 7)
         # Ajoutez ici les futures versions et modules
         # (7, 5, 3): "v2",  # Exemple futur
     }
@@ -253,8 +255,14 @@ class RealTimeEditorBusiness:
                         vo_text = vo_match.group(1)
                         break
             
+            # CORRECTION : Ajouter 'original_text' pour l'interface VO
+            vo_dialogue_text = vo_text or ""
             return {
-                'vo_dialogue': {'line_index': -1, 'dialogue_text': vo_text or ""}, 
+                'vo_dialogue': {
+                    'line_index': -1, 
+                    'dialogue_text': vo_dialogue_text,
+                    'original_text': vo_dialogue_text  # ✅ Pour l'affichage VO dans l'interface
+                }, 
                 'vf_dialogue': {'line_index': vf_line_index, 'dialogue_text': vf_text},
                 'start_line': start_idx
             }
@@ -466,6 +474,19 @@ class RealTimeEditorBusiness:
                 except Exception as e:
                     log_message("ATTENTION", f"Erreur vidage fichier log: {e}", category="realtime_editor")
             
+            # ✅ Mettre à jour le cache de traductions avec la nouvelle valeur
+            original_text = dialogue_info.get('original_text', '')
+            if original_text and self.string_translation_cache is not None:
+                rel_path = os.path.relpath(tl_file_path, base_project)
+                # Pour les dialogues locuteur + dialogue, on stocke les deux parties séparées par un espace
+                combined_translation = f'"{speaker_text}" "{dialogue_text}"'
+                self.string_translation_cache[original_text] = {
+                    'translated_text': combined_translation,
+                    'tl_file': rel_path,
+                    'tl_line': target_index + 1
+                }
+                log_message("DEBUG", f"Cache mis à jour pour locuteur + dialogue: {original_text[:50]}...", category="realtime_editor")
+            
             result['success'] = True
             result['modified_file'] = tl_file_path
             result['modified_line'] = target_index + 1
@@ -601,6 +622,19 @@ class RealTimeEditorBusiness:
                     self.last_dialogue_line = 0
                 except Exception as e:
                     log_message("ATTENTION", f"Erreur vidage fichier log: {e}", category="realtime_editor")
+            
+            # ✅ Mettre à jour le cache de traductions avec la nouvelle valeur combinée
+            original_text = dialogue_info.get('original_text', '')
+            if original_text and self.string_translation_cache is not None:
+                rel_path = os.path.relpath(tl_file_path, base_project)
+                # Pour les dialogues split, on stocke les deux parties concaténées avec un espace
+                combined_translation = f"{part1_text} {part2_text}"
+                self.string_translation_cache[original_text] = {
+                    'translated_text': combined_translation,
+                    'tl_file': rel_path,
+                    'tl_line': target_index + 1
+                }
+                log_message("DEBUG", f"Cache mis à jour pour dialogue split: {original_text[:50]}...", category="realtime_editor")
             
             result['success'] = True
             result['modified_file'] = tl_file_path
@@ -801,6 +835,17 @@ class RealTimeEditorBusiness:
                 with open(log_file_path, 'w', encoding='utf-8') as f:
                     f.write("")
                 self.last_dialogue_line = 0
+            
+            # ✅ Mettre à jour le cache de traductions avec la nouvelle valeur fusionnée
+            original_text = dialogue_info.get('original_text', '')
+            if original_text and self.string_translation_cache is not None:
+                rel_path = os.path.relpath(tl_file_path, base_project)
+                self.string_translation_cache[original_text] = {
+                    'translated_text': merged_text,
+                    'tl_file': rel_path,
+                    'tl_line': first_line_index + 1
+                }
+                log_message("DEBUG", f"Cache mis à jour pour dialogue fusionné: {original_text[:50]}...", category="realtime_editor")
             
             result['success'] = True
             result['modified_file'] = tl_file_path
@@ -1138,32 +1183,74 @@ class RealTimeEditorBusiness:
 
     def _get_renpy_version_from_project(self, project_path: str) -> Optional[tuple]:
         """
-        Détecte la version Ren'Py du projet en réutilisant la logique de rpa_extraction_business
+        Détecte la version Ren'Py du projet directement (sans dépendre de l'extraction RPA)
         
         Returns:
             Tuple (major, minor, patch) ou None si non détecté
         """
         try:
-            from core.services.translation.rpa_extraction_business import RPAExtractionBusiness
+            game_dir = os.path.join(project_path, "game")
             
-            rpa_business = RPAExtractionBusiness()
-            version_info = rpa_business.detect_renpy_version(project_path)
+            # PRIORITÉ 1 : Analyser script_version.txt
+            script_version_path = os.path.join(game_dir, "script_version.txt")
             
-            version_str = version_info.get('version', 'Unknown')
-            if version_str == 'Unknown' or not version_str:
-                return None
+            if os.path.exists(script_version_path):
+                try:
+                    with open(script_version_path, 'r', encoding='utf-8') as f:
+                        version_content = f.read().strip()
+                    
+                    log_message("DEBUG", f"Contenu script_version.txt: {version_content}", category="realtime_editor")
+                    
+                    # Parsing robuste - Extraire tous les nombres du contenu
+                    import re
+                    numbers = re.findall(r'\d+', version_content)
+                    
+                    if numbers and len(numbers) >= 1:
+                        major_version = int(numbers[0])
+                        
+                        if len(numbers) >= 3:
+                            version_tuple = (int(numbers[0]), int(numbers[1]), int(numbers[2]))
+                        elif len(numbers) >= 2:
+                            version_tuple = (int(numbers[0]), int(numbers[1]), 0)
+                        else:
+                            version_tuple = (int(numbers[0]), 0, 0)
+                        
+                        log_message("INFO", f"Version Ren'Py détectée: {version_tuple}", category="realtime_editor")
+                        return version_tuple
+                        
+                except Exception as e:
+                    log_message("ATTENTION", f"Erreur lecture script_version.txt: {e}", category="realtime_editor")
             
-            # Parser la version (format "8.2.1" ou "RenPy8+")
-            import re
-            numbers = re.findall(r'\d+', version_str)
+            # PRIORITÉ 2 : Analyser les fichiers .rpyc
+            rpyc_files = []
+            for root, dirs, files in os.walk(game_dir):
+                for file in files:
+                    if file.endswith('.rpyc'):
+                        rpyc_files.append(os.path.join(root, file))
+                        if len(rpyc_files) >= 3:  # Limiter pour éviter de lire trop de fichiers
+                            break
+                if len(rpyc_files) >= 3:
+                    break
             
-            if len(numbers) >= 3:
-                return (int(numbers[0]), int(numbers[1]), int(numbers[2]))
-            elif len(numbers) >= 2:
-                return (int(numbers[0]), int(numbers[1]), 0)
-            elif len(numbers) >= 1:
-                return (int(numbers[0]), 0, 0)
+            if rpyc_files:
+                try:
+                    # Lire le premier fichier .rpyc pour détecter la version
+                    with open(rpyc_files[0], 'rb') as f:
+                        header = f.read(16)
+                        
+                    # Ren'Py 8 commence par b'RENPY RPC2'
+                    if header.startswith(b'RENPY RPC2'):
+                        log_message("INFO", "Version Ren'Py détectée via .rpyc: 8.x.x", category="realtime_editor")
+                        return (8, 0, 0)
+                    # Ren'Py 7 commence par b'RENPY RPC'
+                    elif header.startswith(b'RENPY RPC'):
+                        log_message("INFO", "Version Ren'Py détectée via .rpyc: 7.x.x", category="realtime_editor")
+                        return (7, 0, 0)
+                        
+                except Exception as e:
+                    log_message("ATTENTION", f"Erreur lecture .rpyc: {e}", category="realtime_editor")
             
+            log_message("ATTENTION", "Aucune version Ren'Py détectée", category="realtime_editor")
             return None
             
         except Exception as e:
@@ -1262,6 +1349,15 @@ class RealTimeEditorBusiness:
         # Charger le template
         template = self._load_module_template(module_version)
         
+        # Échapper les accolades dans les chaînes de formatage Python pour éviter les conflits
+        # On remplace {0} par {{0}}, {1} par {{1}}, etc. sauf pour {language}
+        import re
+        
+        # Échapper tous les placeholders numériques {0}, {1}, {2}, etc.
+        # Mais PAS les accolades déjà échappées {{0}} ou les accolades vides {}
+        # On cherche les patterns {chiffre} qui ne sont PAS déjà échappés
+        template = re.sub(r'(?<!\{)\{(\d+)\}(?!\})', r'{{\1}}', template)
+        
         # Remplacer {language} par la langue cible
         return template.format(language=language)
 
@@ -1282,24 +1378,20 @@ class RealTimeEditorBusiness:
             
             log_file_path = os.path.join(project_path, "renextract_dialogue_log.txt")
             
-            # On s'assure que le fichier log existe avant de démarrer
-            if not os.path.exists(log_file_path):
-                try:
-                    # Crée un fichier vide
-                    with open(log_file_path, 'w', encoding='utf-8') as f:
-                        f.write("")
-                    log_message("INFO", "Fichier log créé car inexistant.", "realtime_editor")
-                except Exception as e:
-                    log_message("ERREUR", f"Impossible de créer le fichier log : {e}", "realtime_editor")
-                    result['errors'].append("Impossible de créer le fichier log.")
-                    return result
-
-            # On lit le contenu pour savoir où commencer la lecture
+            # ✅ Toujours remettre à zéro le fichier log au démarrage pour une session propre
             try:
-                with open(log_file_path, 'r', encoding='utf-8') as f:
-                    self.last_dialogue_line = len(f.readlines())
-            except Exception:
-                self.last_dialogue_line = 0
+                with open(log_file_path, 'w', encoding='utf-8') as f:
+                    f.write("")
+                log_message("INFO", "Fichier log remis à zéro pour nouvelle session.", "realtime_editor")
+            except Exception as e:
+                log_message("ERREUR", f"Impossible de créer/vider le fichier log : {e}", "realtime_editor")
+                result['errors'].append("Impossible de créer/vider le fichier log.")
+                return result
+
+            # Toujours reprendre à zéro pour une détection propre
+            # Cela évite les problèmes de synchronisation avec d'anciens logs
+            self.last_dialogue_line = 0
+            log_message("INFO", "Surveillance démarrée - lecture depuis le début du fichier log", category="realtime_editor")
 
             self.monitoring_active = True
 
@@ -1340,8 +1432,8 @@ class RealTimeEditorBusiness:
         return result
     
     def stop_monitoring(self) -> Dict[str, Any]:
-        """Arrête la surveillance des dialogues"""
-        result = {'success': False, 'errors': []}
+        """Arrête la surveillance des dialogues et nettoie les fichiers temporaires"""
+        result = {'success': False, 'errors': [], 'cleaned_files': []}
         
         try:
             self.monitoring_active = False
@@ -1349,6 +1441,9 @@ class RealTimeEditorBusiness:
             # Attendre que le thread se termine
             if hasattr(self, 'monitoring_thread') and self.monitoring_thread.is_alive():
                 self.monitoring_thread.join(timeout=2.0)
+            
+            # Nettoyer les fichiers temporaires
+            self._cleanup_temporary_files(result)
             
             result['success'] = True
             self._update_status("Surveillance arrêtée")
@@ -1360,6 +1455,52 @@ class RealTimeEditorBusiness:
             log_message("ERREUR", f"Erreur arrêt surveillance: {e}", category="realtime_editor")
         
         return result
+
+    def _cleanup_temporary_files(self, result: Dict[str, Any]):
+        """
+        Nettoie les fichiers temporaires lors de l'arrêt de la surveillance
+        - Supprime le fichier JSON s'il est vide
+        - Supprime le fichier de log
+        """
+        try:
+            # 1. Nettoyer le fichier JSON des modifications en attente
+            if self.pending_modifications_file and os.path.exists(self.pending_modifications_file):
+                try:
+                    # Vérifier si le fichier est vide ou ne contient que {}
+                    with open(self.pending_modifications_file, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                    
+                    if not content or content == '{}':
+                        os.remove(self.pending_modifications_file)
+                        result['cleaned_files'].append(os.path.basename(self.pending_modifications_file))
+                        log_message("INFO", f"Fichier JSON vide supprimé: {os.path.basename(self.pending_modifications_file)}", category="realtime_editor")
+                    else:
+                        log_message("DEBUG", f"Fichier JSON conservé (contient des modifications): {os.path.basename(self.pending_modifications_file)}", category="realtime_editor")
+                        
+                except Exception as e:
+                    log_message("ATTENTION", f"Erreur nettoyage fichier JSON: {e}", category="realtime_editor")
+            
+            # 2. Nettoyer le fichier de log
+            if self.current_project_path:
+                log_file_path = os.path.join(self.current_project_path, "renextract_dialogue_log.txt")
+                if os.path.exists(log_file_path):
+                    try:
+                        os.remove(log_file_path)
+                        result['cleaned_files'].append(os.path.basename(log_file_path))
+                        log_message("INFO", f"Fichier de log supprimé: {os.path.basename(log_file_path)}", category="realtime_editor")
+                    except Exception as e:
+                        log_message("ATTENTION", f"Erreur suppression fichier de log: {e}", category="realtime_editor")
+            
+            # 3. Réinitialiser les variables
+            self.pending_modifications = {}
+            self.last_dialogue_line = 0
+            
+            if result['cleaned_files']:
+                log_message("INFO", f"Nettoyage terminé: {len(result['cleaned_files'])} fichier(s) supprimé(s)", category="realtime_editor")
+            
+        except Exception as e:
+            result['errors'].append(f"Erreur nettoyage fichiers temporaires: {e}")
+            log_message("ERREUR", f"Erreur nettoyage fichiers temporaires: {e}", category="realtime_editor")
 
     def save_all_pending_modifications(self, project_path: str = None) -> Dict[str, Any]:
         """
@@ -1445,9 +1586,17 @@ class RealTimeEditorBusiness:
                     log_message("ERREUR", error_msg, category="realtime_editor")
             
             # Réécrire le fichier JSON avec les modifications restantes (celles qui ont échoué)
+            # Si toutes les modifications ont été sauvegardées avec succès, vider complètement le fichier
             if self.pending_modifications_file:
-                with open(self.pending_modifications_file, 'w', encoding='utf-8') as f:
-                    json.dump(self.pending_modifications, f, indent=2, ensure_ascii=False)
+                if len(self.pending_modifications) == 0:
+                    # Toutes les modifications ont été sauvegardées avec succès, vider le fichier
+                    with open(self.pending_modifications_file, 'w', encoding='utf-8') as f:
+                        f.write('{}')  # Fichier JSON vide
+                    log_message("INFO", "Fichier de modifications en attente vidé après sauvegarde complète", category="realtime_editor")
+                else:
+                    # Il reste des modifications qui ont échoué, les garder dans le fichier
+                    with open(self.pending_modifications_file, 'w', encoding='utf-8') as f:
+                        json.dump(self.pending_modifications, f, indent=2, ensure_ascii=False)
             
             result['success'] = True
             result['saved_count'] = saved_count
@@ -1560,6 +1709,29 @@ class RealTimeEditorBusiness:
             log_message("ERREUR", f"Erreur génération résumé modifications: {e}", category="realtime_editor")
         
         return summary
+
+    def clear_all_pending_modifications(self) -> bool:
+        """
+        Vide complètement toutes les modifications en attente et le fichier associé
+        
+        Returns:
+            bool: True si l'opération a réussi, False sinon
+        """
+        try:
+            # Vider le cache en mémoire
+            self.pending_modifications = {}
+            
+            # Vider le fichier JSON
+            if self.pending_modifications_file:
+                with open(self.pending_modifications_file, 'w', encoding='utf-8') as f:
+                    f.write('{}')  # Fichier JSON vide
+                log_message("INFO", "Toutes les modifications en attente ont été vidées", category="realtime_editor")
+            
+            return True
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lors du vidage des modifications en attente: {e}", category="realtime_editor")
+            return False
 
     def _parse_dialogue_line(self, line: str) -> Optional[Dict]:
         """Parse une ligne du log de dialogue et récupère les textes VO/VF"""
@@ -1942,6 +2114,17 @@ class RealTimeEditorBusiness:
                 except Exception as e:
                     log_message("ATTENTION", f"Erreur vidage fichier log: {e}", category="realtime_editor")
                     # Ne pas faire échouer la sauvegarde à cause de cela
+            
+            # ✅ Mettre à jour le cache de traductions avec la nouvelle valeur
+            original_text = dialogue_info.get('original_text', '')
+            if original_text and self.string_translation_cache is not None:
+                rel_path = os.path.relpath(tl_file_path, base_project)
+                self.string_translation_cache[original_text] = {
+                    'translated_text': new_translation,
+                    'tl_file': rel_path,
+                    'tl_line': modified_index + 1
+                }
+                log_message("DEBUG", f"Cache mis à jour pour: {original_text[:50]}...", category="realtime_editor")
             
             result['success'] = True
             result['modified_file'] = tl_file_path

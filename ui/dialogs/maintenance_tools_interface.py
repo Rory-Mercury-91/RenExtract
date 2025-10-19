@@ -640,13 +640,9 @@ class MaintenanceToolsInterface:
             coherence_exclusions = config_manager.get('coherence_excluded_files', 'common.rpy')
             self.coherence_excluded_files_var.set(coherence_exclusions)
             
-            # Exclusions personnalisées de lignes
-            custom_exclusions = config_manager.get('coherence_custom_exclusions', [])
-            if isinstance(custom_exclusions, list):
-                custom_exclusions_str = ', '.join(custom_exclusions)
-            else:
-                custom_exclusions_str = str(custom_exclusions) if custom_exclusions else ''
-            self.custom_exclusions_var.set(custom_exclusions_str)
+            # 🆕 Les exclusions personnalisées sont maintenant gérées via le rapport HTML interactif
+            # Ce champ est désactivé pour éviter de corrompre la structure dictionnaire
+            self.custom_exclusions_var.set("(Gérées via le rapport HTML interactif)")
 
         except Exception as e:
             log_message("ERREUR", f"Erreur chargement configuration maintenance: {e}", category="maintenance_tools")
@@ -881,12 +877,9 @@ class MaintenanceToolsInterface:
                 config_manager.set('coherence_check_untranslated', self.check_untranslated_var.get())
                 config_manager.set('coherence_excluded_files', self.coherence_excluded_files_var.get())
                 
-                exclusions_text = self.custom_exclusions_var.get().strip()
-                if exclusions_text:
-                    exclusions_list = [item.strip() for item in exclusions_text.split(',') if item.strip()]
-                else:
-                    exclusions_list = []
-                config_manager.set('coherence_custom_exclusions', exclusions_list)
+                # 🆕 NE PLUS sauvegarder coherence_custom_exclusions ici
+                # Les exclusions sont maintenant gérées exclusivement via le rapport HTML interactif
+                # (structure dictionnaire par projet/fichier/ligne, pas une simple liste de textes)
 
                 log_message("INFO", "Paramètres sauvegardés à la fermeture (maintenance)", category="maintenance_tools")
                 

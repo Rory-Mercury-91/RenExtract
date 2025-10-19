@@ -82,7 +82,8 @@ class HtmlCoherenceReportGenerator:
           
           .card {
             background: var(--card-bg); border: 1px solid var(--sep); 
-            border-radius: 12px; padding: 20px; transition: transform 0.2s;
+            border-radius: 12px; padding: 20px; 
+            transition: transform 0.2s ease;
           }
           .card:hover { transform: translateY(-2px); }
           
@@ -142,10 +143,50 @@ class HtmlCoherenceReportGenerator:
           
           .issue-item {
             padding: 15px; border-bottom: 1px solid var(--sep);
-            transition: background 0.2s;
+            transition: background 0.2s, opacity 0.3s;
           }
           .issue-item:hover { background: var(--hover-bg); }
           .issue-item:last-child { border-bottom: none; }
+          .issue-item.excluded {
+            opacity: 0.5;
+            background: rgba(72, 187, 120, 0.1);
+            border-left: 4px solid var(--success);
+          }
+          
+          .exclude-checkbox-container {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px; margin-top: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+          }
+          .exclude-checkbox {
+            width: 18px; height: 18px; cursor: pointer;
+            accent-color: var(--success); flex-shrink: 0;
+          }
+          .exclude-label {
+            cursor: pointer; user-select: none; font-size: 0.9rem;
+            flex: 1; display: flex; align-items: center;
+            padding: 4px 8px; border-radius: 4px;
+            transition: background 0.2s, color 0.2s;
+          }
+          .exclude-label:hover { 
+            color: var(--success); 
+            background: rgba(100, 200, 100, 0.08);
+          }
+          .exclusion-text {
+            font-size: 0.85rem; opacity: 0.7;
+          }
+          .exclusion-status {
+            font-size: 0.85rem; opacity: 0.9; font-style: italic;
+            color: var(--success); font-weight: 500;
+            display: none;
+          }
+          .exclude-checkbox:checked ~ .exclude-label .exclusion-text {
+            display: none;
+          }
+          .exclude-checkbox:checked ~ .exclude-label .exclusion-status {
+            display: inline;
+          }
           
           .open-in-editor {
               display: inline-flex; align-items: center; gap: 6px;
@@ -207,11 +248,13 @@ class HtmlCoherenceReportGenerator:
           }
           select:focus, input:focus { border-color: var(--info); }
           
-          .collapsible-toggle::after {
-            content: "▼"; transition: transform 0.2s; font-size: 0.8rem;
-          }
-          .collapsible-toggle.collapsed::after {
-            transform: rotate(-90deg);
+          .collapsible-toggle {
+            font-size: 1rem;
+            display: inline-block;
+            width: 20px;
+            transition: transform 0.2s ease;
+            cursor: pointer;
+            user-select: none;
           }
           
           .stats-overview {
@@ -234,6 +277,16 @@ class HtmlCoherenceReportGenerator:
             text-align: center; padding: 60px 20px; opacity: 0.7;
           }
           .no-issues h2 { color: var(--success); margin-bottom: 15px; }
+          
+          .info-banner {
+            background: rgba(74, 144, 226, 0.15);
+            border-left: 4px solid var(--info);
+            padding: 12px 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+          }
+          .info-banner strong { color: var(--info); }
         </style>
         """
     
@@ -245,16 +298,29 @@ class HtmlCoherenceReportGenerator:
         language = selection_info.get('language', '')
         selected_file = selection_info.get('selected_option', '')
         total_files = len(selection_info.get('target_files', []))
+        project_path = selection_info.get('project_path', '').replace('\\', '\\\\')  # 🆕 Échapper les backslashes
+        
+        # Obtenir l'hôte et le port du serveur depuis la config
+        from infrastructure.config.config import config_manager
+        from infrastructure.logging.logging import log_message
+        server_host = config_manager.get('editor_server_host', '127.0.0.1')
+        server_port = config_manager.get('editor_server_port', 8765)
+        server_url = f"http://{server_host}:{server_port}"
+        log_message("DEBUG", f"🎯 Génération JavaScript rapport : server_url={server_url}", category="report")
         
         return f"""
         <script>
         (function() {{
+            // URL du serveur d'édition (configurable pour support WSL)
+            window.RENEXTRACT_SERVER_URL = '{server_url}';
+            
             // Informations sur la sélection harmonisée
             window.coherenceSelectionInfo = {{
                 isAllFiles: {str(is_all_files).lower()},
                 language: '{language}',
                 selectedFile: '{selected_file}',
-                totalFiles: {total_files}
+                totalFiles: {total_files},
+                project_path: '{project_path}'  // 🆕
             }};
             
             // Gestion du thème
@@ -272,7 +338,7 @@ class HtmlCoherenceReportGenerator:
 
             // Fonction pour ouvrir dans l'éditeur
             window.openInEditor = function(filePath, lineNumber) {{
-                const url = `http://127.0.0.1:8765/open?file=${{encodeURIComponent(filePath)}}&line=${{encodeURIComponent(lineNumber)}}`;
+                const url = `${{window.RENEXTRACT_SERVER_URL}}/open?file=${{encodeURIComponent(filePath)}}&line=${{encodeURIComponent(lineNumber)}}`;
 
                 fetch(url, {{ method: 'GET' }})
                     .then(async (res) => {{
@@ -299,16 +365,189 @@ class HtmlCoherenceReportGenerator:
                     }});
             }};
             
-            // Fonction de réinitialisation des filtres
-            function resetAllFilters() {{
-                const errorTypeFilter = document.getElementById('errorTypeFilter');
-                const fileFilter = document.getElementById('fileFilter');
+            // ===== NOUVEAU : Gestion des exclusions =====
+            window.exclusionsCache = new Set();
+            
+            // Charger les exclusions existantes depuis le serveur
+            async function loadExclusions() {{
+                try {{
+                    const project = window.coherenceSelectionInfo.project_path;
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/exclusions?project=${{encodeURIComponent(project)}}`);
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok && Array.isArray(data.exclusions)) {{
+                            // Créer les clés pour le cache (project|file|line|text)
+                            window.exclusionsCache = new Set(
+                                data.exclusions.map(excl => `${{project}}|${{excl.file}}|${{excl.line}}|${{excl.text}}`)
+                            );
+                            console.log(`✅ ${{data.exclusions.length}} exclusion(s) chargée(s) pour ce projet`);
+                            updateCheckboxStates();
+                            // Masquer l'avertissement si présent
+                            const warningBanner = document.getElementById('server-warning-banner');
+                            if (warningBanner) warningBanner.style.display = 'none';
+                            return true;
+                        }}
+                    }}
+                    return false;
+                }} catch (error) {{
+                    console.log('⚠️ Impossible de charger les exclusions (serveur non accessible)');
+                    showServerWarning();
+                    return false;
+                }}
+            }}
+            
+            // Afficher un avertissement si RenExtract n'est pas ouvert
+            function showServerWarning() {{
+                let warningBanner = document.getElementById('server-warning-banner');
+                if (!warningBanner) {{
+                    warningBanner = document.createElement('div');
+                    warningBanner.id = 'server-warning-banner';
+                    warningBanner.style.cssText = `
+                        background: rgba(237, 137, 54, 0.2);
+                        border-left: 4px solid #ed8936;
+                        padding: 12px 15px;
+                        margin: 10px 0;
+                        border-radius: 6px;
+                        font-size: 0.9rem;
+                    `;
+                    warningBanner.innerHTML = `
+                        <strong style="color: #ed8936;">⚠️ Fonctionnalité d'exclusion inactive</strong>
+                        <br>
+                        <em>RenExtract doit être ouvert pour ignorer des lignes. Relancez l'application puis rechargez ce rapport.</em>
+                    `;
+                    
+                    // Insérer après le titre du rapport
+                    const header = document.querySelector('.header');
+                    if (header && header.nextSibling) {{
+                        header.parentNode.insertBefore(warningBanner, header.nextSibling);
+                    }} else {{
+                        document.body.insertBefore(warningBanner, document.body.firstChild);
+                    }}
+                }}
+            }}
+            
+            // Mettre à jour l'état des checkboxes selon les exclusions
+            function updateCheckboxStates() {{
+                const project = window.coherenceSelectionInfo.project_path;
                 
-                if (errorTypeFilter) errorTypeFilter.value = 'all';
-                if (fileFilter) fileFilter.value = 'all';
+                document.querySelectorAll('.exclude-checkbox').forEach(checkbox => {{
+                    const text = checkbox.getAttribute('data-exclusion-text');
+                    const file = checkbox.getAttribute('data-exclusion-file');
+                    const line = parseInt(checkbox.getAttribute('data-exclusion-line'));
+                    
+                    // Construire la clé complète
+                    const cacheKey = `${{project}}|${{file}}|${{line}}|${{text}}`;
+                    const isExcluded = window.exclusionsCache.has(cacheKey);
+                    
+                    checkbox.checked = isExcluded;
+                    
+                    // Marquer visuellement la ligne comme exclue
+                    const issueItem = checkbox.closest('.issue-item');
+                    const statusSpan = checkbox.closest('.exclude-checkbox-container').querySelector('.exclusion-status');
+                    
+                    if (isExcluded) {{
+                        issueItem.classList.add('excluded');
+                        statusSpan.textContent = '✓ Ignoré';
+                    }} else {{
+                        issueItem.classList.remove('excluded');
+                        statusSpan.textContent = '';
+                    }}
+                }});
+            }}
+            
+            // Ajouter une exclusion
+            async function addExclusion(text, file, line, project) {{
+                console.log('📤 POST /exclude:', {{ text: text.substring(0, 50), file, line, project: project.substring(0, 50) }});
+                try {{
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/exclude`, {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ text, file, line, project }})  // 🆕 Envoyer toutes les données
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok) {{
+                            // Stocker la clé complète dans le cache
+                            const cacheKey = `${{project}}|${{file}}|${{line}}|${{text}}`;
+                            window.exclusionsCache.add(cacheKey);
+                            console.log('✅ Exclusion ajoutée:', file, 'ligne', line);
+                            return true;
+                        }}
+                    }}
+                    return false;
+                }} catch (error) {{
+                    console.error('❌ Erreur ajout exclusion:', error);
+                    showServerWarning();
+                    alert('⚠️ RenExtract doit être ouvert pour enregistrer les exclusions');
+                    return false;
+                }}
+            }}
+            
+            // Retirer une exclusion
+            async function removeExclusion(text, file, line, project) {{
+                try {{
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/exclude`, {{
+                        method: 'DELETE',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ text, file, line, project }})  // 🆕 Envoyer toutes les données
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok) {{
+                            // Retirer la clé complète du cache
+                            const cacheKey = `${{project}}|${{file}}|${{line}}|${{text}}`;
+                            window.exclusionsCache.delete(cacheKey);
+                            console.log('🗑️ Exclusion retirée:', file, 'ligne', line);
+                            return true;
+                        }}
+                    }}
+                    return false;
+                }} catch (error) {{
+                    console.error('❌ Erreur suppression exclusion:', error);
+                    alert('⚠️ RenExtract doit être ouvert pour modifier les exclusions');
+                    return false;
+                }}
+            }}
+            
+            // Handler pour les checkboxes
+            async function handleExcludeCheckbox(checkbox) {{
+                const text = checkbox.getAttribute('data-exclusion-text');
+                const file = checkbox.getAttribute('data-exclusion-file');  // 🆕
+                const line = parseInt(checkbox.getAttribute('data-exclusion-line'));  // 🆕
+                const project = window.coherenceSelectionInfo.project_path;  // 🆕
                 
-                // Réappliquer les filtres pour tout afficher
-                applyFilters();
+                // 🆕 Validation des données avant envoi
+                if (!text || !file || !line || !project) {{
+                    console.error('❌ Données manquantes:', {{ text: !!text, file: !!file, line: !!line, project: !!project }});
+                    alert("⚠️ Erreur: données incomplètes pour l\'exclusion");
+                    checkbox.checked = false;
+                    return;
+                }}
+                
+                const issueItem = checkbox.closest('.issue-item');
+                const statusSpan = checkbox.closest('.exclude-checkbox-container').querySelector('.exclusion-status');
+                
+                if (checkbox.checked) {{
+                    // Ajouter l'exclusion
+                    const success = await addExclusion(text, file, line, project);
+                    if (success) {{
+                        issueItem.classList.add('excluded');
+                        statusSpan.textContent = '✓ Ignoré';
+                    }} else {{
+                        checkbox.checked = false;
+                    }}
+                }} else {{
+                    // Retirer l'exclusion
+                    const success = await removeExclusion(text, file, line, project);
+                    if (success) {{
+                        issueItem.classList.remove('excluded');
+                        statusSpan.textContent = '';
+                    }} else {{
+                        checkbox.checked = true;
+                    }}
+                }}
             }}
             
             // Fonction pour mettre à jour l'affichage de sélection harmonisé
@@ -330,6 +569,9 @@ class HtmlCoherenceReportGenerator:
 
             // Initialisation
             document.addEventListener('DOMContentLoaded', function() {{
+                // Charger les exclusions existantes
+                loadExclusions();
+                
                 // Délégation: clic sur boutons "open in editor"
                 document.body.addEventListener('click', function(e) {{
                     const btn = e.target.closest('.open-in-editor');
@@ -337,6 +579,13 @@ class HtmlCoherenceReportGenerator:
                     const f = btn.getAttribute('data-file');
                     const l = parseInt(btn.getAttribute('data-line') || '0', 10) || 0;
                     if (f && l) window.openInEditor(f, l);
+                }});
+                
+                // Délégation: changement sur checkboxes d'exclusion
+                document.body.addEventListener('change', function(e) {{
+                    if (e.target.classList.contains('exclude-checkbox')) {{
+                        handleExcludeCheckbox(e.target);
+                    }}
                 }});
 
                 // Bouton thème
@@ -346,16 +595,24 @@ class HtmlCoherenceReportGenerator:
                     themeBtn.addEventListener('click', toggleTheme);
                 }}
 
-                // Sections repliables
-                document.querySelectorAll('.error-type-header').forEach(header => {{
-                    header.addEventListener('click', function() {{
-                        const content = this.nextElementSibling;
-                        const toggle = this.querySelector('.collapsible-toggle');
-                        if (!content) return;
-                        content.classList.toggle('expanded');
-                        if (toggle) toggle.classList.toggle('collapsed');
-                    }});
-                }});
+                // Fonction pour basculer les sections (inspirée du tutoriel)
+                window.toggleSection = function(id) {{
+                    const content = document.getElementById('content_' + id);
+                    const icon = document.getElementById('icon_' + id);
+                    const header = document.querySelector('[onclick*="' + id + '"]');
+                    if (!content || !icon) return;
+                    
+                    const isHidden = content.style.display === 'none' || content.style.display === '';
+                    if (isHidden) {{
+                        content.style.display = 'block';
+                        icon.textContent = '▼';
+                        if (header) header.setAttribute('aria-expanded', 'true');
+                    }} else {{
+                        content.style.display = 'none';
+                        icon.textContent = '▶';
+                        if (header) header.setAttribute('aria-expanded', 'false');
+                    }}
+                }};
 
                 // Filtres harmonisés
                 const errorTypeFilter = document.getElementById('errorTypeFilter');
@@ -422,6 +679,27 @@ class HtmlCoherenceReportGenerator:
                     }}
                 }}
 
+                // Fonction de réinitialisation des filtres (doit être après applyFilters)
+                function resetAllFilters() {{
+                    if (errorTypeFilter) errorTypeFilter.value = 'all';
+                    if (fileFilter) fileFilter.value = 'all';
+                    
+                    // Réappliquer les filtres pour tout afficher
+                    applyFilters();
+                    
+                    // Refermer toutes les sections collapsibles
+                    document.querySelectorAll('.error-type-content').forEach(content => {{
+                        if (content.id && content.id.startsWith('content_')) {{
+                            const id = content.id.replace('content_', '');
+                            const icon = document.getElementById('icon_' + id);
+                            const header = document.querySelector('[onclick*="' + id + '"]');
+                            content.style.display = 'none';
+                            if (icon) icon.textContent = '▶';
+                            if (header) header.setAttribute('aria-expanded', 'false');
+                        }}
+                    }});
+                }}
+
                 if (errorTypeFilter) errorTypeFilter.addEventListener('change', applyFilters);
                 if (fileFilter) fileFilter.addEventListener('change', applyFilters);
                 if (resetBtn) resetBtn.addEventListener('click', resetAllFilters);
@@ -431,10 +709,14 @@ class HtmlCoherenceReportGenerator:
                 if (expandAllBtn) {{
                     expandAllBtn.addEventListener('click', function() {{
                         document.querySelectorAll('.error-type-content').forEach(content => {{
-                            content.classList.add('expanded');
-                        }});
-                        document.querySelectorAll('.collapsible-toggle').forEach(toggle => {{
-                            toggle.classList.remove('collapsed');
+                            if (content.id && content.id.startsWith('content_')) {{
+                                const id = content.id.replace('content_', '');
+                                const icon = document.getElementById('icon_' + id);
+                                const header = document.querySelector('[onclick*="' + id + '"]');
+                                content.style.display = 'block';
+                                if (icon) icon.textContent = '▼';
+                                if (header) header.setAttribute('aria-expanded', 'true');
+                            }}
                         }});
                     }});
                 }}
@@ -443,10 +725,14 @@ class HtmlCoherenceReportGenerator:
                 if (collapseAllBtn) {{
                     collapseAllBtn.addEventListener('click', function() {{
                         document.querySelectorAll('.error-type-content').forEach(content => {{
-                            content.classList.remove('expanded');
-                        }});
-                        document.querySelectorAll('.collapsible-toggle').forEach(toggle => {{
-                            toggle.classList.add('collapsed');
+                            if (content.id && content.id.startsWith('content_')) {{
+                                const id = content.id.replace('content_', '');
+                                const icon = document.getElementById('icon_' + id);
+                                const header = document.querySelector('[onclick*="' + id + '"]');
+                                content.style.display = 'none';
+                                if (icon) icon.textContent = '▶';
+                                if (header) header.setAttribute('aria-expanded', 'false');
+                            }}
                         }});
                     }});
                 }}
@@ -479,7 +765,7 @@ class HtmlCoherenceReportGenerator:
 
             // Fonction pour ouvrir dans l'éditeur
             window.openInEditor = function(filePath, lineNumber) {
-                const url = `http://127.0.0.1:8765/open?file=${encodeURIComponent(filePath)}&line=${encodeURIComponent(lineNumber)}`;
+                const url = `${window.RENEXTRACT_SERVER_URL}/open?file=${encodeURIComponent(filePath)}&line=${encodeURIComponent(lineNumber)}`;
 
                 // Essaye le serveur local d'abord
                 fetch(url, { method: 'GET' })
@@ -752,7 +1038,16 @@ class HtmlCoherenceReportGenerator:
         # Trier par nombre d'erreurs (décroissant)
         type_stats.sort(key=lambda x: x['count'], reverse=True)
         
-        html = """
+        # Bannière d'information pour les exclusions interactives
+        info_banner = """
+        <div class="info-banner">
+            💡 <strong>Nouvelle fonctionnalité :</strong> Vous pouvez maintenant ignorer des lignes non traduites directement depuis ce rapport ! 
+            Cochez simplement "Ignorer dans les futurs rapports" pour exclure une ligne des prochaines analyses.
+            <br><em>Note : RenExtract doit rester ouvert pendant la consultation du rapport pour que les exclusions soient enregistrées.</em>
+        </div>
+        """
+        
+        html = info_banner + """
         <div class="summary-cards">
             <div class="card">
                 <h3>📊 Résumé Global</h3>
@@ -888,11 +1183,14 @@ class HtmlCoherenceReportGenerator:
                 issues_by_file[file_path] = []
             issues_by_file[file_path].append(issue)
         
+        # ID unique pour cette section
+        safe_id = error_type.replace('_', '').replace('-', '')
+        
         html = f"""
         <div class="error-type-section" data-error-type="{error_type}">
-            <div class="error-type-header">
+            <div class="error-type-header" onclick="toggleSection('{safe_id}')" style="cursor: pointer;" role="button" tabindex="0" aria-expanded="false">
                 <div>
-                    <span class="collapsible-toggle collapsed"></span>
+                    <span class="collapsible-toggle" id="icon_{safe_id}">▶</span>
                     {type_icon} <strong>{type_name}</strong>
                     <span class="error-type-badge {css_class}">{len(issues)}</span>
                 </div>
@@ -902,7 +1200,7 @@ class HtmlCoherenceReportGenerator:
                 </div>
             </div>
             
-            <div class="error-type-content">
+            <div class="error-type-content" id="content_{safe_id}" style="display: none;">
         """
         
         # Contenu par fichier
@@ -936,6 +1234,7 @@ class HtmlCoherenceReportGenerator:
         description = _html.escape(issue.get('description', ''))
         old_content = _html.escape(issue.get('old_content', ''))
         new_content = _html.escape(issue.get('new_content', ''))
+        issue_type = issue.get('type', '')
 
         # Bouton "Ouvrir dans l'éditeur" uniquement si on a un chemin ET une ligne valide
         if file_path and line > 0:
@@ -949,6 +1248,37 @@ class HtmlCoherenceReportGenerator:
             )
         else:
             btn_html = ''
+        
+        # Checkbox d'exclusion pour les lignes non traduites
+        exclude_checkbox_html = ''
+        if issue_type == 'UNTRANSLATED_LINE':
+            # Utiliser le contenu OLD comme clé d'exclusion
+            exclusion_key = issue.get('old_content', '')
+            if exclusion_key:
+                # Échapper les guillemets pour l'attribut HTML
+                escaped_key = _html.escape(exclusion_key).replace('"', '&quot;')
+                
+                # 🆕 Extraire le chemin relatif depuis tl/langue/
+                relative_file = self._get_relative_file_path(file_path)
+                escaped_file = _html.escape(relative_file).replace('"', '&quot;')
+                
+                # Générer un ID unique pour la checkbox (hash du fichier + ligne)
+                import hashlib
+                checkbox_id = f"excl-{hashlib.md5(f'{file_path}{line}'.encode()).hexdigest()[:8]}"
+                
+                exclude_checkbox_html = f"""
+            <div class="exclude-checkbox-container">
+                <input type="checkbox" id="{checkbox_id}" class="exclude-checkbox" 
+                       data-exclusion-text="{escaped_key}"
+                       data-exclusion-file="{escaped_file}"
+                       data-exclusion-line="{line}"
+                       title="Ignorer cette ligne dans les futurs rapports">
+                <label for="{checkbox_id}" class="exclude-label" title="Cliquez pour ignorer cette ligne">
+                    <span class="exclusion-text">Cliquer pour ignorer</span>
+                    <span class="exclusion-status"></span>
+                </label>
+            </div>
+                """
 
         return f"""
         <div class="issue-item">
@@ -967,6 +1297,7 @@ class HtmlCoherenceReportGenerator:
                     <div>{new_content if new_content else '<em>Vide</em>'}</div>
                 </div>
             </div>
+            {exclude_checkbox_html}
         </div>
         """
 
@@ -1058,6 +1389,29 @@ class HtmlCoherenceReportGenerator:
             <p>🔍 Outil de vérification intelligente de cohérence Ren'Py</p>
         </div>
         """
+    
+    def _get_relative_file_path(self, file_path):
+        """Retourne le chemin relatif du fichier depuis le dossier tl"""
+        try:
+            # Trouver la position de 'tl/' dans le chemin
+            if '/tl/' in file_path:
+                parts = file_path.split('/tl/')
+                if len(parts) > 1:
+                    # Retourner ce qui est après tl/langue/
+                    sub_parts = parts[1].split('/', 1)
+                    if len(sub_parts) > 1:
+                        return sub_parts[1].replace('\\', '/')
+            elif '\\tl\\' in file_path:
+                parts = file_path.split('\\tl\\')
+                if len(parts) > 1:
+                    sub_parts = parts[1].split('\\', 1)
+                    if len(sub_parts) > 1:
+                        return sub_parts[1].replace('\\', '/')
+            
+            # Fallback: retourner le nom du fichier
+            return os.path.basename(file_path)
+        except Exception:
+            return os.path.basename(file_path)
 
 
 # Fonction utilitaire pour l'intégration

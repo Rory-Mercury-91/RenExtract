@@ -62,18 +62,19 @@ def generate_content(generator, language=None, translations=None):
                 
                 <!-- Question 1 -->
                 <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>🎯 Quelle différence entre Interface Principale et Générateur Ren'Py ?</h4>
+                    <h4>🎯 Quelle différence entre les différentes interfaces ?</h4>
                     <p><strong>Règle simple :</strong></p>
                     <ul>
                         <li><strong>Interface Principale</strong> : pour traiter un fichier spécifique (.rpy → .txt → .rpy)</li>
                         <li><strong>Générateur Ren'Py</strong> : pour configurer l'infrastructure complète du projet</li>
+                        <li><strong>Outils spécialisés</strong> : pour optimiser le dossier de traduction</li>
                     </ul>
                 </div>
                 
                 <!-- Question 2 -->
                 <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
                     <h4>💥 Le jeu plante après ma traduction !</h4>
-                    <p><strong>Solution :</strong> Utilise le <strong>Vérificateur de Cohérence</strong> dans Outils Spécialisés.</p>
+                    <p><strong>Solutions :</strong> Analyse le fichier <code>traceback.txt</code> ou <code>error.txt</code> présent dans le répertoire racine du jeu pour comprendre le problème. Tu peux aussi utiliser le <strong>Vérificateur de Cohérence</strong> dans Outils Spécialisés.</p>
                     <p>Le rapport HTML pourra te montrer la ligne problématique et le type d'erreur (variable manquante, balise mal fermée, etc.).</p>
                 </div>
                 
@@ -91,7 +92,7 @@ def generate_content(generator, language=None, translations=None):
                     <ol>
                         <li>Ouvre le gestionnaire (Interface Principale → OUTILS)</li>
                         <li>Filtre par le jeu concerné</li>
-                        <li>Sélectionne le <strong>Type</strong></li>
+                        <li>Sélectionnez le <strong>Type</strong></li>
                         <li>Restaure la dernière version fonctionnelle</li>
                     </ol>
                 </div>
@@ -103,7 +104,7 @@ def generate_content(generator, language=None, translations=None):
                     <ol>
                         <li>Va dans l'onglet <strong>Génération</strong></li>
                         <li>Teste d'abord dans l'<strong>aperçu des polices</strong></li>
-                        <li>Sélectionne <strong>uniquement</strong> les polices marquées comme "disponibles"</li>
+                        <li>Sélectionnez <strong>uniquement</strong> les polices marquées comme "disponibles"</li>
                     </ol>
                 </div>
                 
@@ -113,9 +114,9 @@ def generate_content(generator, language=None, translations=None):
                     <p><strong>Étapes :</strong></p>
                     <ol>
                         <li>Outils Spécialisés → <strong>Éditeur Temps Réel</strong></li>
-                        <li>Installe le module dans ton jeu</li>
+                        <li>Installe le module dans votre jeu</li>
                         <li>Lance le jeu</li>
-                        <li>Consulte le <strong>tutoriel complet</strong> (Onglet Outils) pour toutes les fonctionnalités</li>
+                        <li>Consultez le <strong>tutoriel complet</strong> (Onglet Outils) pour toutes les fonctionnalités</li>
                     </ol>
                 </div>
                 
@@ -138,19 +139,20 @@ def generate_content(generator, language=None, translations=None):
                     <p><strong>Nettoyage Intelligent</strong> :</p>
                     <ol>
                         <li>Outils Spécialisés → <strong>Nettoyage Intelligent</strong></li>
-                        <li>Sélectionne ton projet multi-langues</li>
-                        <li>Choisis les langues à nettoyer (sélection multiple)</li>
+                        <li>Sélectionnez votre projet multi-langues</li>
+                        <li>Choisissez les langues à nettoyer (sélection multiple)</li>
                         <li>Lance le nettoyage → rapport HTML détaillé automatique</li>
                     </ol>
                 </div>
                 
                 <!-- Question 9 (NOUVELLE) -->
                 <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>💾 Quelle est la différence entre les 4 types de sauvegardes ?</h4>
+                    <h4>💾 Quelle est la différence entre les 5 types de sauvegardes ?</h4>
                     <ul>
                         <li><strong>Sécurité</strong> : avant extraction (conservée indéfiniment)</li>
                         <li><strong>Nettoyage</strong> : avant nettoyage projet (conservée indéfiniment)</li>
                         <li><strong>Avant RPA</strong> : avant compilation RPA (conservée indéfiniment)</li>
+                        <li><strong>Avant combinaison</strong> : avant fusion de fichiers (conservée indéfiniment)</li>
                         <li><strong>Édition temps réel</strong> : modifications en direct (max 10 fichiers, rotation automatique)</li>
                     </ul>
                 </div>
@@ -160,9 +162,9 @@ def generate_content(generator, language=None, translations=None):
                     <h4>🎨 Comment personnaliser les patterns de protection ?</h4>
                     <p><strong>Paramètres → Patterns de protection</strong> :</p>
                     <ol>
-                        <li>Configure tes patterns personnalisés (Astérisques, Tildes)</li>
+                        <li>Configurez vos patterns personnalisés (Astérisques, Tildes)</li>
                         <li>Teste-les avec le <strong>générateur de placeholders</strong></li>
-                        <li>Utilise le <strong>suffixe numérique</strong> recommandé pour éviter les conflits</li>
+                        <li>Utilisez le <strong>suffixe numérique</strong> recommandé pour éviter les conflits</li>
                     </ol>
                 </div>
                 
@@ -173,8 +175,8 @@ def generate_content(generator, language=None, translations=None):
                 <h4>💡 Conseils rapides</h4>
                 <ul style="margin: 10px 0; padding-left: 20px;">
                     <li><strong>Sauvegarde toujours le jeu original</strong> avant toute modification</li>
-                    <li><strong>Consulte les rapports</strong> dans le dossier <code>03_Rapports</code> en cas d'erreur</li>
-                    <li><strong>Garde tes paramètres d'exclusion</strong> pour éviter les faux positifs lors des vérifications</li>
+                    <li><strong>Consultez les logs</strong> dans le dossier <code>04_Configs</code> en cas d'erreur</li>
+                    <li><strong>Garde vos paramètres d'exclusion</strong> pour éviter les faux positifs lors des vérifications</li>
                 </ul>
             </div>
         </div>
@@ -214,13 +216,13 @@ def generate_content(generator, language=None, translations=None):
                     <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
                         <h4>Diagnostic :</h4>
                         <ul>
-                            <li>Consulte le <strong>rapport détaillé</strong> dans le dossier <code>03_Rapports</code></li>
-                            <li>Utilise le <strong>Vérificateur de Cohérence</strong> pour localiser précisément les erreurs</li>
+                            <li>Consultez le <strong>rapport détaillé</strong> dans le dossier <code>03_Rapports</code></li>
+                            <li>Utilisez le <strong>Vérificateur de Cohérence</strong> pour localiser précisément les erreurs</li>
                         </ul>
                         <h4>Corrections courantes :</h4>
                         <ul>
-                            <li><strong>Variables <code>[]</code> :</strong> vérifie que toutes les variables sont conservées intactes</li>
-                            <li><strong>Balises <code>{{}}</code> :</strong> assure-toi que toutes les balises sont bien fermées</li>
+                            <li><strong>Variables <code>[]</code> :</strong> vérifiez que toutes les variables sont conservées intactes</li>
+                            <li><strong>Balises <code>{{}}</code> :</strong> assure-vous que toutes les balises sont bien fermées</li>
                             <li><strong>Codes spéciaux :</strong> ne modifie pas les <code>\\n</code>, <code>%</code>, etc.</li>
                         </ul>
                         <h4>Solution de secours :</h4>
@@ -234,17 +236,17 @@ def generate_content(generator, language=None, translations=None):
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0;">
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <h5>🛡️ Antivirus</h5>
-                    <p>Ajoute RenExtract aux <strong>exclusions de ton antivirus</strong>. L'analyse en temps réel peut considérablement ralentir le traitement.</p>
+                    <p>Ajoute RenExtract aux <strong>exclusions de votre antivirus</strong>. L'analyse en temps réel peut considérablement ralentir le traitement.</p>
                 </div>
                 
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <h5>💾 Stockage</h5>
-                    <p>Utilise un <strong>SSD</strong> si possible pour améliorer les performances d'écriture/lecture.</p>
+                    <p>Utilisez un <strong>SSD</strong> si possible pour améliorer les performances d'écriture/lecture.</p>
                 </div>
                 
                 <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
                     <h5>📁 Espace disque</h5>
-                    <p>Assure-toi que ton <strong>disque n'est pas plein</strong> et dispose d'espace suffisant.</p>
+                    <p>Assure-vous que votre <strong>disque n'est pas plein</strong> et dispose d'espace suffisant.</p>
                 </div>
             </div>
             
@@ -253,8 +255,8 @@ def generate_content(generator, language=None, translations=None):
             <ul>
                 <li><strong>Ferme le jeu Ren'Py</strong> s'il est en cours d'exécution</li>
                 <li><strong>Lance RenExtract en administrateur</strong> (clic droit → Exécuter en tant qu'administrateur)</li>
-                <li><strong>Vérifie que le fichier n'est pas ouvert</strong> dans un éditeur de texte</li>
-                <li><strong>Vérifie les propriétés du fichier</strong> : il ne doit pas être en lecture seule</li>
+                <li><strong>Vérifiez que le fichier n'est pas ouvert</strong> dans un éditeur de texte</li>
+                <li><strong>Vérifiez les propriétés du fichier</strong> : il ne doit pas être en lecture seule</li>
             </ul>
             
             <!-- Problèmes 5 et diagnostic côte à côte -->
@@ -265,7 +267,7 @@ def generate_content(generator, language=None, translations=None):
                     <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
                         <h4>Versions Ren'Py :</h4>
                         <ul>
-                            <li><strong>Ren'Py 6.x :</strong> Support limité, utilise les fonctions de base</li>
+                            <li><strong>Ren'Py 6.x :</strong> Support limité, utilisez les fonctions de base</li>
                             <li><strong>Ren'Py 7.x :</strong> Support complet recommandé ✅</li>
                             <li><strong>Ren'Py 8.x :</strong> Support complet avec nouvelles fonctionnalités ✅</li>
                         </ul>
@@ -283,9 +285,9 @@ def generate_content(generator, language=None, translations=None):
                     <div style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(74, 144, 226, 0.05) 100%); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
                         <p>Si les problèmes persistent :</p>
                         <ul>
-                            <li><strong>Vérifier la source :</strong> Assure-toi que le problème vient de RenExtract et pas d'un outil de traduction externe</li>
+                            <li><strong>Vérifier la source :</strong> Assure-vous que le problème vient de RenExtract et pas d'un outil de traduction externe</li>
                             <li><strong>Consulter les logs :</strong> Le dossier <code>04_Configs</code> contient les logs détaillés (mode debug recommandé)</li>
-                            <li><strong>Vérifier la version :</strong> Assure-toi d'avoir la dernière version de RenExtract</li>
+                            <li><strong>Vérifier la version :</strong> Assure-vous d'avoir la dernière version de RenExtract</li>
                             <li><strong>Test minimal :</strong> Teste avec un petit fichier <code>.rpy</code> simple pour isoler le problème</li>
                         </ul>
                     </div>
@@ -343,7 +345,7 @@ def generate_content(generator, language=None, translations=None):
                     <p style="font-size: 1.2em; margin: 10px 0;">
                         <strong><a href="https://discord.gg/Yp2Hm8JWQ2" target="_blank" class="contact-link">Rejoindre le serveur</a></strong>
                     </p>
-                    <p>Communauté active, support rapide et discussions.</p>
+                    <p>Communauté activez, support rapide et discussions.</p>
                     <p style="opacity: 0.8; font-style: italic;">Réponse la plus rapide, entraide communautaire.</p>
                 </div>
                 
@@ -364,7 +366,7 @@ def generate_content(generator, language=None, translations=None):
                         <strong><a href="https://github.com/Rory-Mercury-91/RenExtract/releases" target="_blank" class="contact-link">Téléchargements</a></strong>
                     </p>
                     <p>Toujours avoir la version la plus récente.</p>
-                    <p style="opacity: 0.8; font-style: italic;">Vérifie régulièrement les mises à jour.</p>
+                    <p style="opacity: 0.8; font-style: italic;">Vérifiez régulièrement les mises à jour.</p>
                 </div>
                 
             </div>
@@ -373,11 +375,11 @@ def generate_content(generator, language=None, translations=None):
             <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-top: 30px;">
                 <h4>💡 Conseils pour obtenir de l'aide</h4>
                 <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>Discord</strong> est le moyen le plus rapide pour obtenir de l'aide (réponse en quelques minutes)</li>
+                    <li><strong>Discord</strong> est le moyen le plus rapide pour obtenir de l'aide (réponse rapide)</li>
                     <li><strong>Email</strong> pour les questions complexes nécessitant des captures d'écran ou des logs</li>
-                    <li><strong>GitHub Issues</strong> uniquement pour les bugs confirmés et reproductibles</li>
-                    <li>Précise toujours ta <strong>version de RenExtract</strong> et ton <strong>système d'exploitation</strong></li>
-                    <li>Joins les <strong>logs du dossier <code>04_Configs</code></strong> si tu es en mode debug</li>
+                    <li><strong>GitHub Issues</strong> uniquement pour les bugs liés au code lui-même</li>
+                    <li>Précise toujours votre <strong>version de RenExtract</strong> et votre <strong>système d'exploitation</strong></li>
+                    <li>Joins les <strong>logs du dossier <code>04_Configs</code></strong> si vous es en mode debug</li>
                 </ul>
             </div>
         </div>
@@ -424,16 +426,16 @@ def generate_content(generator, language=None, translations=None):
                 <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%); padding: 25px; border-radius: 8px; border-left: 4px solid #f59e0b;">
                     <h4>🌟 Communauté</h4>
                     <p style="font-size: 1.2em; margin: 10px 0;">
-                        <strong>Tous les utilisateurs</strong>
+                        <strong>Principalement DxSnake</strong>
                     </p>
-                    <p>Retours précieux, tests et suggestions d'amélioration.</p>
+                    <p>Pour tous les tests effectués dans la cave (c'est une blague pour qu'il comprenne). Retours précieux, tests et suggestions d'amélioration.</p>
                 </div>
                 
             </div>
             
             <!-- Liens utiles -->
             <h3>🔗 Liens utiles</h3>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0;">
                 
                 <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; text-align: center;">
                     <h4>📂 Dépôt GitHub</h4>
@@ -444,14 +446,6 @@ def generate_content(generator, language=None, translations=None):
                     </p>
                 </div>
                 
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; text-align: center;">
-                    <h4>📋 Documentation</h4>
-                    <p>
-                        <a href="https://github.com/Rory-Mercury-91/RenExtract/wiki" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: bold;">
-                            Wiki et guides
-                        </a>
-                    </p>
-                </div>
                 
                 <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; text-align: center;">
                     <h4>🎮 Ren'Py Officiel</h4>
@@ -472,7 +466,7 @@ def generate_content(generator, language=None, translations=None):
                 <ul style="margin: 10px 0; padding-left: 20px;">
                     <li>Signale les bugs via <strong>GitHub Issues</strong></li>
                     <li>Propose des améliorations sur <strong>Discord</strong></li>
-                    <li>Partage tes retours d'expérience</li>
+                    <li>Partagez vos retours d'expérience</li>
                     <li>Aide d'autres utilisateurs sur la communauté</li>
                 </ul>
             </div>

@@ -76,6 +76,7 @@ def increment_build_number():
 
 # Version actuelle (lecture seule)
 VERSION = get_version()
+__version__ = VERSION  # Alias pour compatibilité avec les imports standards
 
 # Métadonnées du projet
 PROJECT_NAME = "RenExtract"
@@ -317,7 +318,7 @@ DEFAULT_CONFIG = {
     "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_check_ellipsis":True,
     "coherence_check_escape_sequences":True,"coherence_check_percentages":True,"coherence_check_quotations":True,"coherence_check_parentheses":True,
     "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_french_quotes":True,"coherence_check_line_structure":True,
-    "coherence_custom_exclusions":["OK","Menu","Continue","Level"],
+    "coherence_custom_exclusions":{},
     "coherence_excluded_files":"",
     "coherence_auto_open_report":True,
     "realtime_editor_enabled":True,"realtime_monitoring_interval":200,"realtime_auto_backup":True,"realtime_default_language":"french",
@@ -357,7 +358,7 @@ def get_health_message(health_percentage: float) -> str:
         return f"Santé du système: {health_percentage}%"
 
 __all__ = [
-    'VERSION','PROJECT_NAME','AUTHOR','PROJECT_DESCRIPTION','BASE_DIR','FOLDERS','FILE_NAMES','THEMES','WINDOW_CONFIG','SPECIAL_CODES','PROTECTION_ORDER','SUPPORTED_FILES',
+    'VERSION','__version__','PROJECT_NAME','AUTHOR','PROJECT_DESCRIPTION','BASE_DIR','FOLDERS','FILE_NAMES','THEMES','WINDOW_CONFIG','SPECIAL_CODES','PROTECTION_ORDER','SUPPORTED_FILES',
     'MESSAGES','NOTIFICATION_CONFIG','CRITICAL_POPUPS','MESSAGE_PRIORITIES','DEFAULT_CONFIG','LOGGING_CONFIG','HEALTH_CONFIG',
     'get_executable_dir','ensure_folders_exist','ensure_game_structure','validate_game_name','get_health_color','get_health_message'
 ]

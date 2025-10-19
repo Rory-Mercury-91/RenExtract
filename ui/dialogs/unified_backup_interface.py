@@ -16,6 +16,7 @@ from tkinter import ttk, filedialog
 import os
 import shutil
 import datetime
+import zipfile
 from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
@@ -320,7 +321,7 @@ class UnifiedBackupDialog:
             width=20,
             state="readonly",
             font=('Segoe UI', 9),
-            values=["Tous", "🛡️ Sécurité", "🧹 Nettoyage", "📦 Avant RPA", "⚡ Édition temps réel"]
+            values=["Tous", "🛡️ Sécurité", "🧹 Nettoyage", "📦 Avant RPA", "🔗 Avant combinaison", "⚡ Édition temps réel"]
         )
         self.type_combo.pack(anchor='w', fill='x', pady=(0, 5))
         self.type_combo.bind('<<ComboboxSelected>>', self._on_filter_changed)
@@ -370,7 +371,7 @@ class UnifiedBackupDialog:
         headings_config = [
             ('select', "☐", 40),  # Colonne de sélection (texte fixe pour éviter décalage)
             ('game', "Nom du jeu", 200),
-            ('filename', "Nom du fichier", 150),
+            ('filename', "Nom du fichier/dossier", 150),
             ('type', "Type backup", 120),
             ('created', "Date créé", 130),
             ('size', "Taille", 100)
@@ -547,6 +548,7 @@ class UnifiedBackupDialog:
                     BackupType.SECURITY: "Sécurité",
                     BackupType.CLEANUP: "Nettoyage",
                     BackupType.RPA_BUILD: "Avant RPA",
+                    BackupType.BEFORE_COMBINATION: "Avant combinaison",
                     BackupType.REALTIME_EDIT: "Édition temps réel"
                 }.get(self.current_filter_type, str(self.current_filter_type))
                 filter_info.append(f"type: {type_display}")
@@ -576,6 +578,7 @@ class UnifiedBackupDialog:
                     BackupType.SECURITY: "Sécurité",
                     BackupType.CLEANUP: "Nettoyage", 
                     BackupType.RPA_BUILD: "Avant RPA",
+                    BackupType.BEFORE_COMBINATION: "Avant combinaison",
                     BackupType.REALTIME_EDIT: "Édition temps réel"
                 }.get(self.current_filter_type, str(self.current_filter_type))
                 filter_parts.append(f"type: {type_display}")
@@ -871,6 +874,7 @@ class UnifiedBackupDialog:
                 "🛡️ Sécurité": BackupType.SECURITY,
                 "🧹 Nettoyage": BackupType.CLEANUP,
                 "📦 Avant RPA": BackupType.RPA_BUILD,
+                "🔗 Avant combinaison": BackupType.BEFORE_COMBINATION,
                 "⚡ Édition temps réel": BackupType.REALTIME_EDIT
             }
             self.current_filter_type = type_mapping.get(selected_type)
@@ -928,11 +932,37 @@ class UnifiedBackupDialog:
             if not result:
                 return
         
-            target_path = backup.get('source_path')
-            log_message("DEBUG", f"Target path (logs): {target_path}", category="ui_backup")
-        
-            if not target_path or not os.path.exists(target_path):
-                if backup['type'] == BackupType.CLEANUP:
+            # Gestion différente selon le type de sauvegarde
+            backup_path = backup['backup_path']
+            backup_type = backup['type']
+            
+            # Vérifier si c'est un fichier ZIP (sauvegardes de dossier complet)
+            if backup_path.endswith('.zip') and backup_type in [BackupType.CLEANUP, BackupType.RPA_BUILD, BackupType.BEFORE_COMBINATION]:
+                # Pour les archives ZIP, utiliser le chemin source original
+                target_path = backup.get('source_path')
+                log_message("DEBUG", f"Target path original pour ZIP: {target_path}", category="ui_backup")
+                
+                # Si le chemin original n'existe pas, essayer de le reconstruire intelligemment
+                if not target_path or not os.path.exists(target_path):
+                    target_path = self._get_zip_source_path_smart(backup)
+                    log_message("DEBUG", f"Target path reconstruit pour ZIP: {target_path}", category="ui_backup")
+                
+                # Si toujours pas trouvé, demander à l'utilisateur
+                if not target_path:
+                    show_translated_messagebox('info', "Information",
+                                            "Le chemin source original est introuvable.\nVeuillez sélectionner manuellement le dossier de destination.")
+                    self._restore_zip_to_path()
+                    return
+                
+                # Extraire le ZIP vers le dossier cible
+                self._extract_zip_backup(backup_path, target_path)
+                
+            else:
+                # Pour les fichiers individuels (SECURITY, REALTIME_EDIT)
+                target_path = backup.get('source_path')
+                log_message("DEBUG", f"Target path pour fichier (logs): {target_path}", category="ui_backup")
+                
+                if not target_path or not os.path.exists(target_path):
                     if hasattr(self.manager, '_get_source_path_on_demand'):
                         target_path = self.manager._get_source_path_on_demand(backup)
                     
@@ -941,14 +971,17 @@ class UnifiedBackupDialog:
                                                 "Le chemin source original est introuvable.\nVeuillez sélectionner manuellement le fichier de destination.")
                         self._restore_to_path()
                         return
-        
-            import shutil
-            target_dir = os.path.dirname(target_path)
-            if not os.path.exists(target_dir):
-                os.makedirs(target_dir, exist_ok=True)
-        
-            log_message("DEBUG", f"Copie: {backup['backup_path']} -> {target_path}", category="ui_backup")
-            shutil.copy2(backup['backup_path'], target_path)
+                
+                # Gérer les conflits de noms
+                target_path = self._handle_filename_conflict(target_path)
+                
+                import shutil
+                target_dir = os.path.dirname(target_path)
+                if not os.path.exists(target_dir):
+                    os.makedirs(target_dir, exist_ok=True)
+                
+                log_message("DEBUG", f"Copie fichier: {backup_path} -> {target_path}", category="ui_backup")
+                shutil.copy2(backup_path, target_path)
         
             # Supprimer automatiquement la sauvegarde après restauration normale
             try:
@@ -980,6 +1013,394 @@ class UnifiedBackupDialog:
             show_translated_messagebox('error', "Erreur",
                                     "Erreur durant la restauration :\n{error}", error=str(e))
     
+    def _get_zip_source_path(self, backup):
+        """Reconstruit le chemin source pour les sauvegardes ZIP basé sur les métadonnées"""
+        try:
+            backup_type = backup['type']
+            game_name = backup['game_name']
+            file_name = backup.get('file_name', '')
+            
+            # Obtenir le répertoire de travail du projet (pas l'exécutable)
+            project_root = self._get_project_root()
+            
+            # Reconstruire le chemin selon le type de sauvegarde
+            if backup_type == BackupType.CLEANUP:
+                # Pour CLEANUP, c'est généralement le dossier tl du jeu
+                possible_paths = [
+                    os.path.join(project_root, game_name, 'tl'),
+                    os.path.join(project_root, 'tl'),
+                    os.path.join(project_root, game_name, 'translation'),
+                    os.path.join(project_root, game_name),  # Fallback
+                ]
+                
+            elif backup_type == BackupType.RPA_BUILD:
+                # Pour RPA_BUILD, c'est généralement le dossier du jeu ou un dossier spécifique
+                possible_paths = [
+                    os.path.join(project_root, game_name),
+                    os.path.join(project_root, game_name, 'game'),
+                    os.path.join(project_root, game_name, file_name) if file_name else None,
+                    os.path.join(project_root, file_name) if file_name else None,
+                ]
+                
+            elif backup_type == BackupType.BEFORE_COMBINATION:
+                # Pour BEFORE_COMBINATION, c'est généralement le dossier tl/langue
+                possible_paths = [
+                    os.path.join(project_root, game_name, 'tl', file_name) if file_name else None,
+                    os.path.join(project_root, 'tl', file_name) if file_name else None,
+                    os.path.join(project_root, game_name, 'tl'),
+                    os.path.join(project_root, 'tl'),
+                ]
+                
+            else:
+                return None
+            
+            # Filtrer les chemins None et tester l'existence
+            possible_paths = [p for p in possible_paths if p is not None]
+            
+            # D'abord, chercher un chemin existant
+            for path in possible_paths:
+                if os.path.exists(path):
+                    log_message("INFO", f"Chemin source ZIP reconstruit (existant): {path}", category="ui_backup")
+                    return path
+            
+            # Si aucun chemin n'existe, proposer le plus logique et le créer
+            if possible_paths:
+                most_likely = possible_paths[0]
+                log_message("INFO", f"Chemin source ZIP suggéré (à créer): {most_likely}", category="ui_backup")
+                
+                # Créer le dossier s'il n'existe pas
+                try:
+                    os.makedirs(most_likely, exist_ok=True)
+                    log_message("INFO", f"Dossier créé pour restauration ZIP: {most_likely}", category="ui_backup")
+                    return most_likely
+                except Exception as e:
+                    log_message("ATTENTION", f"Impossible de créer le dossier {most_likely}: {e}", category="ui_backup")
+                    return most_likely  # Retourner quand même le chemin
+                
+            return None
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur reconstruction chemin source ZIP: {e}", category="ui_backup")
+            return None
+    
+    def _get_zip_source_path_smart(self, backup):
+        """Reconstruit intelligemment le chemin source pour les sauvegardes ZIP"""
+        try:
+            # D'abord, essayer d'utiliser le chemin source original
+            original_source_path = backup.get('source_path')
+            if original_source_path and os.path.exists(original_source_path):
+                log_message("INFO", f"Chemin source original trouvé: {original_source_path}", category="ui_backup")
+                return original_source_path
+            
+            # Si le chemin original n'existe pas, essayer de le reconstruire
+            backup_type = backup['type']
+            game_name = backup['game_name']
+            file_name = backup.get('file_name', '')
+            
+            # Extraire le répertoire racine du chemin original
+            if original_source_path:
+                # Trouver le répertoire racine du projet depuis le chemin original
+                project_root = self._extract_project_root_from_source_path(original_source_path)
+                if project_root:
+                    log_message("INFO", f"Projet racine extrait du chemin source: {project_root}", category="ui_backup")
+                else:
+                    project_root = self._get_project_root()
+            else:
+                project_root = self._get_project_root()
+            
+            # Reconstruire le chemin selon le type de sauvegarde
+            if backup_type == BackupType.CLEANUP:
+                possible_paths = [
+                    os.path.join(project_root, game_name, 'tl'),
+                    os.path.join(project_root, 'tl'),
+                    os.path.join(project_root, game_name, 'translation'),
+                    os.path.join(project_root, game_name),
+                ]
+                
+            elif backup_type == BackupType.RPA_BUILD:
+                possible_paths = [
+                    os.path.join(project_root, game_name),
+                    os.path.join(project_root, game_name, 'game'),
+                    os.path.join(project_root, game_name, file_name) if file_name else None,
+                    os.path.join(project_root, file_name) if file_name else None,
+                ]
+                
+            elif backup_type == BackupType.BEFORE_COMBINATION:
+                possible_paths = [
+                    os.path.join(project_root, game_name, 'tl', file_name) if file_name else None,
+                    os.path.join(project_root, 'tl', file_name) if file_name else None,
+                    os.path.join(project_root, game_name, 'tl'),
+                    os.path.join(project_root, 'tl'),
+                ]
+                
+            else:
+                return None
+            
+            # Filtrer les chemins None
+            possible_paths = [p for p in possible_paths if p is not None]
+            
+            # D'abord, chercher un chemin existant
+            for path in possible_paths:
+                if os.path.exists(path):
+                    log_message("INFO", f"Chemin source ZIP reconstruit (existant): {path}", category="ui_backup")
+                    return path
+            
+            # Si aucun chemin n'existe, proposer le plus logique et le créer
+            if possible_paths:
+                most_likely = possible_paths[0]
+                log_message("INFO", f"Chemin source ZIP suggéré (à créer): {most_likely}", category="ui_backup")
+                
+                # Créer le dossier s'il n'existe pas
+                try:
+                    os.makedirs(most_likely, exist_ok=True)
+                    log_message("INFO", f"Dossier créé pour restauration ZIP: {most_likely}", category="ui_backup")
+                    return most_likely
+                except Exception as e:
+                    log_message("ATTENTION", f"Impossible de créer le dossier {most_likely}: {e}", category="ui_backup")
+                    return most_likely  # Retourner quand même le chemin
+                
+            return None
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur reconstruction chemin source ZIP: {e}", category="ui_backup")
+            return None
+    
+    def _extract_project_root_from_source_path(self, source_path):
+        """Extrait le répertoire racine du projet depuis le chemin source original"""
+        try:
+            # Analyser le chemin source pour trouver le projet racine
+            # Exemple: D:\02 - Jeux VN\02 - A traduire\WastelandGuardians-0.6-pc\game\tl\french
+            # → Projet racine: D:\02 - Jeux VN\02 - A traduire\WastelandGuardians-0.6-pc
+            
+            path_parts = source_path.replace('\\', '/').split('/')
+            
+            # Chercher les indicateurs de fin de projet
+            project_indicators = ['game', 'tl', 'renpy']
+            
+            for i, part in enumerate(path_parts):
+                if part in project_indicators:
+                    # Le projet racine est le dossier parent de cet indicateur
+                    project_root = '/'.join(path_parts[:i])
+                    if os.path.exists(project_root):
+                        log_message("INFO", f"Projet racine extrait: {project_root}", category="ui_backup")
+                        return project_root
+            
+            # Si aucun indicateur trouvé, essayer de trouver le dossier contenant le jeu
+            for i in range(len(path_parts) - 1, -1, -1):
+                test_path = '/'.join(path_parts[:i+1])
+                if os.path.exists(test_path):
+                    # Vérifier si ce dossier contient des projets Ren'Py
+                    if self._is_project_directory(test_path):
+                        log_message("INFO", f"Projet racine trouvé par analyse: {test_path}", category="ui_backup")
+                        return test_path
+            
+            return None
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur extraction projet racine depuis {source_path}: {e}", category="ui_backup")
+            return None
+    
+    def _get_project_root(self):
+        """Détermine le répertoire racine du projet (pas l'exécutable)"""
+        try:
+            # Méthode 1: Essayer de trouver le projet via le contrôleur principal
+            if hasattr(self, 'manager') and hasattr(self.manager, 'app_controller'):
+                app_controller = self.manager.app_controller
+                if hasattr(app_controller, 'original_path') and app_controller.original_path:
+                    # Utiliser le chemin du projet actuel
+                    current_dir = os.path.dirname(app_controller.original_path)
+                    project_root = self._find_project_root_from_path(current_dir)
+                    if project_root:
+                        log_message("INFO", f"Projet racine trouvé via app_controller: {project_root}", category="ui_backup")
+                        return project_root
+            
+            # Méthode 2: Chercher dans le répertoire courant
+            current_dir = os.getcwd()
+            project_root = self._find_project_root_from_path(current_dir)
+            if project_root:
+                log_message("INFO", f"Projet racine trouvé via répertoire courant: {project_root}", category="ui_backup")
+                return project_root
+            
+            # Méthode 3: Chercher dans le répertoire parent
+            parent_dir = os.path.dirname(current_dir)
+            project_root = self._find_project_root_from_path(parent_dir)
+            if project_root:
+                log_message("INFO", f"Projet racine trouvé via répertoire parent: {project_root}", category="ui_backup")
+                return project_root
+            
+            # Méthode 4: Fallback - utiliser le répertoire courant
+            log_message("ATTENTION", f"Aucun projet racine trouvé, utilisation du répertoire courant: {current_dir}", category="ui_backup")
+            return current_dir
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur détermination projet racine: {e}", category="ui_backup")
+            return os.getcwd()
+    
+    def _get_project_root(self):
+        """Détermine le répertoire racine du projet (pas l'exécutable)"""
+        try:
+            # Méthode 1: Essayer de trouver le projet via le contrôleur principal
+            if hasattr(self, 'manager') and hasattr(self.manager, 'app_controller'):
+                app_controller = self.manager.app_controller
+                if hasattr(app_controller, 'original_path') and app_controller.original_path:
+                    # Utiliser le chemin du projet actuel
+                    current_dir = os.path.dirname(app_controller.original_path)
+                    project_root = self._find_project_root_from_path(current_dir)
+                    if project_root:
+                        log_message("INFO", f"Projet racine trouvé via app_controller: {project_root}", category="ui_backup")
+                        return project_root
+            
+            # Méthode 2: Utiliser le répertoire de travail de RenExtract
+            # Dans la plupart des cas, RenExtract est lancé depuis le dossier du projet
+            current_dir = os.getcwd()
+            
+            # Vérifier si le répertoire courant contient des projets Ren'Py
+            if self._is_project_directory(current_dir):
+                log_message("INFO", f"Répertoire courant est un projet: {current_dir}", category="ui_backup")
+                return current_dir
+            
+            # Méthode 3: Chercher dans le répertoire parent
+            parent_dir = os.path.dirname(current_dir)
+            if self._is_project_directory(parent_dir):
+                log_message("INFO", f"Projet racine trouvé dans le parent: {parent_dir}", category="ui_backup")
+                return parent_dir
+            
+            # Méthode 4: Fallback - utiliser le répertoire courant
+            log_message("ATTENTION", f"Aucun projet racine trouvé, utilisation du répertoire courant: {current_dir}", category="ui_backup")
+            return current_dir
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur détermination projet racine: {e}", category="ui_backup")
+            return os.getcwd()
+    
+    def _is_project_directory(self, directory):
+        """Vérifie si un répertoire contient des projets Ren'Py"""
+        try:
+            if not os.path.exists(directory):
+                return False
+            
+            # Chercher des indicateurs de projets Ren'Py
+            indicators = ["game", "tl", "renpy"]
+            
+            # Vérifier le répertoire courant
+            for indicator in indicators:
+                if os.path.exists(os.path.join(directory, indicator)):
+                    return True
+            
+            # Vérifier les sous-répertoires (pour détecter plusieurs projets)
+            try:
+                for item in os.listdir(directory):
+                    item_path = os.path.join(directory, item)
+                    if os.path.isdir(item_path):
+                        for indicator in indicators:
+                            if os.path.exists(os.path.join(item_path, indicator)):
+                                return True
+            except (PermissionError, OSError):
+                pass
+            
+            return False
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur vérification projet dans {directory}: {e}", category="ui_backup")
+            return False
+    
+    def _find_project_root_from_path(self, start_path):
+        """Trouve le projet racine en remontant depuis un chemin donné"""
+        try:
+            test_dir = start_path
+            for _ in range(10):  # Max 10 niveaux
+                if self._is_project_directory(test_dir):
+                    return test_dir
+                
+                parent = os.path.dirname(test_dir)
+                if parent == test_dir:  # Arrivé à la racine
+                    break
+                test_dir = parent
+            
+            return None
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur recherche projet racine depuis {start_path}: {e}", category="ui_backup")
+            return None
+    
+    def _handle_filename_conflict(self, target_path):
+        """Gère les conflits de noms de fichiers en ajoutant un suffixe numérique"""
+        if not os.path.exists(target_path):
+            return target_path
+        
+        base_path = os.path.splitext(target_path)[0]
+        extension = os.path.splitext(target_path)[1]
+        
+        counter = 1
+        while True:
+            new_path = f"{base_path}_restaure_{counter}{extension}"
+            if not os.path.exists(new_path):
+                log_message("INFO", f"Conflit de nom résolu: {target_path} -> {new_path}", category="ui_backup")
+                return new_path
+            counter += 1
+    
+    def _extract_zip_backup(self, zip_path, target_dir):
+        """Extrait une sauvegarde ZIP vers le dossier cible"""
+        import zipfile
+        import shutil
+        
+        try:
+            # Créer un dossier temporaire pour l'extraction
+            temp_dir = os.path.join(os.path.dirname(zip_path), f"temp_extract_{os.path.basename(zip_path)}")
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            # Copier le contenu du dossier temporaire vers la destination
+            for item in os.listdir(temp_dir):
+                src = os.path.join(temp_dir, item)
+                dst = os.path.join(target_dir, item)
+                
+                if os.path.isdir(src):
+                    if os.path.exists(dst):
+                        shutil.rmtree(dst)
+                    shutil.copytree(src, dst)
+                else:
+                    if os.path.exists(dst):
+                        os.remove(dst)
+                    shutil.copy2(src, dst)
+            
+            # Nettoyer le dossier temporaire
+            shutil.rmtree(temp_dir)
+            
+            log_message("INFO", f"ZIP extrait avec succès: {zip_path} -> {target_dir}", category="ui_backup")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur extraction ZIP: {e}", category="ui_backup")
+            raise e
+    
+    def _restore_zip_to_path(self):
+        """Restaure un ZIP vers un dossier spécifique"""
+        backup = self._get_selected_backup()
+        if not backup:
+            show_translated_messagebox('warning', "Avertissement", 
+                                    "Veuillez sélectionner une sauvegarde à restaurer.")
+            return
+        
+        try:
+            target_dir = filedialog.askdirectory(
+                title="Sélectionner le dossier de destination pour l'archive ZIP"
+            )
+            
+            if not target_dir:
+                return
+            
+            self._extract_zip_backup(backup['backup_path'], target_dir)
+            
+            # Pas de popup de confirmation - juste le statut
+            self._update_status("✅ Restauration ZIP vers dossier personnalisé terminée")
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur restauration ZIP vers chemin: {e}", category="ui_backup")
+            self._update_status("❌ Erreur lors de la restauration ZIP")
+            show_translated_messagebox('error', "Erreur", 
+                                    "Erreur durant la restauration ZIP :\n{error}", error=str(e))
+    
     def _restore_to_path(self):
         """Restaure vers un chemin spécifique"""
         backup = self._get_selected_backup()
@@ -989,6 +1410,15 @@ class UnifiedBackupDialog:
             return
         
         try:
+            backup_path = backup['backup_path']
+            
+            # Gestion différente selon le type de fichier
+            if backup_path.endswith('.zip'):
+                # Pour les ZIP, demander un dossier
+                self._restore_zip_to_path()
+                return
+            
+            # Pour les fichiers individuels
             original_filename = backup.get('source_filename', 'fichier_restaure')
             
             if not original_filename.endswith('.rpy'):
@@ -1010,7 +1440,7 @@ class UnifiedBackupDialog:
             if target_dir and not os.path.exists(target_dir):
                 os.makedirs(target_dir, exist_ok=True)
             
-            shutil.copy2(backup['backup_path'], target_path)
+            shutil.copy2(backup_path, target_path)
             
             # Pas de popup de confirmation - juste le statut
             self._update_status("✅ Restauration vers chemin personnalisé terminée")

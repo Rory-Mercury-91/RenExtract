@@ -357,6 +357,26 @@ def show_tutorial(parent=None, language='fr'):
                 generator = TutorialGenerator()
                 html_path = generator.generate_tutorial_html(VERSION)
                 
+                # Attendre que le téléchargement des images soit terminé
+                # Note: Le téléchargement a normalement déjà été lancé au démarrage de l'app
+                if hasattr(generator, 'download_complete') and hasattr(generator, 'download_in_progress'):
+                    import time
+                    wait_time = 0
+                    max_wait = 10  # Maximum 10 secondes (réduit car pré-chargement au démarrage)
+                    
+                    # Afficher un message si le téléchargement est encore en cours
+                    if generator.download_in_progress:
+                        log_message("INFO", "⏳ Finalisation du téléchargement des images...", "init_tutorial")
+                    
+                    while generator.download_in_progress and wait_time < max_wait:
+                        time.sleep(0.5)
+                        wait_time += 0.5
+                    
+                    if wait_time >= max_wait:
+                        log_message("ATTENTION", "Timeout téléchargement images, ouverture du tutoriel avec images disponibles", "init_tutorial")
+                    elif generator.download_complete:
+                        log_message("DEBUG", "✅ Images prêtes", "init_tutorial")
+                
                 if html_path and os.path.exists(html_path):
                     try:
                         html_url = f"file:///{html_path.replace(os.sep, '/')}"

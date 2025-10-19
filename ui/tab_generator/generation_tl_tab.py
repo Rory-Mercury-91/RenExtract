@@ -14,6 +14,7 @@ Onglet de génération de traductions Ren'Py
 import os
 import tkinter as tk
 from tkinter import ttk
+from tkinter import font as tkfont
 import platform
 from pathlib import Path
 from ui.themes import theme_manager
@@ -286,32 +287,97 @@ def update_font_preview_fixed(main_interface):
         
         preview_updated = False
         
-        # Méthode 1: Police système standard par nom
+        # Détecter si c'est une police personnalisée (depuis FontManager)
+        is_custom_font = False
+        custom_font_path = None
+        try:
+            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            font_manager = FontManager(tools_dir)
+            custom_font_path = font_manager.get_font_for_project(selected_font)
+            is_custom_font = custom_font_path and Path(custom_font_path).exists()
+            if is_custom_font:
+                log_message("DEBUG", f"Police personnalisée détectée: {selected_font} -> {custom_font_path}", category="renpy_generator_tl")
+        except:
+            pass
+        
+        # Méthode 1: Police personnalisée avec rendu d'image via PIL/Pillow (PRIORITAIRE)
+        if not preview_updated and is_custom_font and custom_font_path:
+            try:
+                log_message("DEBUG", f"🖼️ Tentative création image pour police: {selected_font} ({custom_font_path})", category="renpy_generator_tl")
+                
+                # Utiliser PIL/Pillow pour créer une image avec la police personnalisée
+                try:
+                    from PIL import Image, ImageDraw, ImageFont, ImageTk
+                    
+                    # Texte de prévisualisation
+                    preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
+                    
+                    # Charger la police personnalisée avec une taille plus grande pour meilleure qualité
+                    pil_font = ImageFont.truetype(custom_font_path, 16)
+                    log_message("DEBUG", f"Police PIL chargée: {custom_font_path}", category="renpy_generator_tl")
+                    
+                    # Créer une image temporaire pour calculer la taille du texte
+                    temp_img = Image.new('RGB', (1, 1), 'white')
+                    temp_draw = ImageDraw.Draw(temp_img)
+                    bbox = temp_draw.textbbox((0, 0), preview_text, font=pil_font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    
+                    log_message("DEBUG", f"Dimensions texte: {text_width}x{text_height}", category="renpy_generator_tl")
+                    
+                    # Créer l'image finale avec une taille appropriée et marges
+                    img_width = min(text_width + 40, 650)  # Max 650px avec marges
+                    img_height = max(text_height + 30, 50)  # Minimum 50px de hauteur
+                    img = Image.new('RGB', (img_width, img_height), 'white')
+                    draw = ImageDraw.Draw(img)
+                    
+                    # Dessiner le texte centré verticalement, aligné à gauche avec marge
+                    x = 10  # Marge gauche
+                    y = (img_height - text_height) // 2
+                    draw.text((x, y), preview_text, font=pil_font, fill='black')
+                    
+                    log_message("DEBUG", f"Image créée: {img_width}x{img_height}, texte à position ({x}, {y})", category="renpy_generator_tl")
+                    
+                    # Convertir en PhotoImage pour Tkinter
+                    photo = ImageTk.PhotoImage(img)
+                    
+                    # Mettre à jour le label avec l'image
+                    main_interface.preview_text_label.config(image=photo, text="", compound='center')
+                    main_interface.preview_text_label.image = photo  # Garder une référence
+                    preview_updated = True
+                    log_message("INFO", f"✅ Aperçu mis à jour avec police personnalisée (image): {selected_font}", category="renpy_generator_tl")
+                except ImportError as ie:
+                    log_message("ATTENTION", f"PIL/Pillow non disponible pour l'aperçu de: {selected_font} - {ie}", category="renpy_generator_tl")
+                except Exception as e2:
+                    log_message("ERREUR", f"Erreur création image pour {selected_font}: {e2}", category="renpy_generator_tl")
+                    import traceback
+                    log_message("DEBUG", f"Traceback: {traceback.format_exc()}", category="renpy_generator_tl")
+            except Exception as e:
+                log_message("ERREUR", f"Échec méthode police personnalisée pour {selected_font}: {e}", category="renpy_generator_tl")
+                import traceback
+                log_message("DEBUG", f"Traceback: {traceback.format_exc()}", category="renpy_generator_tl")
+        
+        # Méthode 2: Police système standard par nom
         if not preview_updated:
             try:
+                # Restaurer le texte si une image était affichée
+                preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
+                main_interface.preview_text_label.config(image="", text=preview_text)
+                
                 # Essayer directement avec le nom de police
                 main_interface.preview_text_label.config(font=(selected_font, 11))
                 preview_updated = True
+                log_message("DEBUG", f"✅ Aperçu mis à jour avec police système: {selected_font}", category="renpy_generator_tl")
             except Exception as e:
                 log_message("DEBUG", f"Échec méthode nom système pour {selected_font}: {e}", category="renpy_generator_tl")
-        
-        # Méthode 2: Gestionnaire centralisé avec chemin
-        if not preview_updated:
-            try:
-                tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
-                font_manager = FontManager(tools_dir)
-                font_path = font_manager.get_font_for_project(selected_font)
-                
-                if font_path and Path(font_path).exists():
-                    # Essayer avec le chemin complet
-                    main_interface.preview_text_label.config(font=(font_path, 11))
-                    preview_updated = True
-            except Exception as e:
-                log_message("DEBUG", f"Échec méthode gestionnaire centralisé pour {selected_font}: {e}", category="renpy_generator_tl")
         
         # Méthode 3: Polices courantes par nom alternatif
         if not preview_updated:
             try:
+                # Restaurer le texte si une image était affichée
+                preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
+                main_interface.preview_text_label.config(image="", text=preview_text)
+                
                 # Essayer avec des noms alternatifs courants
                 font_alternatives = {
                     'Arial': ['Arial', 'Liberation Sans', 'DejaVu Sans'],
@@ -327,6 +393,7 @@ def update_font_preview_fixed(main_interface):
                     try:
                         main_interface.preview_text_label.config(font=(alt_font, 11))
                         preview_updated = True
+                        log_message("DEBUG", f"✅ Aperçu mis à jour avec police alternative {alt_font} pour: {selected_font}", category="renpy_generator_tl")
                         break
                     except:
                         continue
@@ -336,6 +403,10 @@ def update_font_preview_fixed(main_interface):
         # Méthode 4: Fallback Arial/Sans-serif
         if not preview_updated:
             try:
+                # Restaurer le texte si une image était affichée
+                preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
+                main_interface.preview_text_label.config(image="", text=preview_text)
+                
                 fallback_fonts = ['Arial', 'sans-serif', 'DejaVu Sans', 'Liberation Sans', 'Helvetica']
                 for fallback in fallback_fonts:
                     try:
@@ -351,6 +422,10 @@ def update_font_preview_fixed(main_interface):
         # Méthode 5: Dernier recours - police par défaut du système
         if not preview_updated:
             try:
+                # Restaurer le texte si une image était affichée
+                preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
+                main_interface.preview_text_label.config(image="", text=preview_text)
+                
                 main_interface.preview_text_label.config(font=("TkDefaultFont", 11))
                 log_message("ATTENTION", f"Aperçu avec police par défaut système pour : {selected_font}", category="renpy_generator_tl")
             except:
@@ -369,7 +444,8 @@ def update_font_preview_fixed(main_interface):
         # Dernier recours absolu
         try:
             if hasattr(main_interface, 'preview_text_label') and main_interface.preview_text_label:
-                main_interface.preview_text_label.config(font=("TkDefaultFont", 11))
+                preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
+                main_interface.preview_text_label.config(image="", text=preview_text, font=("TkDefaultFont", 11))
         except:
             pass
 
@@ -1177,7 +1253,7 @@ def start_generation_simple(main_interface):
             'create_developer_console': False,
             'create_common_file': False,
             'create_screen_file': False,
-            'auto_open': getattr(main_interface, 'auto_open_var', tk.BooleanVar(value=True)).get()
+            'auto_open': getattr(main_interface, 'auto_open_var', tk.BooleanVar(value=False)).get()
         }
         
         translation_business = main_interface._get_translation_business()
@@ -1241,7 +1317,7 @@ def start_generation_with_checked_options(main_interface):
             'create_developer_console': console_checked,
             'create_common_file': common_checked,
             'create_screen_file': screen_checked,
-            'auto_open': getattr(main_interface, 'auto_open_var', tk.BooleanVar(value=True)).get(),
+            'auto_open': getattr(main_interface, 'auto_open_var', tk.BooleanVar(value=False)).get(),
             # Options avancées de screen preferences
             'advanced_screen_options': advanced_options
         }

@@ -5,7 +5,10 @@ et ouvrir un fichier à une ligne donnée dans l'éditeur choisi.
 - Démarrage:  python -m ui.shared.editor_manager_server
 - Endpoints:
     GET http://127.0.0.1:8765/open?file=ABSOLUTE_PATH&line=NUMBER
-    GET http://127.0.0.1:8765/focus              (nouveau)
+    GET http://127.0.0.1:8765/focus              
+    POST http://127.0.0.1:8765/api/coherence/exclude   (gestion exclusions)
+    DELETE http://127.0.0.1:8765/api/coherence/exclude (gestion exclusions)
+    GET http://127.0.0.1:8765/api/coherence/exclusions (liste exclusions)
 """
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -65,13 +68,35 @@ def _call_focus_with_debounce():
 class _Handler(BaseHTTPRequestHandler):
     def _cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
 
     def do_OPTIONS(self):
         self.send_response(204)
         self._cors()
         self.end_headers()
+    
+    def _read_request_body(self):
+        """Lit le corps de la requête JSON"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > 0:
+                body = self.rfile.read(content_length)
+                return json.loads(body.decode('utf-8'))
+            return {}
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lecture body requête: {e}", category="editor_opener")
+            return {}
+    
+    def _send_json_response(self, data, status_code=200):
+        """Envoie une réponse JSON"""
+        payload = json.dumps(data).encode("utf-8")
+        self.send_response(status_code)
+        self._cors()
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -87,6 +112,29 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
+            return
+        # ======================================================
+        
+        # ===== Endpoint: /api/coherence/exclusions (GET) =====
+        if parsed.path == "/api/coherence/exclusions":
+            try:
+                from infrastructure.config.config import config_manager
+                
+                # 🆕 Récupérer le projet depuis les query params
+                qs = parse_qs(parsed.query)
+                project_path = (qs.get("project", [""])[0] or "").strip()
+                
+                if project_path:
+                    # Récupérer les exclusions pour ce projet uniquement
+                    exclusions = config_manager.get_coherence_exclusions(project_path)
+                else:
+                    # Récupérer toutes les exclusions (dict par projet)
+                    exclusions = config_manager.get_coherence_exclusions()
+                
+                self._send_json_response({'ok': True, 'exclusions': exclusions})
+            except Exception as e:
+                log_message("ERREUR", f"Erreur récupération exclusions: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
             return
         # ======================================================
 
@@ -127,6 +175,87 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+
+    def do_POST(self):
+        """Gère les requêtes POST (ajout d'exclusions)"""
+        parsed = urlparse(self.path)
+        
+        # ===== Endpoint: /api/coherence/exclude (POST) =====
+        if parsed.path == "/api/coherence/exclude":
+            try:
+                from core.services.tools.coherence_checker_business import add_custom_exclusion
+                
+                data = self._read_request_body()
+                exclusion_text = data.get('text', '').strip()
+                file_path = data.get('file', '').strip()  # 🆕
+                line = data.get('line', 0)  # 🆕
+                project_path = data.get('project', '').strip()  # 🆕
+                
+                # 🆕 LOG DE DÉBOGAGE
+                log_message("DEBUG", f"POST /exclude - Données reçues: text={bool(exclusion_text)}, file={repr(file_path)}, line={line}, project={repr(project_path)}", category="coherence_api")
+                
+                if not exclusion_text or not file_path or not project_path or line == 0:
+                    log_message("ERREUR", f"Données incomplètes: text={bool(exclusion_text)}, file={bool(file_path)}, project={bool(project_path)}, line={line}", category="coherence_api")
+                    self._send_json_response({'ok': False, 'error': 'Données incomplètes'}, 400)
+                    return
+                
+                # Ajouter l'exclusion
+                success = add_custom_exclusion(project_path, file_path, line, exclusion_text)
+                
+                if success:
+                    log_message("INFO", f"✅ Exclusion ajoutée: {file_path}:{line}", category="coherence_exclusion")
+                    self._send_json_response({'ok': True, 'message': 'Exclusion ajoutée'})
+                else:
+                    # Déjà présente
+                    self._send_json_response({'ok': True, 'message': 'Exclusion déjà présente'})
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur ajout exclusion: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
+        # Endpoint non trouvé
+        self.send_response(404)
+        self._cors()
+        self.end_headers()
+    
+    def do_DELETE(self):
+        """Gère les requêtes DELETE (suppression d'exclusions)"""
+        parsed = urlparse(self.path)
+        
+        # ===== Endpoint: /api/coherence/exclude (DELETE) =====
+        if parsed.path == "/api/coherence/exclude":
+            try:
+                from core.services.tools.coherence_checker_business import remove_custom_exclusion
+                
+                data = self._read_request_body()
+                exclusion_text = data.get('text', '').strip()
+                file_path = data.get('file', '').strip()  # 🆕
+                line = data.get('line', 0)  # 🆕
+                project_path = data.get('project', '').strip()  # 🆕
+                
+                if not exclusion_text or not file_path or not project_path or line == 0:
+                    self._send_json_response({'ok': False, 'error': 'Données incomplètes'}, 400)
+                    return
+                
+                # Supprimer l'exclusion
+                success = remove_custom_exclusion(project_path, file_path, line, exclusion_text)
+                
+                if success:
+                    log_message("INFO", f"🗑️ Exclusion retirée: {file_path}:{line}", category="coherence_exclusion")
+                    self._send_json_response({'ok': True, 'message': 'Exclusion retirée'})
+                else:
+                    self._send_json_response({'ok': False, 'error': 'Exclusion non trouvée'}, 404)
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur suppression exclusion: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
+        # Endpoint non trouvé
+        self.send_response(404)
+        self._cors()
+        self.end_headers()
 
     # Silence default logging
     def log_message(self, format, *args):

@@ -1266,7 +1266,7 @@ class RPABuilder:
         return result
 
     def _backup_files_before_rpa_build(self, source_folder: str, language: str) -> Dict[str, Any]:
-        """Sauvegarde tous les fichiers qui seront inclus dans le RPA"""
+        """Sauvegarde tous les fichiers qui seront inclus dans le RPA en utilisant une archive ZIP"""
         result = {'success': True, 'warnings': [], 'backed_up_count': 0, 'backup_paths': []}
         
         try:
@@ -1290,38 +1290,28 @@ class RPABuilder:
                 "**.psd", "**.txt"  # Sources exclues
             ]
             
-            log_message("INFO", f"Début backup des fichiers pour RPA {language}", category="renpy_generator_rpa")
+            log_message("INFO", f"Début backup ZIP des fichiers pour RPA {language}", category="renpy_generator_rpa")
             
-            # Parcourir récursivement le dossier source (identique à la logique d'archivage)
-            for root, dirs, files in os.walk(source_folder):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    
-                    # Vérifier les patterns d'inclusion/exclusion (même logique que l'archivage)
-                    if self._should_include_file(file, include_patterns, exclude_patterns):
-                        try:
-                            # Créer le backup avec le type RPA_BUILD
-                            backup_result = backup_manager.create_backup(
-                                file_path, 
-                                BackupType.RPA_BUILD,
-                                f"Sauvegarde avant construction RPA {language}"
-                            )
-                            
-                            if backup_result['success']:
-                                result['backed_up_count'] += 1
-                                result['backup_paths'].append(backup_result['backup_path'])
-                                log_message("DEBUG", f"Backup créé: {file} -> {backup_result['backup_id']}", category="renpy_generator_rpa")
-                            else:
-                                warning = f"Échec backup {file}: {backup_result.get('error', 'erreur inconnue')}"
-                                result['warnings'].append(warning)
-                                log_message("ATTENTION", warning, category="renpy_generator_rpa")
-                                
-                        except Exception as e:
-                            warning = f"Erreur backup {file}: {e}"
-                            result['warnings'].append(warning)
-                            log_message("ATTENTION", warning, category="renpy_generator_rpa")
+            # Créer une sauvegarde ZIP complète du dossier source
+            backup_result = backup_manager.create_zip_backup(
+                source_folder,
+                BackupType.RPA_BUILD,
+                f"Sauvegarde ZIP avant construction RPA {language}",
+                include_patterns=include_patterns,
+                exclude_patterns=exclude_patterns
+            )
             
-            log_message("INFO", f"Backup RPA terminé: {result['backed_up_count']} fichiers sauvegardés, {len(result['warnings'])} avertissements", category="renpy_generator_rpa")
+            if backup_result['success']:
+                result['backed_up_count'] = backup_result['files_count']
+                result['backup_paths'].append(backup_result['backup_path'])
+                result['total_size'] = backup_result['total_size']
+                log_message("INFO", f"Backup ZIP créé: {backup_result['files_count']} fichiers dans {backup_result['backup_path']}", category="renpy_generator_rpa")
+            else:
+                warning = f"Échec backup ZIP: {backup_result.get('error', 'erreur inconnue')}"
+                result['warnings'].append(warning)
+                log_message("ATTENTION", warning, category="renpy_generator_rpa")
+            
+            log_message("INFO", f"Backup ZIP RPA terminé: {result['backed_up_count']} fichiers sauvegardés, {len(result['warnings'])} avertissements", category="renpy_generator_rpa")
             
             # Si aucun fichier n'a été sauvegardé, c'est une situation normale possible
             if result['backed_up_count'] == 0:
@@ -1329,7 +1319,7 @@ class RPABuilder:
             
         except Exception as e:
             result['success'] = False
-            error_msg = f"Erreur backup RPA: {e}"
+            error_msg = f"Erreur backup ZIP RPA: {e}"
             result['warnings'].append(error_msg)
             log_message("ERREUR", error_msg, category="renpy_generator_rpa")
         
