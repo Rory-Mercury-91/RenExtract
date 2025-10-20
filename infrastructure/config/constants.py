@@ -313,7 +313,7 @@ DEFAULT_CONFIG = {
     "html_auto_refresh_seconds": 30,
     "extraction_detect_duplicates":True,"default_save_mode":"overwrite",
     "extraction_excluded_files":"",
-    "reconstruction_auto_check_untranslated":False,
+    "reconstruction_auto_check_untranslated":True,
     "cleanup_excluded_files":"common.rpy",
     "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_check_ellipsis":True,
     "coherence_check_escape_sequences":True,"coherence_check_percentages":True,"coherence_check_quotations":True,"coherence_check_parentheses":True,
