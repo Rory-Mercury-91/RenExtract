@@ -212,6 +212,7 @@ class HtmlCoherenceReportGenerator:
               border: 1px solid var(--sep); background: rgba(13,110,253,0.12);
               cursor: pointer; user-select: none;
               color: var(--fg); /* Utilise la couleur de texte du thème */
+              order: 3;
           }
           .open-in-editor:hover { 
               background: rgba(13,110,253,0.18); 
@@ -221,7 +222,7 @@ class HtmlCoherenceReportGenerator:
               width: 14px; height: 14px; opacity: 0.9; 
               color: inherit; /* L'icône hérite de la couleur du texte */
           }
-          .issue-line { font-weight: bold; color: var(--warning); margin-bottom: 8px; }
+          .issue-line { font-weight: bold; color: var(--warning); margin: 0; order: 1; }
           .issue-description { margin-bottom: 12px; color: var(--fg); }
           
           /* Style pour les lignes enregistrées (état persistant) */
@@ -246,6 +247,8 @@ class HtmlCoherenceReportGenerator:
             font-size: 0.85rem;
             font-weight: 600;
             margin-left: 10px;
+            margin-right: auto;
+            order: 2;
           }
           
           .content-comparison {
@@ -1605,14 +1608,14 @@ class HtmlCoherenceReportGenerator:
                 """
         
         # 🆕 Interface d'édition en ligne (pour tous les types d'erreurs)
-        # Pré-remplir avec le contenu NEW (la version corrigée/traduite)
-        # Pour les variables incohérentes, on utilise NEW qui est le contenu sans erreur
-        edit_value = issue.get('new_content', '') or issue.get('old_content', '')
+        # Pré-remplir avec le contenu OLD (la version originale à corriger)
+        # L'utilisateur corrige OLD pour qu'il devienne conforme
+        edit_value = issue.get('old_content', '')
         # Échapper pour l'attribut HTML mais pas pour le contenu du textarea
         escaped_edit_value = _html.escape(edit_value) if edit_value else ''
         
         edit_interface_html = f"""
-        <div class="edit-interface" id="edit-{unique_id}" style="margin-top: 15px; padding: 15px; background: rgba(13,110,253,0.15); border-radius: 8px; border: 2px solid rgba(13,110,253,0.5);">
+        <div class="edit-interface" id="edit-{unique_id}" style="margin-top: 15px; padding: 15px; background: rgba(13,110,253,0.08); border-radius: 8px; border: 1px solid rgba(13,110,253,0.3);">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                 <span class="exclusion-status" id="status-{unique_id}" style="display: none; color: var(--success); font-weight: 500;"></span>
             </div>
@@ -1622,14 +1625,14 @@ class HtmlCoherenceReportGenerator:
                     class="edit-field"
                     data-file="{escaped_file}"
                     data-line="{line}"
-                    style="flex: 1; padding: 10px; border: 2px solid #0d6efd; border-radius: 6px; background: rgba(255,255,255,0.05); color: var(--fg); font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; min-height: 80px; resize: vertical;"
+                    style="flex: 1; padding: 10px; border: 1px solid var(--sep); border-radius: 6px; background: var(--bg); color: var(--fg); font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; min-height: 80px; resize: vertical;"
                     placeholder="Entrez la traduction corrigée..."
                     title="Modifiez le texte ici puis cliquez sur Enregistrer"
                 >{escaped_edit_value}</textarea>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <button type="button" class="translate-btn btn" id="translate-{unique_id}"
                         data-edit-field="editField-{unique_id}"
-                        style="padding: 8px 12px; background: #0d6efd; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; font-weight: 600;"
+                        style="padding: 8px 12px; background: var(--info); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;"
                         title="Traduire automatiquement avec le service sélectionné">
                         🌐 Traduire
                     </button>
@@ -1638,7 +1641,7 @@ class HtmlCoherenceReportGenerator:
                         data-file="{escaped_file}"
                         data-line="{line}"
                         data-status="status-{unique_id}"
-                        style="padding: 8px 12px; background: #51cf66; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; font-weight: 600;"
+                        style="padding: 8px 12px; background: var(--success); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;"
                         title="Enregistrer cette modification">
                         💾 Enregistrer
                     </button>
