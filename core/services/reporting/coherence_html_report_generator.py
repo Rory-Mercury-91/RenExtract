@@ -484,6 +484,40 @@ class HtmlCoherenceReportGenerator:
                 }}
             }}
             
+            // Afficher un message global dans le header
+            function showGlobalMessage(message, type = 'info', duration = 3000) {{
+                const msgDiv = document.getElementById('globalMessage');
+                if (!msgDiv) return;
+                
+                // Définir le style selon le type
+                let bgColor, borderColor;
+                if (type === 'success') {{
+                    bgColor = 'rgba(40, 167, 69, 0.15)';
+                    borderColor = '#28a745';
+                }} else if (type === 'error') {{
+                    bgColor = 'rgba(220, 53, 69, 0.15)';
+                    borderColor = '#dc3545';
+                }} else if (type === 'warning') {{
+                    bgColor = 'rgba(255, 193, 7, 0.15)';
+                    borderColor = '#ffc107';
+                }} else {{
+                    bgColor = 'rgba(13, 110, 253, 0.15)';
+                    borderColor = '#0d6efd';
+                }}
+                
+                msgDiv.style.background = bgColor;
+                msgDiv.style.borderLeft = `4px solid ${{borderColor}}`;
+                msgDiv.textContent = message;
+                msgDiv.style.display = 'block';
+                
+                // Auto-masquer après durée spécifiée
+                if (duration > 0) {{
+                    setTimeout(() => {{
+                        msgDiv.style.display = 'none';
+                    }}, duration);
+                }}
+            }}
+            
             // Mettre à jour l'état des checkboxes selon les exclusions
             function updateCheckboxStates() {{
                 const project = window.coherenceSelectionInfo.project_path;
@@ -633,7 +667,7 @@ class HtmlCoherenceReportGenerator:
                     
                     const text = editField.value.trim();
                     if (!text) {{
-                        alert('Veuillez entrer un texte à traduire');
+                        showGlobalMessage('⚠️ Veuillez entrer un texte à traduire', 'warning', 3000);
                         return;
                     }}
                     
@@ -658,16 +692,18 @@ class HtmlCoherenceReportGenerator:
                         if (data.ok && data.translation) {{
                             // Insérer la traduction dans le champ
                             editField.value = data.translation;
+                            showGlobalMessage(`✅ Traduction réussie avec ${{data.service}}`, 'success', 3000);
                             console.log(`✅ Traduction réussie avec ${{data.service}}`);
                         }} else if (data.url) {{
                             // Ouvrir l'URL du traducteur web
                             window.open(data.url, '_blank');
+                            showGlobalMessage(`🌐 Traducteur ${{data.service}} ouvert dans un nouvel onglet`, 'info', 3000);
                             console.log(`🌐 Ouverture de ${{data.service}}`);
                         }} else {{
-                            alert('Traduction non disponible pour ce service');
+                            showGlobalMessage('❌ Traduction non disponible pour ce service', 'error', 4000);
                         }}
                     }} else {{
-                        alert('Erreur lors de la traduction');
+                        showGlobalMessage('❌ Erreur lors de la traduction', 'error', 4000);
                     }}
                     
                     // Restaurer le bouton
@@ -678,7 +714,7 @@ class HtmlCoherenceReportGenerator:
                     
                 }} catch (error) {{
                     console.error('❌ Erreur traduction:', error);
-                    alert('⚠️ RenExtract doit être ouvert pour utiliser la traduction');
+                    showGlobalMessage('⚠️ RenExtract doit être ouvert pour utiliser la traduction', 'error', 5000);
                     
                     // Restaurer le bouton
                     const translateBtn = document.querySelector(`[data-edit-field="${{editFieldId}}"]`);
@@ -768,7 +804,7 @@ class HtmlCoherenceReportGenerator:
                     }});
                     
                     if (modifications.length === 0) {{
-                        alert('Aucune modification à enregistrer');
+                        showGlobalMessage('⚠️ Aucune modification à enregistrer', 'warning', 3000);
                         return;
                     }}
                     
@@ -788,7 +824,8 @@ class HtmlCoherenceReportGenerator:
                     if (response.ok) {{
                         const data = await response.json();
                         if (data.ok) {{
-                            alert(`Enregistrement terminé:\\n✅ ${{data.success_count}} succès\\n❌ ${{data.failed_count}} échecs`);
+                            const message = `✅ Enregistrement terminé : ${{data.success_count}} succès, ${{data.failed_count}} échec(s)`;
+                            showGlobalMessage(message, 'success', 5000);
                             console.log(`✅ Enregistrement global: ${{data.success_count}} succès, ${{data.failed_count}} échecs`);
                             
                             // 🆕 Marquer visuellement TOUTES les lignes comme enregistrées (PERSISTANT)
@@ -825,10 +862,10 @@ class HtmlCoherenceReportGenerator:
                                 }}
                             }});
                         }} else {{
-                            alert("Erreur lors de l'enregistrement global");
+                            showGlobalMessage("❌ Erreur lors de l'enregistrement global", 'error', 5000);
                         }}
                     }} else {{
-                        alert("Erreur lors de l'enregistrement global");
+                        showGlobalMessage("❌ Erreur lors de l'enregistrement global", 'error', 5000);
                     }}
                     
                     // Restaurer le bouton
@@ -839,7 +876,7 @@ class HtmlCoherenceReportGenerator:
                     
                 }} catch (error) {{
                     console.error('❌ Erreur enregistrement global:', error);
-                    alert('⚠️ RenExtract doit être ouvert pour enregistrer les modifications');
+                    showGlobalMessage('⚠️ RenExtract doit être ouvert pour enregistrer les modifications', 'error', 5000);
                     
                     // Restaurer le bouton
                     const saveAllBtn = document.getElementById('saveAllBtn');
@@ -1338,6 +1375,7 @@ class HtmlCoherenceReportGenerator:
                 <div style="background: rgba(255, 193, 7, 0.15); border-left: 4px solid #ffc107; padding: 8px 15px; margin-top: 10px; border-radius: 4px; font-size: 0.85rem;">
                     <em>⚠️ Note : RenExtract doit rester ouvert pour que les modifications soient enregistrées.</em>
                 </div>
+                <div id="globalMessage" style="display: none; padding: 8px 15px; margin-top: 10px; border-radius: 4px; font-size: 0.9rem; font-weight: 600;"></div>
             </div>
         """
     
