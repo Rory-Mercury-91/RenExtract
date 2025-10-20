@@ -1310,12 +1310,13 @@ class HtmlCoherenceReportGenerator:
                 # Pied de page
                 f.write(self._generate_footer())
                 
-                # Utiliser le JS harmonisé si l'info est présente
-                selection_info = results.get('selection_info')
-                if selection_info:
-                    f.write(self._get_javascript_harmonized(selection_info))
-                else:
-                    f.write(self._get_javascript())
+                # Toujours utiliser le JS harmonisé (avec dictionnaire par défaut si besoin)
+                selection_info = results.get('selection_info', {
+                    'project_path': project_path,
+                    'language': 'unknown',
+                    'is_all_files': True
+                })
+                f.write(self._get_javascript_harmonized(selection_info))
 
                 f.write("</body></html>")
             
