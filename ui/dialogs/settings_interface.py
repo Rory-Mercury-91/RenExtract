@@ -361,9 +361,13 @@ class UnifiedSettingsInterface:
                     self.editor_path_vars[editor_name].set(custom_path or "")
             
             # 🔧 CORRECTIF: Mettre à jour la combobox éditeur après chargement du chemin personnalisé
-            if hasattr(self, 'editor_combo'):
-                from ui.tab_settings.application_tab import _update_editor_combo_values
-                _update_editor_combo_values(self)
+            # Seulement si editor_combo existe ET n'est pas None
+            if hasattr(self, 'editor_combo') and self.editor_combo is not None:
+                try:
+                    from ui.tab_settings.application_tab import _update_editor_combo_values
+                    _update_editor_combo_values(self)
+                except Exception as e:
+                    log_message("DEBUG", f"Impossible de mettre à jour editor_combo au chargement: {e}", category="settings")
             
             log_message("INFO", "Configuration chargée dans l'interface settings", category="settings")
             
@@ -1529,7 +1533,7 @@ Configuration :
                 text="ℹ️ Certains contrôles critiques (Variables [], Balises {}, Séquences \\n, Structure old/new)\nsont toujours actifs pour garantir l'intégrité du jeu.",
                 font=('Segoe UI', 9, 'italic'),
                 bg=theme["bg"],
-                fg=theme["fg_secondary"],
+                fg=theme.get("fg_secondary", theme["fg"]),
                 justify='center'
             )
             mandatory_note.pack(pady=(0, 20))
