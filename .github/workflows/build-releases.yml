@@ -236,8 +236,8 @@ jobs:
           
           | Plateforme | Taille | Téléchargement |
           |------------|--------|----------------|
-          | 🪟 **Windows** | ![Windows Size](https://img.shields.io/github/downloads/Rory-Mercury-91/RenExtract/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Windows.zip?label=%20&style=flat-square) | [RenExtract-${{ github.ref_name }}-Windows.zip](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Windows.zip) |
-          | 🐧 **Linux** | ![Linux Size](https://img.shields.io/github/downloads/Rory-Mercury-91/RenExtract/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Linux.tar.gz?label=%20&style=flat-square) | [RenExtract-${{ github.ref_name }}-Linux.tar.gz](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Linux.tar.gz) |
+          | 🪟 **Windows** | ~16 MB | [RenExtract-${{ github.ref_name }}-Windows.zip](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Windows.zip) |
+          | 🐧 **Linux** | ~18 MB | [RenExtract-${{ github.ref_name }}-Linux.tar.gz](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Linux.tar.gz) |
           
           ---
           
