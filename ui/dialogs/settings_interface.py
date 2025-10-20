@@ -1521,7 +1521,18 @@ Configuration :
                 wraplength=550,
                 justify='center'
             )
-            desc_label.pack(pady=(0, 20))
+            desc_label.pack(pady=(0, 10))
+            
+            # Note sur les contrôles obligatoires
+            mandatory_note = tk.Label(
+                settings_window,
+                text="ℹ️ Certains contrôles critiques (Variables [], Balises {}, Séquences \\n, Structure old/new)\nsont toujours actifs pour garantir l'intégrité du jeu.",
+                font=('Segoe UI', 9, 'italic'),
+                bg=theme["bg"],
+                fg=theme["fg_secondary"],
+                justify='center'
+            )
+            mandatory_note.pack(pady=(0, 20))
             
             # Container pour les options avec deux colonnes
             options_frame = tk.Frame(settings_window, bg=theme["bg"])
@@ -1535,21 +1546,18 @@ Configuration :
             right_column = tk.Frame(options_frame, bg=theme["bg"])
             right_column.pack(side='right', fill='both', expand=True, padx=(10, 0))
             
-            # Options de vérification (VRAIES clés utilisées par le checker)
+            # ✅ OPTIONS CONFIGURABLES (les 4 options obligatoires ont été retirées)
+            # Retirées : coherence_check_variables, coherence_check_tags, coherence_check_escape_sequences, coherence_check_line_structure
             verification_options = [
-                ("🔤 Variables []", "coherence_check_variables"),
-                ("🏷️ Balises {}", "coherence_check_tags"),
                 ("📝 Lignes non traduites", "coherence_check_untranslated"),
+                ("… Points de suspension", "coherence_check_ellipsis"),
                 ("% Variables %", "coherence_check_percentages"),
                 ("💬 Guillemets", "coherence_check_quotations"),
                 ("() Parenthèses", "coherence_check_parentheses"),
-                ("… Points de suspension", "coherence_check_ellipsis"),
-                ("🔡 Séquences échappement", "coherence_check_escape_sequences"),
                 ("📐 Syntaxe Ren'Py", "coherence_check_syntax"),
-                ("🇫🇷 Guillemets français «»", "coherence_check_french_quotes"),
-                ("📏 Structure de ligne", "coherence_check_line_structure"),
                 ("💬 DeepL ellipsis", "coherence_check_deepl_ellipsis"),
-                ("% Pourcentage isolé", "coherence_check_isolated_percent")
+                ("% Pourcentage isolé", "coherence_check_isolated_percent"),
+                ("🇫🇷 Guillemets français «»", "coherence_check_french_quotes")
             ]
             
             # Variables pour les checkboxes
