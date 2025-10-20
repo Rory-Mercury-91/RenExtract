@@ -177,7 +177,7 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_POST(self):
-        """Gère les requêtes POST (ajout d'exclusions)"""
+        """Gère les requêtes POST (ajout d'exclusions, modifications, traductions)"""
         parsed = urlparse(self.path)
         
         # ===== Endpoint: /api/coherence/exclude (POST) =====
@@ -211,6 +211,108 @@ class _Handler(BaseHTTPRequestHandler):
                 
             except Exception as e:
                 log_message("ERREUR", f"Erreur ajout exclusion: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
+        # ===== Endpoint: /api/coherence/edit (POST) =====
+        if parsed.path == "/api/coherence/edit":
+            try:
+                from core.services.tools.coherence_line_editor import edit_coherence_line
+                
+                data = self._read_request_body()
+                file_path = data.get('file', '').strip()
+                line = data.get('line', 0)
+                new_content = data.get('new_content', '').strip()
+                project_path = data.get('project', '').strip()
+                
+                log_message("DEBUG", f"POST /edit - file={file_path}, line={line}, project={project_path}", category="coherence_api")
+                
+                if not file_path or not new_content or not project_path or line == 0:
+                    self._send_json_response({'ok': False, 'error': 'Données incomplètes'}, 400)
+                    return
+                
+                # Effectuer la modification
+                success, message = edit_coherence_line(project_path, file_path, line, new_content)
+                
+                if success:
+                    log_message("INFO", f"✅ Ligne modifiée: {file_path}:{line}", category="coherence_edit")
+                    self._send_json_response({'ok': True, 'message': message})
+                else:
+                    log_message("ERREUR", f"❌ Échec modification: {message}", category="coherence_edit")
+                    self._send_json_response({'ok': False, 'error': message}, 500)
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur modification ligne: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
+        # ===== Endpoint: /api/coherence/translate (POST) =====
+        if parsed.path == "/api/coherence/translate":
+            try:
+                from ui.shared.translator_utils import translate_with_groq_api, get_translator_url
+                
+                data = self._read_request_body()
+                text = data.get('text', '').strip()
+                translator = data.get('translator', 'Google').strip()
+                target_lang = data.get('target_lang', 'fr').strip()
+                
+                log_message("DEBUG", f"POST /translate - translator={translator}, target_lang={target_lang}", category="coherence_api")
+                
+                if not text:
+                    self._send_json_response({'ok': False, 'error': 'Texte manquant'}, 400)
+                    return
+                
+                # Traduction selon le service
+                translation = None
+                if translator == "Groq AI":
+                    # Utiliser l'API Groq si disponible
+                    translation = translate_with_groq_api(text, target_lang=target_lang)
+                
+                if translation:
+                    log_message("INFO", f"✅ Traduction réussie: {translator}", category="coherence_translate")
+                    self._send_json_response({'ok': True, 'translation': translation, 'service': translator})
+                else:
+                    # Fallback: retourner l'URL du traducteur web
+                    url = get_translator_url(translator, text, target_lang=target_lang)
+                    if url:
+                        log_message("INFO", f"ℹ️ URL traducteur générée: {translator}", category="coherence_translate")
+                        self._send_json_response({'ok': True, 'url': url, 'service': translator})
+                    else:
+                        self._send_json_response({'ok': False, 'error': 'Traduction non disponible'}, 500)
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur traduction: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
+        # ===== Endpoint: /api/coherence/save_all (POST) =====
+        if parsed.path == "/api/coherence/save_all":
+            try:
+                from core.services.tools.coherence_line_editor import save_all_modifications
+                
+                data = self._read_request_body()
+                modifications = data.get('modifications', [])
+                project_path = data.get('project', '').strip()
+                
+                log_message("DEBUG", f"POST /save_all - {len(modifications)} modifications", category="coherence_api")
+                
+                if not modifications or not project_path:
+                    self._send_json_response({'ok': False, 'error': 'Données incomplètes'}, 400)
+                    return
+                
+                # Sauvegarder toutes les modifications
+                success_count, failed_count, messages = save_all_modifications(project_path, modifications)
+                
+                log_message("INFO", f"✅ Enregistrement global: {success_count} succès, {failed_count} échecs", category="coherence_edit")
+                self._send_json_response({
+                    'ok': True,
+                    'success_count': success_count,
+                    'failed_count': failed_count,
+                    'messages': messages
+                })
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur enregistrement global: {e}", category="coherence_api")
                 self._send_json_response({'ok': False, 'error': str(e)}, 500)
             return
         

@@ -321,7 +321,7 @@ class UnifiedBackupDialog:
             width=20,
             state="readonly",
             font=('Segoe UI', 9),
-            values=["Tous", "🛡️ Sécurité", "🧹 Nettoyage", "📦 Avant RPA", "🔗 Avant combinaison", "⚡ Édition temps réel"]
+            values=["Tous", "🛡️ Sécurité", "🧹 Nettoyage", "📦 Avant RPA", "🔗 Avant combinaison", "⚡ Édition temps réel", "🔧 Modification cohérence"]
         )
         self.type_combo.pack(anchor='w', fill='x', pady=(0, 5))
         self.type_combo.bind('<<ComboboxSelected>>', self._on_filter_changed)
@@ -549,7 +549,8 @@ class UnifiedBackupDialog:
                     BackupType.CLEANUP: "Nettoyage",
                     BackupType.RPA_BUILD: "Avant RPA",
                     BackupType.BEFORE_COMBINATION: "Avant combinaison",
-                    BackupType.REALTIME_EDIT: "Édition temps réel"
+                    BackupType.REALTIME_EDIT: "Édition temps réel",
+                    BackupType.COHERENCE_EDIT: "Modification cohérence"
                 }.get(self.current_filter_type, str(self.current_filter_type))
                 filter_info.append(f"type: {type_display}")
             
@@ -579,7 +580,8 @@ class UnifiedBackupDialog:
                     BackupType.CLEANUP: "Nettoyage", 
                     BackupType.RPA_BUILD: "Avant RPA",
                     BackupType.BEFORE_COMBINATION: "Avant combinaison",
-                    BackupType.REALTIME_EDIT: "Édition temps réel"
+                    BackupType.REALTIME_EDIT: "Édition temps réel",
+                    BackupType.COHERENCE_EDIT: "Modification cohérence"
                 }.get(self.current_filter_type, str(self.current_filter_type))
                 filter_parts.append(f"type: {type_display}")
             
@@ -869,13 +871,14 @@ class UnifiedBackupDialog:
         if selected_type == "Tous":
             self.current_filter_type = None
         else:
-            # Mapper seulement les 3 types utilisés
+            # Mapper tous les types
             type_mapping = {
                 "🛡️ Sécurité": BackupType.SECURITY,
                 "🧹 Nettoyage": BackupType.CLEANUP,
                 "📦 Avant RPA": BackupType.RPA_BUILD,
                 "🔗 Avant combinaison": BackupType.BEFORE_COMBINATION,
-                "⚡ Édition temps réel": BackupType.REALTIME_EDIT
+                "⚡ Édition temps réel": BackupType.REALTIME_EDIT,
+                "🔧 Modification cohérence": BackupType.COHERENCE_EDIT
             }
             self.current_filter_type = type_mapping.get(selected_type)
         

@@ -54,7 +54,26 @@ class HtmlCoherenceReportGenerator:
           
           .header {
             background: var(--hdr); padding: 20px; border-bottom: 2px solid var(--sep);
-            position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 0 0 12px 12px;
+            margin: 0 15px 0 15px;
+          }
+          
+          .header select {
+            position: relative;
+            z-index: 1001;
+            color: #000;
+            background: #fff;
+          }
+          
+          .header select option {
+            color: #000;
+            background: #fff;
+          }
+          
+          .header select option:hover {
+            background: #0d6efd;
+            color: #fff;
           }
           
           .header h1 { margin: 0 0 10px 0; font-size: 1.8rem; }
@@ -76,7 +95,6 @@ class HtmlCoherenceReportGenerator:
             display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px; padding: 20px; margin-bottom: 0px;
             background: var(--bg); 
-            position: sticky; top: 82px; z-index: 95;
             border-bottom: 1px solid var(--sep);
           }
           
@@ -206,6 +224,30 @@ class HtmlCoherenceReportGenerator:
           .issue-line { font-weight: bold; color: var(--warning); margin-bottom: 8px; }
           .issue-description { margin-bottom: 12px; color: var(--fg); }
           
+          /* Style pour les lignes enregistrées (état persistant) */
+          .issue-item.saved {
+            border-left: 4px solid #51cf66;
+            background: rgba(81, 207, 102, 0.08);
+          }
+          
+          .issue-item.saved .edit-interface {
+            background: rgba(81, 207, 102, 0.12) !important;
+            border-color: rgba(81, 207, 102, 0.5) !important;
+          }
+          
+          .saved-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            background: #51cf66;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+          }
+          
           .content-comparison {
             display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
             margin-top: 10px;
@@ -234,7 +276,7 @@ class HtmlCoherenceReportGenerator:
             padding: 15px 20px; background: var(--hdr); 
             border: 1px solid var(--sep); border-radius: 12px;
             display: flex; gap: 15px; align-items: center; flex-wrap: wrap;
-            position: sticky; top: 290px; z-index: 90;
+            position: sticky; top: var(--header-height, 120px); z-index: 900;
             margin: 0 20px 20px 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           }
@@ -322,6 +364,19 @@ class HtmlCoherenceReportGenerator:
                 totalFiles: {total_files},
                 project_path: '{project_path}'  // 🆕
             }};
+            
+            // 🆕 Calculer dynamiquement la hauteur du header au chargement
+            function updateHeaderHeight() {{
+                const header = document.querySelector('.header');
+                if (header) {{
+                    const headerHeight = header.offsetHeight;
+                    document.documentElement.style.setProperty('--header-height', headerHeight + 'px');
+                }}
+            }}
+            
+            // Mettre à jour au chargement et au redimensionnement
+            window.addEventListener('load', updateHeaderHeight);
+            window.addEventListener('resize', updateHeaderHeight);
             
             // Gestion du thème
             const savedTheme = localStorage.getItem('renextract_coherence_theme') || 'dark';
@@ -567,6 +622,231 @@ class HtmlCoherenceReportGenerator:
                 }}
             }}
 
+            // ===== NOUVEAU : Gestion de la traduction en ligne =====
+            async function translateText(editFieldId) {{
+                try {{
+                    const editField = document.getElementById(editFieldId);
+                    if (!editField) return;
+                    
+                    const text = editField.value.trim();
+                    if (!text) {{
+                        alert('Veuillez entrer un texte à traduire');
+                        return;
+                    }}
+                    
+                    const translator = document.getElementById('translatorSelect').value;
+                    const project = window.coherenceSelectionInfo.project_path;
+                    
+                    // Afficher un indicateur de chargement
+                    const translateBtn = document.querySelector(`[data-edit-field="${{editFieldId}}"]`);
+                    if (translateBtn) {{
+                        translateBtn.disabled = true;
+                        translateBtn.textContent = '⏳ Traduction...';
+                    }}
+                    
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/translate`, {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ text, translator, target_lang: 'fr' }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok && data.translation) {{
+                            // Insérer la traduction dans le champ
+                            editField.value = data.translation;
+                            console.log(`✅ Traduction réussie avec ${{data.service}}`);
+                        }} else if (data.url) {{
+                            // Ouvrir l'URL du traducteur web
+                            window.open(data.url, '_blank');
+                            console.log(`🌐 Ouverture de ${{data.service}}`);
+                        }} else {{
+                            alert('Traduction non disponible pour ce service');
+                        }}
+                    }} else {{
+                        alert('Erreur lors de la traduction');
+                    }}
+                    
+                    // Restaurer le bouton
+                    if (translateBtn) {{
+                        translateBtn.disabled = false;
+                        translateBtn.textContent = '🌐 Traduire';
+                    }}
+                    
+                }} catch (error) {{
+                    console.error('❌ Erreur traduction:', error);
+                    alert('⚠️ RenExtract doit être ouvert pour utiliser la traduction');
+                    
+                    // Restaurer le bouton
+                    const translateBtn = document.querySelector(`[data-edit-field="${{editFieldId}}"]`);
+                    if (translateBtn) {{
+                        translateBtn.disabled = false;
+                        translateBtn.textContent = '🌐 Traduire';
+                    }}
+                }}
+            }}
+            
+            // ===== NOUVEAU : Enregistrement d'une modification =====
+            async function saveLine(file, line, newContent, statusId) {{
+                try {{
+                    const project = window.coherenceSelectionInfo.project_path;
+                    
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/edit`, {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ file, line, new_content: newContent, project }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok) {{
+                            // 🆕 Marquer visuellement l'issue comme enregistrée (PERSISTANT)
+                            const statusSpan = document.getElementById(statusId);
+                            const issueItem = statusSpan ? statusSpan.closest('.issue-item') : null;
+                            const issueHeader = issueItem ? issueItem.querySelector('.issue-header') : null;
+                            
+                            if (issueItem) {{
+                                // Ajouter la classe "saved" pour le style persistant
+                                issueItem.classList.add('saved');
+                                
+                                // Ajouter un badge "Enregistré" dans le header (si pas déjà présent)
+                                if (issueHeader && !issueHeader.querySelector('.saved-badge')) {{
+                                    const badge = document.createElement('span');
+                                    badge.className = 'saved-badge';
+                                    badge.innerHTML = '✅ Enregistré';
+                                    issueHeader.appendChild(badge);
+                                }}
+                            }}
+                            
+                            // Afficher le statut de succès temporaire
+                            if (statusSpan) {{
+                                statusSpan.textContent = '✅ Enregistré';
+                                statusSpan.style.display = 'inline';
+                                
+                                // Masquer après 3 secondes
+                                setTimeout(() => {{
+                                    statusSpan.style.display = 'none';
+                                }}, 3000);
+                            }}
+                            
+                            console.log(`✅ Ligne enregistrée: ${{file}}:${{line}}`);
+                            return true;
+                        }} else {{
+                            alert(`Erreur: ${{data.error || "Échec de l\'enregistrement"}}`);
+                            return false;
+                        }}
+                    }} else {{
+                        alert("Erreur lors de l\'enregistrement");
+                        return false;
+                    }}
+                    
+                }} catch (error) {{
+                    console.error('❌ Erreur enregistrement:', error);
+                    alert('⚠️ RenExtract doit être ouvert pour enregistrer les modifications');
+                    return false;
+                }}
+            }}
+            
+            // ===== NOUVEAU : Enregistrement global =====
+            async function saveAll() {{
+                try {{
+                    const project = window.coherenceSelectionInfo.project_path;
+                    
+                    // Collecter toutes les modifications
+                    const modifications = [];
+                    document.querySelectorAll('.edit-field').forEach(field => {{
+                        const file = field.getAttribute('data-file');
+                        const line = parseInt(field.getAttribute('data-line'));
+                        const new_content = field.value.trim();
+                        
+                        if (file && line && new_content) {{
+                            modifications.push({{ file, line, new_content }});
+                        }}
+                    }});
+                    
+                    if (modifications.length === 0) {{
+                        alert('Aucune modification à enregistrer');
+                        return;
+                    }}
+                    
+                    // Afficher un indicateur de chargement
+                    const saveAllBtn = document.getElementById('saveAllBtn');
+                    if (saveAllBtn) {{
+                        saveAllBtn.disabled = true;
+                        saveAllBtn.textContent = `⏳ Enregistrement (${{modifications.length}})...`;
+                    }}
+                    
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/save_all`, {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ modifications, project }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok) {{
+                            alert(`Enregistrement terminé:\\n✅ ${{data.success_count}} succès\\n❌ ${{data.failed_count}} échecs`);
+                            console.log(`✅ Enregistrement global: ${{data.success_count}} succès, ${{data.failed_count}} échecs`);
+                            
+                            // 🆕 Marquer visuellement TOUTES les lignes comme enregistrées (PERSISTANT)
+                            document.querySelectorAll('.edit-field').forEach(field => {{
+                                const issueItem = field.closest('.issue-item');
+                                const issueHeader = issueItem ? issueItem.querySelector('.issue-header') : null;
+                                
+                                if (issueItem) {{
+                                    // Ajouter la classe "saved" pour le style persistant
+                                    issueItem.classList.add('saved');
+                                    
+                                    // Ajouter un badge "Enregistré" dans le header (si pas déjà présent)
+                                    if (issueHeader && !issueHeader.querySelector('.saved-badge')) {{
+                                        const badge = document.createElement('span');
+                                        badge.className = 'saved-badge';
+                                        badge.innerHTML = '✅ Enregistré';
+                                        issueHeader.appendChild(badge);
+                                    }}
+                                }}
+                                
+                                // Statut temporaire
+                                const statusId = issueItem ? issueItem.querySelector('.exclusion-status')?.id : null;
+                                if (statusId) {{
+                                    const statusSpan = document.getElementById(statusId);
+                                    if (statusSpan) {{
+                                        statusSpan.textContent = '✅ Enregistré';
+                                        statusSpan.style.display = 'inline';
+                                        
+                                        // Masquer après 3 secondes
+                                        setTimeout(() => {{
+                                            statusSpan.style.display = 'none';
+                                        }}, 3000);
+                                    }}
+                                }}
+                            }});
+                        }} else {{
+                            alert("Erreur lors de l'enregistrement global");
+                        }}
+                    }} else {{
+                        alert("Erreur lors de l'enregistrement global");
+                    }}
+                    
+                    // Restaurer le bouton
+                    if (saveAllBtn) {{
+                        saveAllBtn.disabled = false;
+                        saveAllBtn.textContent = '💾 Enregistrer tout';
+                    }}
+                    
+                }} catch (error) {{
+                    console.error('❌ Erreur enregistrement global:', error);
+                    alert('⚠️ RenExtract doit être ouvert pour enregistrer les modifications');
+                    
+                    // Restaurer le bouton
+                    const saveAllBtn = document.getElementById('saveAllBtn');
+                    if (saveAllBtn) {{
+                        saveAllBtn.disabled = false;
+                        saveAllBtn.textContent = '💾 Enregistrer tout';
+                    }}
+                }}
+            }}
+            
             // Initialisation
             document.addEventListener('DOMContentLoaded', function() {{
                 // Charger les exclusions existantes
@@ -587,6 +867,37 @@ class HtmlCoherenceReportGenerator:
                         handleExcludeCheckbox(e.target);
                     }}
                 }});
+                
+                // Délégation: clic sur boutons "Traduire"
+                document.body.addEventListener('click', function(e) {{
+                    if (e.target.classList.contains('translate-btn')) {{
+                        const editFieldId = e.target.getAttribute('data-edit-field');
+                        if (editFieldId) translateText(editFieldId);
+                    }}
+                }});
+                
+                // Délégation: clic sur boutons "Enregistrer"
+                document.body.addEventListener('click', function(e) {{
+                    if (e.target.classList.contains('save-btn')) {{
+                        const editFieldId = e.target.getAttribute('data-edit-field');
+                        const file = e.target.getAttribute('data-file');
+                        const line = parseInt(e.target.getAttribute('data-line'));
+                        const statusId = e.target.getAttribute('data-status');
+                        
+                        if (editFieldId && file && line) {{
+                            const editField = document.getElementById(editFieldId);
+                            if (editField) {{
+                                saveLine(file, line, editField.value.trim(), statusId);
+                            }}
+                        }}
+                    }}
+                }});
+                
+                // Bouton "Enregistrer tout"
+                const saveAllBtn = document.getElementById('saveAllBtn');
+                if (saveAllBtn) {{
+                    saveAllBtn.addEventListener('click', saveAll);
+                }}
 
                 // Bouton thème
                 const themeBtn = document.getElementById('themeBtn');
@@ -1007,10 +1318,22 @@ class HtmlCoherenceReportGenerator:
                     <span>⚠️ Erreurs: {total_issues}</span>
                     
                     <div class="controls">
+                        <label for="translatorSelect" style="margin-right: 5px; font-size: 0.9rem;">Traducteur:</label>
+                        <select id="translatorSelect" class="btn" style="margin-right: 15px; padding: 6px 10px;">
+                            <option value="Google">Google</option>
+                            <option value="DeepL">DeepL</option>
+                            <option value="Groq AI">Groq AI</option>
+                            <option value="Microsoft">Microsoft</option>
+                            <option value="Yandex">Yandex</option>
+                        </select>
+                        <button id="saveAllBtn" class="btn btn-primary" style="margin-right: 15px;">💾 Enregistrer tout</button>
                         <button id="expandAll" class="btn">Tout déplier</button>
                         <button id="collapseAll" class="btn">Tout replier</button>
                         <button id="themeBtn" class="btn">Thème: Sombre</button>
                     </div>
+                </div>
+                <div style="background: rgba(255, 193, 7, 0.15); border-left: 4px solid #ffc107; padding: 8px 15px; margin-top: 10px; border-radius: 4px; font-size: 0.85rem;">
+                    <em>⚠️ Note : RenExtract doit rester ouvert pour que les modifications soient enregistrées.</em>
                 </div>
             </div>
         """
@@ -1038,12 +1361,15 @@ class HtmlCoherenceReportGenerator:
         # Trier par nombre d'erreurs (décroissant)
         type_stats.sort(key=lambda x: x['count'], reverse=True)
         
-        # Bannière d'information pour les exclusions interactives
+        # Bannière d'information pour les exclusions et édition interactives
         info_banner = """
         <div class="info-banner">
-            💡 <strong>Nouvelle fonctionnalité :</strong> Vous pouvez maintenant ignorer des lignes non traduites directement depuis ce rapport ! 
-            Cochez simplement "Ignorer dans les futurs rapports" pour exclure une ligne des prochaines analyses.
-            <br><em>Note : RenExtract doit rester ouvert pendant la consultation du rapport pour que les exclusions soient enregistrées.</em>
+            💡 <strong>Nouvelles fonctionnalités :</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                <li><strong>Édition en ligne :</strong> Modifiez les traductions directement depuis ce rapport ! Corrigez le texte et cliquez sur "Enregistrer".</li>
+                <li><strong>Traduction assistée :</strong> Utilisez le bouton "Traduire" pour obtenir une suggestion de traduction automatique.</li>
+                <li><strong>Exclusions :</strong> Cochez "✓ Ignoré" pour exclure une ligne des prochaines analyses.</li>
+            </ul>
         </div>
         """
         
@@ -1228,7 +1554,7 @@ class HtmlCoherenceReportGenerator:
     
     
     def _generate_issue_item(self, issue: Dict) -> str:
-        """Génère un élément d'erreur individuel"""
+        """Génère un élément d'erreur individuel avec édition en ligne"""
         line = int(issue.get('line', 0) or 0)
         file_path = issue.get('file_path', '') or ''
         description = _html.escape(issue.get('description', ''))
@@ -1249,39 +1575,80 @@ class HtmlCoherenceReportGenerator:
         else:
             btn_html = ''
         
+        # Extraire le chemin relatif depuis tl/langue/
+        relative_file = self._get_relative_file_path(file_path)
+        escaped_file = _html.escape(relative_file).replace('"', '&quot;')
+        
+        # Générer un ID unique pour les éléments interactifs
+        import hashlib
+        unique_id = hashlib.md5(f'{file_path}{line}'.encode()).hexdigest()[:8]
+        
         # Checkbox d'exclusion pour les lignes non traduites
         exclude_checkbox_html = ''
         if issue_type == 'UNTRANSLATED_LINE':
-            # Utiliser le contenu OLD comme clé d'exclusion
             exclusion_key = issue.get('old_content', '')
             if exclusion_key:
-                # Échapper les guillemets pour l'attribut HTML
                 escaped_key = _html.escape(exclusion_key).replace('"', '&quot;')
-                
-                # 🆕 Extraire le chemin relatif depuis tl/langue/
-                relative_file = self._get_relative_file_path(file_path)
-                escaped_file = _html.escape(relative_file).replace('"', '&quot;')
-                
-                # Générer un ID unique pour la checkbox (hash du fichier + ligne)
-                import hashlib
-                checkbox_id = f"excl-{hashlib.md5(f'{file_path}{line}'.encode()).hexdigest()[:8]}"
                 
                 exclude_checkbox_html = f"""
             <div class="exclude-checkbox-container">
-                <input type="checkbox" id="{checkbox_id}" class="exclude-checkbox" 
+                <input type="checkbox" id="excl-{unique_id}" class="exclude-checkbox" 
                        data-exclusion-text="{escaped_key}"
                        data-exclusion-file="{escaped_file}"
                        data-exclusion-line="{line}"
                        title="Ignorer cette ligne dans les futurs rapports">
-                <label for="{checkbox_id}" class="exclude-label" title="Cliquez pour ignorer cette ligne">
+                <label for="excl-{unique_id}" class="exclude-label" title="Cliquez pour ignorer cette ligne">
                     <span class="exclusion-text">Cliquer pour ignorer</span>
                     <span class="exclusion-status"></span>
                 </label>
             </div>
                 """
+        
+        # 🆕 Interface d'édition en ligne (pour tous les types d'erreurs)
+        # Pré-remplir avec le contenu NEW (la version corrigée/traduite)
+        # Pour les variables incohérentes, on utilise NEW qui est le contenu sans erreur
+        edit_value = issue.get('new_content', '') or issue.get('old_content', '')
+        # Échapper pour l'attribut HTML mais pas pour le contenu du textarea
+        escaped_edit_value = _html.escape(edit_value) if edit_value else ''
+        
+        edit_interface_html = f"""
+        <div class="edit-interface" id="edit-{unique_id}" style="margin-top: 15px; padding: 15px; background: rgba(13,110,253,0.15); border-radius: 8px; border: 2px solid rgba(13,110,253,0.5);">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span class="exclusion-status" id="status-{unique_id}" style="display: none; color: var(--success); font-weight: 500;"></span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <textarea 
+                    id="editField-{unique_id}" 
+                    class="edit-field"
+                    data-file="{escaped_file}"
+                    data-line="{line}"
+                    style="flex: 1; padding: 10px; border: 2px solid #0d6efd; border-radius: 6px; background: rgba(255,255,255,0.05); color: var(--fg); font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; min-height: 80px; resize: vertical;"
+                    placeholder="Entrez la traduction corrigée..."
+                    title="Modifiez le texte ici puis cliquez sur Enregistrer"
+                >{escaped_edit_value}</textarea>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" class="translate-btn btn" id="translate-{unique_id}"
+                        data-edit-field="editField-{unique_id}"
+                        style="padding: 8px 12px; background: #0d6efd; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; font-weight: 600;"
+                        title="Traduire automatiquement avec le service sélectionné">
+                        🌐 Traduire
+                    </button>
+                    <button type="button" class="save-btn btn" id="save-{unique_id}"
+                        data-edit-field="editField-{unique_id}"
+                        data-file="{escaped_file}"
+                        data-line="{line}"
+                        data-status="status-{unique_id}"
+                        style="padding: 8px 12px; background: #51cf66; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; font-weight: 600;"
+                        title="Enregistrer cette modification">
+                        💾 Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+        """
 
         return f"""
-        <div class="issue-item">
+        <div class="issue-item" data-unique-id="{unique_id}">
             <div class="issue-header">
                 <div class="issue-line">Ligne {line}</div>
                 {btn_html}
@@ -1298,6 +1665,7 @@ class HtmlCoherenceReportGenerator:
                 </div>
             </div>
             {exclude_checkbox_html}
+            {edit_interface_html}
         </div>
         """
 
