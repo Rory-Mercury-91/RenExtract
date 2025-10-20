@@ -95,7 +95,7 @@ def _css_common() -> str:
     </style>
     """
 
-def _header_html(theme_default: str, debug_default: bool, known_categories_json: str = "[]") -> str:
+def _header_html(theme_default: str, known_categories_json: str = "[]") -> str:
     theme_label = "Sombre" if theme_default == "dark" else "Clair"
     return f"""
     <div class="hdr">
@@ -675,8 +675,8 @@ class HtmlOnlyLogger:
                 hf.write(f"<body{body_class}>")
                 # ⬇️ Injection config auto-refresh pour le JS
                 hf.write(f"<script>window.__RENEX_AUTO_REFRESH__={{\"enabled\":{str(HTML_AUTO_REFRESH).lower()},\"seconds\":{int(HTML_AUTO_REFRESH_SECONDS)}}};</script>")
-                # ⬇️ on passe: thème, état debug et TOUTES les catégories connues
-                hf.write(_header_html(HTML_THEME, self.debug_enabled, known_categories_json=known_categories_json))
+                # ⬇️ on passe: thème et TOUTES les catégories connues
+                hf.write(_header_html(HTML_THEME, known_categories_json=known_categories_json))
                 hf.write('<div class="logs">')
         except Exception:
             pass

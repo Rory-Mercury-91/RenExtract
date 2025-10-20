@@ -15,7 +15,6 @@ import threading
 import time
 import re
 import json
-import codecs
 from typing import Dict, List, Optional, Callable, Any
 from pathlib import Path
 

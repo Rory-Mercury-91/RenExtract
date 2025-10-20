@@ -13,7 +13,7 @@ from typing import Optional, Dict, Any
 # Imports métier
 from core.services.extraction.extraction import TextExtractor, get_file_base_name
 from core.services.extraction.reconstruction import FileReconstructor
-from core.services.extraction.validation import validate_before_extraction, validate_before_reconstruction, fix_unescaped_quotes_in_txt
+from core.services.extraction.validation import validate_before_reconstruction, fix_unescaped_quotes_in_txt
 from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
 from core.models.files.file_manager import file_manager, FileOpener
 

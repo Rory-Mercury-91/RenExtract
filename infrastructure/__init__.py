@@ -320,9 +320,6 @@ def get_config_manager():
         log_message("ERREUR", "Impossible d'importer config_manager", "init_infrastructure")
         return None
 
-def get_i18n():
-    """Fonction désactivée - I18n non implémenté dans cette version"""
-    return None
 
 # Version et métadonnées du package (récupération automatique depuis constants)
 try:

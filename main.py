@@ -313,7 +313,7 @@ class RenExtractApp:
                     log_message("ERREUR", f"Erreur callback dialogue HTTP: {e}", category="main")
             
             # Configurer le callback dans le serveur
-            ems.set_dialogue_callback(dialogue_http_callback)
+            ems.set_focus_callback(dialogue_http_callback)
             log_message("INFO", "Callbacks éditeur temps réel configurés", category="main")
             return True
             

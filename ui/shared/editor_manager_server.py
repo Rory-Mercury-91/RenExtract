@@ -40,11 +40,6 @@ def set_focus_callback(cb):
     """
     global _focus_callback
     _focus_callback = cb
-    
-
-# Compat ancien nom si ton code l'utilisait :
-def set_dialogue_callback(cb):
-    return set_focus_callback(cb)
 
 def _call_focus_with_debounce():
     """Appelle la callback focus si présente, avec anti-rebond."""

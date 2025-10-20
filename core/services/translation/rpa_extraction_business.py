@@ -807,7 +807,7 @@ class RPAExtractionBusiness:
             return False
     
     def _attempt_rpyc_decompilation(self, project_path: str, rpyc_files: List[str], unrpyc_version: str, 
-                                progress_callback: Optional[Callable] = None, include_tl: bool = False) -> Tuple[int, int, int]:
+                                progress_callback: Optional[Callable] = None) -> Tuple[int, int, int]:
         """
         Tente la décompilation des .rpyc avec une version spécifique d'unrpyc
         
@@ -816,7 +816,6 @@ class RPAExtractionBusiness:
             rpyc_files: Liste des fichiers RPYC
             unrpyc_version: Version unrpyc ("v1" ou "v2")
             progress_callback: Callback de progression
-            include_tl: Si True, inclut aussi le dossier tl/ (nouveau paramètre)
             
         Returns:
             Tuple (converted_count, skipped_count, failed_count)

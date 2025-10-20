@@ -26,10 +26,7 @@ from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_custom_askyesnocancel, show_custom_messagebox
 from core.models.backup.unified_backup_manager import BackupType
 from ui.shared.editor_manager import open_file_with_editor as _open_with_editor
-try:
-    from ui.shared.editor_manager_server import set_dialogue_callback
-except Exception:
-    from ui.shared.editor_manager_server import set_focus_callback as set_dialogue_callback
+from ui.shared.editor_manager_server import set_focus_callback
 
 # Constantes pour les dimensions fixes des zones de texte
 TEXT_WIDGET_HEIGHT = 120  # Hauteur fixe en pixels
@@ -1550,8 +1547,8 @@ def start_monitoring(main_interface):
                             main_interface.window.after(0, lambda: _bring_realtime_editor_to_front(main_interface))
                         except Exception:
                             pass
-                    # Alias conservé (ne change pas votre code ailleurs)
-                    set_dialogue_callback(_focus_cb)
+                    # Enregistrer le callback de focus
+                    set_focus_callback(_focus_cb)
                     main_interface._focus_cb_registered = True
                     log_message("INFO", "Callback de focus (F8) enregistré.", category="realtime_editor")
             except Exception as e_cb:

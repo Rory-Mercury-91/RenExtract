@@ -643,20 +643,6 @@ class TranslationValidator:
                 validation_results['main_file'] = {'valid': False, 'translation_count': 0, 'errors': [f"Erreur de validation: {str(e)}"]}
         return validation_results
 
-def validate_before_extraction(filepath):
-    try:
-        validator = FileValidator()
-        validation = validator.is_renpy_file(filepath)
-        if validation['is_valid']:
-            if validation['confidence'] < 70:
-                validation['warnings'].append("Confiance modérée - vérifiez le résultat de l'extraction")
-        else:
-            validation['errors'].append("Ce fichier ne semble pas être un fichier Ren'Py valide")
-        return validation
-    except Exception as e:
-        log_message("ERREUR", f"Erreur lors de la validation avant extraction de {filepath}", e, category="validation")
-        return {'is_valid': False, 'confidence': 0, 'patterns_found': [], 'file_info': {}, 'warnings': [], 'errors': [f"Erreur de validation: {str(e)}"]}
-
 def create_safety_backup(filepath):
     try:
         if not filepath:

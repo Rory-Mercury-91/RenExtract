@@ -414,7 +414,7 @@ def scan_available_languages(main_interface, lang_combo):
                     languages.append(item)
         
         if not languages:
-            main_interface._update_status("⚠️ Aucune langue avec fichiers trouvée"); return
+            main_interface._update_status("⚠️ Aucune langue avec fichiers trouvée")
             return
         
         # Trier avec french en premier

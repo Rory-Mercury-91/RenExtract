@@ -1463,7 +1463,9 @@ class HtmlCoherenceReportGenerator:
             'DEEPL_ELLIPSIS_MISMATCH',                # coherence_check_deepl_ellipsis
             'ISOLATED_PERCENT_MISMATCH',              # coherence_check_isolated_percent
             # Groupe 3 : Formatage
-            'FRENCH_QUOTES_MISMATCH'                  # coherence_check_french_quotes
+            'FRENCH_QUOTES_MISMATCH',                 # coherence_check_french_quotes
+            # Groupe 4 : Avertissements indicatifs
+            'LENGTH_DIFFERENCE_WARNING'               # coherence_check_length_difference
         ]
         
         if issue_type in excludable_types:
@@ -1578,7 +1580,9 @@ class HtmlCoherenceReportGenerator:
             "QUOTE_BALANCE_ERROR": "Guillemets non équilibrés",
             "UNESCAPED_QUOTES_MISMATCH": "Guillemets non échappés incohérents",
             "PERCENTAGE_FORMAT_MISMATCH": "Variables % incohérentes",
-            "DOUBLE_PERCENT_MISMATCH": "Double % incohérent"
+            "DOUBLE_PERCENT_MISMATCH": "Double % incohérent",
+            # Avertissements indicatifs
+            "LENGTH_DIFFERENCE_WARNING": "Différence de longueur importante"
         }
         return type_names.get(error_type, error_type.replace('_', ' ').title())
     
@@ -1602,7 +1606,9 @@ class HtmlCoherenceReportGenerator:
             "ANALYSIS_ERROR": "🐛",
             # Nouveaux types fusionnés
             "QUOTES_MISMATCH": "\"\"",
-            "PERCENTAGE_MISMATCH": "%%"
+            "PERCENTAGE_MISMATCH": "%%",
+            # Avertissements indicatifs
+            "LENGTH_DIFFERENCE_WARNING": "📏"
         }
         return icons.get(error_type, "⚠️")
     
@@ -1626,7 +1632,9 @@ class HtmlCoherenceReportGenerator:
             "ANALYSIS_ERROR": "badge-other",
             # Nouveaux types fusionnés
             "QUOTES_MISMATCH": "badge-special",
-            "PERCENTAGE_MISMATCH": "badge-special"
+            "PERCENTAGE_MISMATCH": "badge-special",
+            # Avertissements indicatifs
+            "LENGTH_DIFFERENCE_WARNING": "badge-info"
         }
         return classes.get(error_type, "badge-other")
     

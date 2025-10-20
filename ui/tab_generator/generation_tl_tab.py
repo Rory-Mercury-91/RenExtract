@@ -14,7 +14,6 @@ Onglet de génération de traductions Ren'Py
 import os
 import tkinter as tk
 from tkinter import ttk
-from tkinter import font as tkfont
 import platform
 from pathlib import Path
 from ui.themes import theme_manager

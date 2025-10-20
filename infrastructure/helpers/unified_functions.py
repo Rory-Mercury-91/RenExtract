@@ -7,7 +7,6 @@ import re
 import shutil
 import time
 import datetime
-import getpass
 import tkinter as tk
 from tkinter import ttk, font
 from pathlib import Path

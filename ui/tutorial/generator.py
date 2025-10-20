@@ -30,7 +30,7 @@ class TutorialGenerator:
         self._ensure_directories()
         
         # Import du cache et du monitor de performance
-        from .cache import get_tutorial_cache, clear_tutorial_cache
+        from .cache import get_tutorial_cache
         from .utils import PerformanceMonitor
         self.cache = get_tutorial_cache()
         self.performance_monitor = PerformanceMonitor()

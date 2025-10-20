@@ -83,3 +83,18 @@ infrastructure/config/constants.py.backup
 # SCRIPTS ET NOTES DE DÉVELOPPEMENT
 # ============================================
 Z_Ne_Pas_supprimer/
+
+# ============================================
+# OUTILS D'ANALYSE DE CODE (privés)
+# ============================================
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage_report.txt
+
+# Pyan / graphes d'appels
+*.dot
+
+# Rapports temporaires
+analyze_code_usage.py

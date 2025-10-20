@@ -796,7 +796,7 @@ class MaintenanceToolsInterface:
             self.realtime_editor_business = RealTimeEditorBusiness()
             self.realtime_editor_business.set_callbacks(
                 status_callback=self._update_status,
-                error_callback=lambda msg, exc=None: self._show_notification(f"Erreur: {msg}", "error")
+                error_callback=lambda msg: self._show_notification(f"Erreur: {msg}", "error")
             )
         return self.realtime_editor_business
     

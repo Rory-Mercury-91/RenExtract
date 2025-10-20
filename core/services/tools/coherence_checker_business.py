@@ -50,14 +50,13 @@ class UnifiedCoherenceChecker:
         self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)
         self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)
         self.check_french_quotes = config_manager.get('coherence_check_french_quotes', True)
+        self.check_length_difference = config_manager.get('coherence_check_length_difference', True)
         # ⭐ Placeholders TOUJOURS actifs (contrôle obligatoire, non configurable)
-        # Codes spéciaux désactivés (redondant)
-        self.check_special_codes = False
         
         # Exclusions de fichiers depuis la config
         self.excluded_files = config_manager.get('coherence_excluded_files')
         
-        log_message("DEBUG", f"Options cohérence: variables={self.check_variables}, tags={self.check_tags}, codes={self.check_special_codes}, untranslated={self.check_untranslated}, ellipsis={self.check_ellipsis}, escape={self.check_escape_sequences}, percent={self.check_percentages}, quotes={self.check_quotations}, parens={self.check_parentheses}, syntax={self.check_syntax}, deepl={self.check_deepl_ellipsis}, isolated={self.check_isolated_percent}, french={self.check_french_quotes}, structure={self.check_line_structure}", category="coherence_options")
+        log_message("DEBUG", f"Options cohérence: variables={self.check_variables}, tags={self.check_tags}, untranslated={self.check_untranslated}, ellipsis={self.check_ellipsis}, escape={self.check_escape_sequences}, percent={self.check_percentages}, quotes={self.check_quotations}, parens={self.check_parentheses}, syntax={self.check_syntax}, deepl={self.check_deepl_ellipsis}, isolated={self.check_isolated_percent}, french={self.check_french_quotes}, length={self.check_length_difference}, structure={self.check_line_structure}", category="coherence_options")
         log_message("DEBUG", f"Fichiers exclus: {config_manager.get('coherence_excluded_files')}", category="coherence_options")
     
     def analyze_path(self, path, return_details=False):
@@ -420,17 +419,17 @@ class UnifiedCoherenceChecker:
             if french_issues:
                 return french_issues
         
-        # 13. Vérifier les codes spéciaux (si activé) - PRIORITÉ BASSE
-        if self.check_special_codes:
-            special_issues = self._check_special_codes_coherence(old_text, new_text, old_line_num, new_line_num)
-            if special_issues:
-                return special_issues
-        
-        # 14. Vérifier la structure des lignes (si activé) - PRIORITÉ TRÈS BASSE
+        # 13. Vérifier la structure des lignes (si activé) - PRIORITÉ TRÈS BASSE
         if self.check_line_structure:
             structure_issues = self._check_line_structure_coherence(old_text, new_text, old_line_num, new_line_num)
             if structure_issues:
                 return structure_issues
+        
+        # 14. Vérifier la différence de longueur (si activé) - PRIORITÉ INDICATIVE
+        if self.check_length_difference:
+            length_issues = self._check_length_difference_coherence(old_text, new_text, old_line_num, new_line_num)
+            if length_issues:
+                return length_issues
         
         return issues  # Aucune erreur trouvée
     
@@ -659,151 +658,6 @@ class UnifiedCoherenceChecker:
         
         return issues
     
-    def _check_special_codes_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des codes spéciaux (\\n, --, %, parenthèses, guillemets français)"""
-        issues = []
-        
-        try:
-            # Codes spéciaux existants
-            old_newlines = old_text.count('\\n')
-            new_newlines = new_text.count('\\n')
-            
-            old_dashes = old_text.count('--')
-            new_dashes = new_text.count('--')
-            
-            old_percent = len(re.findall(r'%[^%]*%', old_text))
-            new_percent = len(re.findall(r'%[^%]*%', new_text))
-            
-            # NOUVEAU: Vérification des parenthèses
-            old_open_parens = old_text.count('(')
-            new_open_parens = new_text.count('(')
-            old_close_parens = old_text.count(')')
-            new_close_parens = new_text.count(')')
-            
-            # NOUVEAU: Vérification des guillemets français
-            old_left_guillemets = old_text.count('«') + old_text.count('<<')
-            new_left_guillemets = new_text.count('«') + new_text.count('<<')
-            old_right_guillemets = old_text.count('»') + old_text.count('>>')
-            new_right_guillemets = new_text.count('»') + new_text.count('>>')
-            
-            # NOUVEAU: Vérification des ellipses (...)
-            old_ellipsis = old_text.count('...')
-            new_ellipsis = new_text.count('...')
-            
-            # Vérifications existantes
-            if old_newlines != new_newlines:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'SPECIAL_CODE_MISMATCH',
-                    'description': f"Séquences \\n incohérentes => Attendu: {old_newlines}, Présent: {new_newlines}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_dashes != new_dashes:
-                # Vérification spéciale pour les transformations -- vers ...
-                old_ellipsis = old_text.count('...')
-                new_ellipsis = new_text.count('...')
-                
-                # Si les -- ont été transformés en ...
-                if old_dashes > 0 and new_dashes < old_dashes and new_ellipsis > old_ellipsis:
-                    issues.append({
-                        'line': new_line_num,
-                        'type': 'DASH_TO_ELLIPSIS_TRANSFORMATION',
-                        'description': f"Tirets -- transformés en ... => {old_dashes} -- → {new_ellipsis} ...",
-                        'old_content': old_text,
-                        'new_content': new_text
-                    })
-                else:
-                    issues.append({
-                        'line': new_line_num,
-                        'type': 'SPECIAL_CODE_MISMATCH',
-                        'description': f"Tirets -- incohérents => Attendu: {old_dashes}, Présent: {new_dashes}",
-                        'old_content': old_text,
-                        'new_content': new_text
-                    })
-            
-            # Vérification spéciale pour les %%
-            if old_percent != new_percent:
-                has_percent_word = 'percent' in old_text.lower() or 'pourcent' in old_text.lower()
-                has_percent_symbol = '%' in new_text and '%' not in old_text
-                
-                if has_percent_word and has_percent_symbol:
-                    description = f"Variables % ajoutées => Probablement légitime (percent → %) - Vérifiez si intentionnel"
-                else:
-                    description = f"Variables % incohérentes => Attendu: {old_percent}, Présent: {new_percent}"
-                
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'SPECIAL_CODE_MISMATCH',
-                    'description': description,
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            # NOUVEAU: Vérifications des parenthèses
-            if old_open_parens != new_open_parens:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'PARENTHESES_MISMATCH',
-                    'description': f"Parenthèses ouvrantes ( incohérentes => Attendu: {old_open_parens}, Présent: {new_open_parens}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_close_parens != new_close_parens:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'PARENTHESES_MISMATCH',
-                    'description': f"Parenthèses fermantes ) incohérentes => Attendu: {old_close_parens}, Présent: {new_close_parens}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            # NOUVEAU: Vérifications des guillemets français
-            if old_left_guillemets != new_left_guillemets:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'FRENCH_QUOTES_MISMATCH',
-                    'description': f"Guillemets français ouvrants « ou << incohérents => Attendu: {old_left_guillemets}, Présent: {new_left_guillemets}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            if old_right_guillemets != new_right_guillemets:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'FRENCH_QUOTES_MISMATCH',
-                    'description': f"Guillemets français fermants » ou >> incohérents => Attendu: {old_right_guillemets}, Présent: {new_right_guillemets}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            # NOUVEAU: Vérification des ellipses (...)
-            if old_ellipsis != new_ellipsis:
-                # Vérification spéciale pour les transformations ... vers --
-                if old_ellipsis > 0 and new_ellipsis < old_ellipsis and new_dashes > old_dashes:
-                    issues.append({
-                        'line': new_line_num,
-                        'type': 'ELLIPSIS_TO_DASH_TRANSFORMATION',
-                        'description': f"Ellipses ... transformées en -- => {old_ellipsis} ... → {new_dashes} --",
-                        'old_content': old_text,
-                        'new_content': new_text
-                    })
-                else:
-                    issues.append({
-                        'line': new_line_num,
-                        'type': 'SPECIAL_CODE_MISMATCH',
-                        'description': f"Ellipses ... incohérentes => Attendu: {old_ellipsis}, Présent: {new_ellipsis}",
-                        'old_content': old_text,
-                        'new_content': new_text
-                    })
-        
-        except Exception:
-            pass
-        
-        return issues
-    
     def _check_escape_sequences_coherence(self, old_text, new_text, old_line_num, new_line_num):
         """Vérifie la cohérence des séquences d'échappement \\n, \\t, \\r, \\\\"""
         issues = []
@@ -915,7 +769,7 @@ class UnifiedCoherenceChecker:
     
     def _check_parentheses_coherence(self, old_text, new_text, old_line_num, new_line_num):
         """
-        Vérifie la cohérence des parenthèses () UNIQUEMENT.
+        Vérifie la cohérence des parenthèses () UNIQUEMENT (1 seule erreur fusionnée).
         
         Note : Les crochets [] et accolades {} sont déjà vérifiés par :
         - check_variables (pour [variable])
@@ -930,14 +784,22 @@ class UnifiedCoherenceChecker:
             old_close_parens = old_text.count(')')
             new_close_parens = new_text.count(')')
             
-            parens_mismatch = (old_open_parens != new_open_parens or 
-                               old_close_parens != new_close_parens)
+            # Fusionner les vérifications en 1 seule erreur
+            open_mismatch = old_open_parens != new_open_parens
+            close_mismatch = old_close_parens != new_close_parens
             
-            if parens_mismatch:
+            if open_mismatch or close_mismatch:
+                # Construire une description détaillée
+                details = []
+                if open_mismatch:
+                    details.append(f"Ouvrantes ( (Attendu: {old_open_parens}, Présent: {new_open_parens})")
+                if close_mismatch:
+                    details.append(f"Fermantes ) (Attendu: {old_close_parens}, Présent: {new_close_parens})")
+                
                 issues.append({
                     'line': new_line_num,
                     'type': 'PARENTHESES_MISMATCH',
-                    'description': f"Parenthèses () incohérentes => Attendu: {old_open_parens}/{old_close_parens}, Présent: {new_open_parens}/{new_close_parens}",
+                    'description': f"Parenthèses () incohérentes => {', '.join(details)}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -1066,6 +928,47 @@ class UnifiedCoherenceChecker:
                     'old_content': old_text,
                     'new_content': new_text
                 })
+        
+        except Exception:
+            pass
+        
+        return issues
+    
+    def _check_length_difference_coherence(self, old_text, new_text, old_line_num, new_line_num):
+        """
+        Vérifie la différence de longueur entre OLD et NEW (indicatif, non critique).
+        
+        Signale si la traduction est significativement plus courte ou plus longue que l'original.
+        Seuil : ±50% de différence de longueur.
+        """
+        issues = []
+        
+        try:
+            old_length = len(old_text.strip())
+            new_length = len(new_text.strip())
+            
+            # Ignorer les lignes trop courtes (moins de 20 caractères)
+            if old_length < 20 or new_length < 20:
+                return issues
+            
+            # Calculer la différence en pourcentage
+            if old_length > 0:
+                length_diff_percent = abs((new_length - old_length) / old_length) * 100
+                
+                # Seuil : 50% de différence
+                if length_diff_percent > 50:
+                    if new_length > old_length:
+                        status = f"⬆️ +{length_diff_percent:.0f}% plus longue"
+                    else:
+                        status = f"⬇️ -{length_diff_percent:.0f}% plus courte"
+                    
+                    issues.append({
+                        'line': new_line_num,
+                        'type': 'LENGTH_DIFFERENCE_WARNING',
+                        'description': f"Différence de longueur importante {status} => OLD: {old_length} caractères, NEW: {new_length} caractères (avertissement indicatif)",
+                        'old_content': old_text,
+                        'new_content': new_text
+                    })
         
         except Exception:
             pass
