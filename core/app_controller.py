@@ -550,30 +550,9 @@ class AppController:
             self.original_path = self.last_reconstructed_file
             self._update_interface_for_content()
 
-            # 🆕 NOUVEAU : Vérifier si la vérification des lignes non traduites est activée
-            auto_check_untranslated = config_manager.get('reconstruction_auto_check_untranslated', True)
-            
-            if auto_check_untranslated:
-                # Utiliser le système unifié avec l'option par défaut
-                from core.services.tools.coherence_checker_business import check_coherence_unified
-                coherence_result = check_coherence_unified(self.last_reconstructed_file, return_details=False)
-            else:
-                # Utiliser le système unifié mais désactiver temporairement la vérification des lignes non traduites
-                from core.services.tools.coherence_checker_business import check_coherence_unified, get_coherence_options, set_coherence_options
-                
-                # Sauvegarder les options actuelles
-                current_options = get_coherence_options()
-                
-                # Modifier temporairement pour désactiver les lignes non traduites
-                temp_options = current_options.copy()
-                temp_options['check_untranslated'] = False
-                set_coherence_options(temp_options)
-                
-                # Effectuer la vérification
-                coherence_result = check_coherence_unified(self.last_reconstructed_file, return_details=False)
-                
-                # Restaurer les options originales
-                set_coherence_options(current_options)
+            # Vérification de cohérence avec les options configurées par l'utilisateur
+            from core.services.tools.coherence_checker_business import check_coherence_unified
+            coherence_result = check_coherence_unified(self.last_reconstructed_file, return_details=False)
             
             # Le reste du traitement reste identique
             if coherence_result is None:
@@ -1045,30 +1024,9 @@ class AppController:
             # Contrôle de cohérence automatique
             self._clean_old_warning_files(file_path)
         
-            # 🆕 NOUVEAU : Vérifier si la vérification des lignes non traduites est activée
-            auto_check_untranslated = config_manager.get('reconstruction_auto_check_untranslated', True)
-            
-            if auto_check_untranslated:
-                # Utiliser le système unifié avec l'option par défaut
-                from core.services.tools.coherence_checker_business import check_coherence_unified
-                coherence_result = check_coherence_unified(file_path, return_details=False)
-            else:
-                # Utiliser le système unifié mais désactiver temporairement la vérification des lignes non traduites
-                from core.services.tools.coherence_checker_business import check_coherence_unified, get_coherence_options, set_coherence_options
-                
-                # Sauvegarder les options actuelles
-                current_options = get_coherence_options()
-                
-                # Modifier temporairement pour désactiver les lignes non traduites
-                temp_options = current_options.copy()
-                temp_options['check_untranslated'] = False
-                set_coherence_options(temp_options)
-                
-                # Effectuer la vérification
-                coherence_result = check_coherence_unified(file_path, return_details=False)
-                
-                # Restaurer les options originales
-                set_coherence_options(current_options)
+            # Vérification de cohérence avec les options configurées par l'utilisateur
+            from core.services.tools.coherence_checker_business import check_coherence_unified
+            coherence_result = check_coherence_unified(file_path, return_details=False)
         
             # Le reste du traitement reste identique
             if coherence_result is None:
