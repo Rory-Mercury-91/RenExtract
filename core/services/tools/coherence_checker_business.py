@@ -34,13 +34,13 @@ class UnifiedCoherenceChecker:
         self.results_by_file = {}
         self.project_path = None  # 🆕 Stocke le chemin du projet pour les exclusions
         
-        # ✅ CONTRÔLES OBLIGATOIRES (non désactivables - critiques pour l'intégrité du jeu)
-        self.check_variables = True  # Variables Ren'Py [variable] - OBLIGATOIRE
-        self.check_tags = True  # Balises {i}, {b}, etc. - OBLIGATOIRE
-        self.check_escape_sequences = True  # Séquences \n, \", etc. - OBLIGATOIRE
-        self.check_line_structure = True  # Structure old/new - OBLIGATOIRE
-        
-        # 🔧 CONTRÔLES CONFIGURABLES (désactivables - préférences de style/formatage)
+        # Chargement des options depuis la config (avec valeurs par défaut True)
+        # Note : Les 4 options critiques (variables, tags, escape_sequences, line_structure) 
+        # sont masquées de l'interface mais restent configurables via config.json
+        self.check_variables = config_manager.get('coherence_check_variables', True)
+        self.check_tags = config_manager.get('coherence_check_tags', True)
+        self.check_escape_sequences = config_manager.get('coherence_check_escape_sequences', True)
+        self.check_line_structure = config_manager.get('coherence_check_line_structure', True)
         self.check_untranslated = config_manager.get('coherence_check_untranslated', True)
         self.check_ellipsis = config_manager.get('coherence_check_ellipsis', True)
         self.check_percentages = config_manager.get('coherence_check_percentages', True)
@@ -50,10 +50,9 @@ class UnifiedCoherenceChecker:
         self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)
         self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)
         self.check_french_quotes = config_manager.get('coherence_check_french_quotes', True)
-        
-        # ❌ CONTRÔLES DÉSACTIVÉS (redondants avec d'autres vérifications)
-        self.check_special_codes = False  # Redondant avec variables + tags
-        self.check_placeholders = False  # Validation redondante
+        # Placeholders et codes spéciaux désactivés - validation redondante
+        self.check_special_codes = False
+        self.check_placeholders = False
         
         # Exclusions de fichiers depuis la config
         self.excluded_files = config_manager.get('coherence_excluded_files')
