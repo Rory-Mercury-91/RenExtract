@@ -1447,16 +1447,23 @@ class HtmlCoherenceReportGenerator:
         unique_id = hashlib.md5(f'{file_path}{line}'.encode()).hexdigest()[:8]
         
         # Checkbox d'exclusion pour les types d'erreurs configurables
-        # Types supportés (basés sur coherence_check_untranslated, ellipsis, percentages, quotations)
+        # Note : Les placeholders ne sont PAS excludables (contrôle obligatoire critique)
         exclude_checkbox_html = ''
         excludable_types = [
+            # Groupe 1 : Détection de contenu
             'UNTRANSLATED_LINE',                      # coherence_check_untranslated
             'DASH_TO_ELLIPSIS_TRANSFORMATION',        # coherence_check_ellipsis
             'ELLIPSIS_TO_DASH_TRANSFORMATION',        # coherence_check_ellipsis
             'PERCENTAGE_MISMATCH',                    # coherence_check_percentages
             'QUOTE_COUNT_MISMATCH',                   # coherence_check_quotations
             'QUOTES_MISMATCH',                        # coherence_check_quotations
-            'QUOTE_BALANCE_ERROR'                     # coherence_check_quotations
+            'QUOTE_BALANCE_ERROR',                    # coherence_check_quotations
+            # Groupe 2 : Structure et syntaxe
+            'PARENTHESES_MISMATCH',                   # coherence_check_parentheses
+            'DEEPL_ELLIPSIS_MISMATCH',                # coherence_check_deepl_ellipsis
+            'ISOLATED_PERCENT_MISMATCH',              # coherence_check_isolated_percent
+            # Groupe 3 : Formatage
+            'FRENCH_QUOTES_MISMATCH'                  # coherence_check_french_quotes
         ]
         
         if issue_type in excludable_types:

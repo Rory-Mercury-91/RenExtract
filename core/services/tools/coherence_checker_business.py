@@ -50,9 +50,9 @@ class UnifiedCoherenceChecker:
         self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)
         self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)
         self.check_french_quotes = config_manager.get('coherence_check_french_quotes', True)
-        # Placeholders et codes spéciaux désactivés - validation redondante
+        # ⭐ Placeholders TOUJOURS actifs (contrôle obligatoire, non configurable)
+        # Codes spéciaux désactivés (redondant)
         self.check_special_codes = False
-        self.check_placeholders = False
         
         # Exclusions de fichiers depuis la config
         self.excluded_files = config_manager.get('coherence_excluded_files')
@@ -367,17 +367,16 @@ class UnifiedCoherenceChecker:
             if var_issues:
                 return var_issues  # Arrêt dès qu'on trouve une erreur de variable
         
-        # 4. Vérifier les placeholders (désactivé - validation redondante)
-        if self.check_placeholders:
-            placeholder_issues = self._check_placeholders_coherence(old_text, new_text, old_line_num, new_line_num)
-            if placeholder_issues:
-                return placeholder_issues
-        
-        # 5. Vérifier les séquences d'échappement (si activé) - PRIORITÉ MOYENNE
+        # 4. Vérifier les séquences d'échappement (si activé) - PRIORITÉ MOYENNE
         if self.check_escape_sequences:
             escape_issues = self._check_escape_sequences_coherence(old_text, new_text, old_line_num, new_line_num)
             if escape_issues:
                 return escape_issues
+        
+        # 5. ⭐ Vérifier les placeholders (OBLIGATOIRE - NON CONFIGURABLE) - PRIORITÉ HAUTE
+        placeholder_issues = self._check_placeholders_coherence(old_text, new_text, old_line_num, new_line_num)
+        if placeholder_issues:
+            return placeholder_issues
         
         # 6. Vérifier les pourcentages (si activé) - PRIORITÉ MOYENNE
         if self.check_percentages:
@@ -600,44 +599,57 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_placeholders_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des placeholders RENPY_XX__"""
+        """
+        Vérifie que les placeholders de protection sont correctement restaurés.
+        
+        LOGIQUE OBLIGATOIRE (non configurable):
+        - Erreur si placeholder détecté dans NEW (peu importe OLD)
+        - Les placeholders doivent DISPARAÎTRE après traduction/reconstruction
+        - Formats détectés: RENPY_CODE_*, RENPY_ASTERIX_*, RENPY_TILDE_*, RENPY_EMPTY
+        
+        Types d'erreurs:
+        1. Placeholder dans OLD mais supprimé pendant traduction → Erreur
+        2. Placeholder dans NEW uniquement (ajouté) → Erreur  
+        3. Placeholder dans OLD ET NEW (non restauré) → Erreur
+        """
         issues = []
         
         try:
-            old_placeholders = re.findall(r'RENPY_[A-Z_0-9]+', old_text)
-            new_placeholders = re.findall(r'RENPY_[A-Z_0-9]+', new_text)
+            # Détecter tous les placeholders RENPY dans OLD et NEW
+            old_placeholders = re.findall(r'RENPY_[A-Z_]+_?\d*', old_text)
+            new_placeholders = re.findall(r'RENPY_[A-Z_]+_?\d*', new_text)
             
-            # Placeholders incohérents
-            if old_placeholders != new_placeholders:
+            # CAS 1 : Placeholder dans OLD mais pas dans NEW
+            # (Supprimé pendant traduction - erreur critique)
+            old_set = set(old_placeholders)
+            new_set = set(new_placeholders)
+            removed_placeholders = old_set - new_set
+            
+            if removed_placeholders:
                 issues.append({
                     'line': new_line_num,
-                    'type': 'PLACEHOLDER_MISMATCH',
-                    'description': f"Placeholders incohérents => Attendu: {old_placeholders}, Présent: {new_placeholders}",
+                    'type': 'PLACEHOLDER_REMOVED',
+                    'description': f"Placeholder(s) supprimé(s) pendant traduction (critique) : {', '.join(sorted(removed_placeholders))}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
+                return issues  # Erreur critique, arrêt immédiat
             
-            # Placeholders non restaurés (présents dans NEW mais pas dans OLD)
-            old_set = set(old_placeholders)
-            new_set = set(new_placeholders)
-            unrestored = new_set - old_set
-            
-            if unrestored:
+            # CAS 2 & 3 : Placeholder dans NEW (ajouté OU non restauré)
+            # Dans tous les cas c'est une erreur
+            if new_placeholders:
+                # Déterminer si c'est un ajout ou une non-restauration
+                if old_placeholders:
+                    # Placeholders présents dans OLD et NEW = non restauré
+                    description = f"Placeholder(s) non restauré(s) après reconstruction : {', '.join(sorted(new_set))}"
+                else:
+                    # Placeholders seulement dans NEW = ajouté par erreur
+                    description = f"Placeholder(s) ajouté(s) par erreur : {', '.join(sorted(new_set))}"
+                
                 issues.append({
                     'line': new_line_num,
                     'type': 'UNRESTORED_PLACEHOLDER',
-                    'description': f"Placeholders non restaurés => Attendu: remplacement automatique, Présent: {list(unrestored)}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
-            # Placeholders malformés
-            malformed = re.findall(r'RENPY_[A-Z_0-9]*(?![A-Z_0-9])', new_text)
-            if malformed:
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'MALFORMED_PLACEHOLDER',
-                    'description': f"Placeholders malformés => Attendu: RENPY_XX__, Présent: {malformed}",
+                    'description': description,
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -902,41 +914,30 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_parentheses_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des parenthèses () et crochets [] (1 seule erreur fusionnée)"""
+        """
+        Vérifie la cohérence des parenthèses () UNIQUEMENT.
+        
+        Note : Les crochets [] et accolades {} sont déjà vérifiés par :
+        - check_variables (pour [variable])
+        - check_tags (pour {balise})
+        """
         issues = []
         
         try:
-            # Parenthèses
+            # Vérifier SEULEMENT les parenthèses ()
             old_open_parens = old_text.count('(')
             new_open_parens = new_text.count('(')
             old_close_parens = old_text.count(')')
             new_close_parens = new_text.count(')')
             
-            # Crochets (ne sont vérifiés que si pas de vérification variables activée)
-            # Sinon redondant avec _check_variables_coherence
-            old_open_brackets = old_text.count('[')
-            new_open_brackets = new_text.count('[')
-            old_close_brackets = old_text.count(']')
-            new_close_brackets = new_text.count(']')
-            
-            # Fusionner toutes les vérifications en une seule erreur
             parens_mismatch = (old_open_parens != new_open_parens or 
                                old_close_parens != new_close_parens)
-            brackets_mismatch = (old_open_brackets != new_open_brackets or 
-                                 old_close_brackets != new_close_brackets)
             
-            if parens_mismatch or brackets_mismatch:
-                # Construire une description détaillée
-                details = []
-                if parens_mismatch:
-                    details.append(f"( ) (Attendu: {old_open_parens}/{old_close_parens}, Présent: {new_open_parens}/{new_close_parens})")
-                if brackets_mismatch:
-                    details.append(f"[ ] (Attendu: {old_open_brackets}/{old_close_brackets}, Présent: {new_open_brackets}/{new_close_brackets})")
-                
+            if parens_mismatch:
                 issues.append({
                     'line': new_line_num,
                     'type': 'PARENTHESES_MISMATCH',
-                    'description': f"Parenthèses/Crochets incohérents => {', '.join(details)}",
+                    'description': f"Parenthèses () incohérentes => Attendu: {old_open_parens}/{old_close_parens}, Présent: {new_open_parens}/{new_close_parens}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
