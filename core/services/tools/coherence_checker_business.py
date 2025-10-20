@@ -340,6 +340,10 @@ class UnifiedCoherenceChecker:
         """
         issues = []
         
+        # 🆕 Vérifier si cette ligne est exclue globalement (par old_content)
+        if self._is_excluded_by_content(old_text):
+            return issues  # Ligne exclue, ignorer toutes les vérifications
+        
         # 1. Vérifier les lignes non traduites (si activé) - PRIORITÉ MAXIMALE
         if self.check_untranslated and self._is_untranslated_line(old_text, new_text, file_path, new_line_num):
             issues.append({
@@ -430,6 +434,22 @@ class UnifiedCoherenceChecker:
                 return structure_issues
         
         return issues  # Aucune erreur trouvée
+    
+    def _is_excluded_by_content(self, old_text):
+        """
+        Vérifie si une ligne est exclue globalement par son contenu (old_content).
+        Utilisé pour les exclusions simples (ellipsis, percentages, quotations, etc.)
+        """
+        if not old_text or not old_text.strip():
+            return False
+        
+        text = old_text.strip()
+        
+        # Récupérer la liste des exclusions simples depuis la config
+        excluded_lines = config_manager.get('coherence_excluded_lines', [])
+        
+        # Vérifier si le contenu exact est dans la liste d'exclusions
+        return text in excluded_lines
     
     def _is_untranslated_line(self, old_text, new_text, file_path, line_num):
         """
