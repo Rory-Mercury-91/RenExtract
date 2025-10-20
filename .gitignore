@@ -96,5 +96,10 @@ coverage_report.txt
 # Pyan / graphes d'appels
 *.dot
 
-# Rapports temporaires
-analyze_code_usage.py
+# Scripts d'analyse (privés, générés pour tests)
+Z_Ne_Pas_supprimer/analyze_branches.py
+Z_Ne_Pas_supprimer/analyze_hotspots.py
+Z_Ne_Pas_supprimer/analyze_features.py
+Z_Ne_Pas_supprimer/analyze_callgraph.py
+Z_Ne_Pas_supprimer/analyze_code_usage.py
+Z_Ne_Pas_supprimer/run_full_coverage_analysis.ps1
