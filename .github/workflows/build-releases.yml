@@ -43,6 +43,7 @@ jobs:
             pip install requests>=2.0
             pip install groq>=0.4.1
             pip install typing-extensions>=4.0.0
+            # Note : Pillow supprimé - utilise maintenant l'installation temporaire des polices
           }
         shell: pwsh
 
@@ -69,10 +70,24 @@ jobs:
             $iconArg = ""
           }
           
+          # Vérifier la présence de version_info.txt
+          if (Test-Path version_info.txt) {
+            echo "📋 version_info.txt détecté"
+            $versionInfoArg = "--version-file=version_info.txt"
+          } else {
+            echo "⚠️  version_info.txt non trouvé"
+            $versionInfoArg = ""
+          }
+          
           # Créer l'exécutable avec PyInstaller
+          # --noupx : Désactive compression UPX (réduit faux positifs antivirus)
+          # --runtime-tmpdir : Utilise dossier courant au lieu de temp système
           pyinstaller --onefile --windowed `
             --name "RenExtract" `
+            --noupx `
+            --runtime-tmpdir=. `
             $iconArg `
+            $versionInfoArg `
             --add-data "core;core" `
             --add-data "infrastructure;infrastructure" `
             --add-data "ui;ui" `
@@ -132,6 +147,7 @@ jobs:
             pip install requests>=2.0
             pip install groq>=0.4.1
             pip install typing-extensions>=4.0.0
+            # Note : Pillow supprimé - utilise maintenant l'installation temporaire des polices
           fi
 
       - name: Build Linux Binary
@@ -146,8 +162,10 @@ jobs:
           fi
           
           # Créer l'exécutable Linux
+          # --noupx : Désactive compression UPX (cohérence avec Windows)
           pyinstaller --onefile \
             --name "RenExtract" \
+            --noupx \
             --add-data "core:core" \
             --add-data "infrastructure:infrastructure" \
             --add-data "ui:ui" \
@@ -209,159 +227,78 @@ jobs:
           
           **Outil professionnel d'extraction, préparation et reconstruction de traductions pour Ren'Py**
           
-          ### 📥 Téléchargements
+          ---
+          
+          ### ⬇️ Téléchargement Direct
+          
+          [![Download Windows](https://img.shields.io/badge/Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Windows.zip)
+          [![Download Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Linux.tar.gz)
+          
+          | Plateforme | Taille | Téléchargement |
+          |------------|--------|----------------|
+          | 🪟 **Windows** | ![Windows Size](https://img.shields.io/github/downloads/Rory-Mercury-91/RenExtract/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Windows.zip?label=%20&style=flat-square) | [RenExtract-${{ github.ref_name }}-Windows.zip](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Windows.zip) |
+          | 🐧 **Linux** | ![Linux Size](https://img.shields.io/github/downloads/Rory-Mercury-91/RenExtract/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Linux.tar.gz?label=%20&style=flat-square) | [RenExtract-${{ github.ref_name }}-Linux.tar.gz](https://github.com/Rory-Mercury-91/RenExtract/releases/download/${{ github.ref_name }}/RenExtract-${{ github.ref_name }}-Linux.tar.gz) |
+          
+          ---
+          
+          ### 📥 Détails des Téléchargements
           
           | Plateforme | Fichier | Instructions |
           |------------|---------|--------------|
           | 🪟 **Windows** | `RenExtract-${{ github.ref_name }}-Windows.zip` | Extraire et exécuter `RenExtract.exe` |
           | 🐧 **Linux** | `RenExtract-${{ github.ref_name }}-Linux.tar.gz` | Extraire, `chmod +x RenExtract`, puis `./RenExtract` |
           
-          ### 🚀 Installation Rapide
+          ### 🚀 Installation
           
-          #### Windows
-          ```bash
-          # 1. Télécharger RenExtract-${{ github.ref_name }}-Windows.zip
-          # 2. Extraire l'archive
-          # 3. Double-cliquer sur RenExtract.exe
-          ```
-          
-          #### Linux
-          ```bash
-          # Télécharger et extraire
-          tar -xzf RenExtract-${{ github.ref_name }}-Linux.tar.gz
-          
-          # Rendre exécutable
-          chmod +x RenExtract
-          
-          # Exécuter
-          ./RenExtract
-          ```
+          **Windows** : Extraire `.zip` → Double-cliquer `RenExtract.exe`  
+          **Linux** : `tar -xzf`, `chmod +x RenExtract`, `./RenExtract`
           
           ### ✨ Fonctionnalités Principales
           
-          #### 🎯 Extraction & Génération
-          - 📄 Extraction intelligente des dialogues depuis fichiers `.rpy`
-          - 🔧 Génération de fichiers de traduction Ren'Py (pas besoin du SDK !)
-          - 🛡️ Protection automatique des codes spéciaux et variables
-          - 🔄 Reconstruction intelligente des fichiers traduits au format Ren'Py
-          - 📦 Décompilation des archives `.rpa` et scripts `.rpyc`
-          
-          #### 🤖 Traduction IA Groq
-          - 🚀 Intégration Groq AI pour relecture/amélioration de traductions
-          - ⚙️ Personnalisation complète du prompt (ton, style, contexte, créativité)
-          - 🎯 Modèle llama-3.3-70b-versatile (75,000 mots/jour gratuit)
-          - 🔄 Éditeur temps réel avec traduction directe
-          - 🛡️ Préservation automatique des balises Ren'Py
-          - 👥 Définition de personnages pour contexte amélioré
-          - 📝 Profils de prompts personnalisables et réutilisables
-          - 🔍 Scanner automatique de personnages depuis les fichiers `.rpy`
-          - 📜 Support des dialogues précédents pour contexte conversationnel
-          
-          #### 🌍 Personnalisation Avancée (Optionnel)
-          - 🔧 Générateur screen preferences pour jeux avec structure standard :
-            - 🎛️ Contrôle taille de police dynamique
-            - 🎨 Textbox personnalisé (opacité, offset, contour)
-            - 🌐 Sélecteur de langue intégré au jeu
-            - 🎯 Détection automatique du style Ren'Py
-          
-          #### 🔧 Outils de Maintenance
-          - 🧹 Nettoyage intelligent des fichiers temporaires
-          - 📊 Vérification de cohérence avancée
-          - 💾 Système de sauvegarde unifié hiérarchique avec métadonnées
-          - 📈 Rapports HTML détaillés
-          - 🗄️ Gestionnaire de sauvegardes avec restauration ZIP intelligente
-          - 🔄 Synchronisation automatique entre fenêtres
-          - ⚡ Navigation rapide entre fichiers du projet
-          
-          #### 🎨 Interface Moderne
-          - 🖼️ Interface graphique intuitive
-          - 🌙 Thèmes personnalisables
-          - 📖 Tutoriel intégré interactif
-          - ⚡ Drag & Drop et copier-coller
-          - 🔄 Édition temps réel
-          
-          ### 🏗️ Architecture Professionnelle MVP 10/10
-          
-          - **114 fichiers** Python (core, ui, infrastructure)
-          - **24 packages surveillés** avec système de santé
-          - **Logs intelligents** : 1 ligne si OK, détails si problème
-          - **Cache persistant** : Performance optimale multi-session
-          - **0 warning** parasite dans les logs
-          - **100% production-ready**
+          - 📄 **Extraction & Génération** : Extraction intelligente + génération Ren'Py (pas besoin du SDK !)
+          - 🤖 **Traduction IA Groq** : Intégration Groq AI avec personnages, contexte et profils personnalisables
+          - 🌍 **Screen Preferences** : Générateur automatique (police, textbox, langue)
+          - 🔧 **Outils Avancés** : Nettoyage intelligent, cohérence, sauvegardes hiérarchiques
+          - 🎨 **Interface Moderne** : Thèmes, tutoriel intégré, Drag & Drop, édition temps réel
+          - 🏗️ **Architecture MVP** : 114 fichiers Python, 24 packages surveillés, 100% production-ready
           
           ### 💡 Utilisation Rapide
           
           > **Important** : RenExtract ne traduit pas automatiquement ! Il prépare vos fichiers, vous traduisez avec vos outils préférés (DeepL, ChatGPT, etc.), puis RenExtract reconstruit les fichiers Ren'Py.
           
-          1. **Chargez** votre projet Ren'Py
-          2. **Ouvrez** l'interface du générateur
-          3. **Décompressez** les `.rpa` et `.rpyc` (si nécessaire)
-          4. **Générez** la structure de fichiers de traduction
-          5. **Naviguez** vers le fichier souhaité
-          6. **Extrayez** les dialogues (bouton "⚡Extraire")
-          7. **Traduisez** les fichiers `.txt` avec vos outils
-          8. **Reconstruisez** (bouton "🔧 Reconstruire")
-          9. **Vérifiez** la cohérence (bouton "🔄 Revérifier")
-          10. **Testez** dans votre jeu !
+          **Workflow** : Charger projet → Générer structure TL → Extraire dialogues → Traduire fichiers `.txt` → Reconstruire → Vérifier cohérence → Tester in-game
           
-          ### 📚 Documentation Complète
+          ### 📚 Documentation & Support
           
           - 📖 **README** : https://github.com/Rory-Mercury-91/RenExtract
-          - 🎓 **Tutoriel intégré** : Appuyez sur `F1` dans l'application
-          - 💬 **Support** : https://github.com/Rory-Mercury-91/RenExtract/issues
+          - 🎓 **Tutoriel intégré** : Appuyez sur `F1` ou cliquez sur "❓ Guide Complet"
+          - 💬 **Support Discord** : https://discord.gg/Yp2Hm8JWQ2 (réponse rapide !)
           
-          ### 🔧 Configuration Requise
+          ### 🔧 Configuration
           
-          - **Windows** : Windows 10/11 (64-bit)
-          - **Linux** : Distribution moderne avec GTK3
-          - **RAM** : Minimum 4 GB
-          - **Disque** : ~100 MB
-          
-          ### ⚠️ Notes Importantes
-          
-          - Les fichiers `.rpy` doivent être visibles (RenExtract peut décompiler `.rpa` et `.rpyc`)
-          - RenExtract crée automatiquement des sauvegardes avant chaque opération critique
-          - Vérifiez toujours la cohérence avec le bouton "🔄 Revérifier"
+          **Requis** : Windows 10/11 (64-bit) ou Linux (GTK3+), 4 GB RAM, ~100 MB disque  
+          **Conseil** : Vérifiez toujours la cohérence après reconstruction des fichiers traduits
           
           ---
           
-          ### 🆕 Nouveautés v1.2.0
+          ### 🆕 Nouveautés ${{ github.ref_name }}
           
-          #### 🔍 Rapport de Cohérence Interactif
-          - ☑️ **Exclusions interactives** : Marquez les lignes à ignorer directement dans le rapport HTML avec des checkboxes cliquables
-          - 🌐 **Serveur HTTP local** : Communication temps réel entre navigateur et application (port dynamique 8000-8099)
-          - 💾 **Persistence intelligente** : Sauvegarde automatique des exclusions dans `config.json` par projet/fichier/ligne
-          - ✨ **Feedback visuel** : Animation fade-out et mise à jour instantanée des états (☐ → ✓ Ignoré)
-          - 🎯 **Labels cliquables** : UX améliorée avec "Cliquer pour ignorer" / "✓ Ignoré"
-          - ⚡ **Cache JavaScript** : Performances optimales avec cache côté client (Set)
-          - 🖥️ **Support WSL** : Détection automatique et binding `0.0.0.0` pour dev Linux/exécution Windows
+          #### 🎯 Fonctionnalités Principales
+          - ✅ **Installation temporaire des polices** : Aperçu des polices personnalisées sans Pillow (-9 MB exécutable)
+          - ✅ **Gestion intelligente des polices** : Conservation des polices utilisées, nettoyage automatique des autres
           
-          #### 🗂️ Gestionnaire d'Exclusions
-          - 🪟 **Interface modale** : Fenêtre Tkinter thématisée avec `ExclusionsManagerDialog`
-          - 📊 **Treeview avancé** : Tableau multi-colonnes (Projet | Fichier | Ligne | Texte | Date) avec tri
-          - ☑️ **Sélection multiple** : Checkboxes par ligne + header "☐/☑" pour sélection globale
-          - 🔍 **Double filtrage** : Filtres dynamiques cascadés par projet ET par fichier (2 colonnes)
-          - 🧠 **Filtre intelligent** : Liste de fichiers mise à jour automatiquement selon le projet sélectionné
-          - 🗑️ **Suppression batch** : Supprimez plusieurs exclusions en un clic avec feedback progressif
-          - 📈 **Statistiques dynamiques** : Compteur avec filtres actifs `📊 X exclusion(s) (projet: Y, fichier: Z)`
-          - ⚙️ **Intégration seamless** : Accessible depuis l'onglet Cohérence via "⚙️ Gérer les exclusions de lignes"
+          #### 🔧 Améliorations & Corrections
+          - ✅ **Optimisation taille exécutable** : Suppression de Pillow, réduction de 25 MB à ~16 MB
+          - ✅ **Logs optimisés** : Regroupement et nettoyage des messages de polices
+          - ✅ **Code mort supprimé** : -56 lignes dans font_manager.py
+          - ✅ **Build configs mises à jour** : requirements.txt, create_windows_exe.py, build-releases.yml
           
-          #### 🎨 Rapport HTML - Améliorations UX
-          - 🔽 **Flèches animées** : Rotation correcte (↓ → ↑) lors ouverture/fermeture des sections
-          - 🔄 **Réinitialiser global** : Un bouton pour réinitialiser tous les filtres ET fermer toutes les sections
-          - 🛠️ **Corrections CSS/JS** : Résolution erreurs console navigateur + réorganisation scope fonctions
+          #### 📖 Documentation & Tutoriel
+          - ✅ **README simplifié** : Documentation utilisateur concise sur les faux positifs antivirus
           
-          #### 📖 Tutoriel - Professionnalisation Continue
-          - ✅ **Tab 03 validée** : Révision complète de l'onglet Traduction et outils
-          - 🎯 **Ton formel maintenu** : Utilisation du "vous" pour cohérence professionnelle
-          - 📸 **Images optimisées** : Structure `tutorial_images/03_main_interface/00X.png`
-          - 🗂️ **Documentation structurée** : Mise à jour `images_guide.txt` + push vers repo Stockage GitHub
+          ---
           
-          #### 🔧 Corrections Techniques
-          - 🚦 **Bouton "Annuler"** : État actif/inactif correct (cohérence = opération non-bloquante)
-          - 📦 **Gestion imports** : Résolution `ImportError` pour `get_window_manager` lors arrêt application
-          - 🎨 **Aperçu polices custom** : Support Pillow pour rendu correct des polices .ttf/.otf personnalisées
-          - 🧹 **Nettoyage build** : Suppression `tutorial_images/` du .exe (téléchargement GitHub au démarrage)
+          > 💡 **Conseil** : Restez concis, le README contient déjà les détails techniques
           
           Consultez le [CHANGELOG](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md) pour tous les détails.
           
@@ -369,8 +306,9 @@ jobs:
           
           💖 **Merci d'utiliser RenExtract !**
           
-          🐛 **Bugs** : [Ouvrir une issue](https://github.com/Rory-Mercury-91/RenExtract/issues)  
-          ⭐ **Aimer** : N'oubliez pas de mettre une étoile !  
+          💬 **Support** : [Discord](https://discord.gg/Yp2Hm8JWQ2) (réponse rapide !)  
+          🐛 **Bugs** : [GitHub Issues](https://github.com/Rory-Mercury-91/RenExtract/issues)  
+          ⭐ **Aimer** : N'oubliez pas de mettre une étoile sur GitHub !  
           🤝 **Contribuer** : Les pull requests sont les bienvenues !
           EOFNOTES
 

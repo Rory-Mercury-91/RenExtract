@@ -9,9 +9,14 @@ import json
 import shutil
 import threading
 import platform
+import ctypes
+from ctypes import wintypes
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 from infrastructure.logging.logging import log_message
+
+# Dictionnaire global pour tracker les polices installées temporairement
+_temporarily_installed_fonts = {}
 
 class FontManager:
     """Gestionnaire centralisé des polices système et personnalisées"""
@@ -80,10 +85,10 @@ class FontManager:
         """Worker thread pour scanner et copier les polices système"""
         try:
             self.scan_in_progress = True
-            # Log supprimé : sera regroupé avec le résultat final
             
             system_sources = self.get_system_font_sources()
             copied_count = 0
+            copied_fonts = []
             
             for font_info in system_sources:
                 source_path = Path(font_info["path"])
@@ -95,9 +100,13 @@ class FontManager:
                         try:
                             shutil.copy2(source_path, target_path)
                             copied_count += 1
-                            log_message("DEBUG", f"Police copiée : {font_info['name']}", category="font_manager")
+                            copied_fonts.append(font_info['name'])
                         except Exception as e:
                             log_message("ATTENTION", f"Erreur copie {font_info['name']} : {e}", category="font_manager")
+            
+            # Log unique pour toutes les polices copiées
+            if copied_fonts:
+                log_message("INFO", f"Polices système copiées : {', '.join(copied_fonts)}", category="font_manager")
             
             # Mettre à jour le cache
             self._update_font_cache()
@@ -237,3 +246,202 @@ class FontManager:
         except Exception as e:
             log_message("ERREUR", f"Erreur suppression police : {e}", category="font_manager")
             return False, str(e)
+    
+    # ===== GESTION DES INSTALLATIONS TEMPORAIRES =====
+    
+    def is_font_truly_custom(self, font_name: str) -> bool:
+        """Vérifie si une police est vraiment personnalisée (pas une police système copiée)"""
+        for font_file in self.custom_fonts_dir.glob("*"):
+            if font_file.stem == font_name:
+                return True
+        return False
+    
+    def install_font_temporarily(self, font_path: str, font_name: str) -> bool:
+        """Installe temporairement une police PERSONNALISÉE pour l'aperçu"""
+        try:
+            # Vérifier si c'est vraiment une police personnalisée
+            if not self.is_font_truly_custom(font_name):
+                return False
+            
+            system = platform.system().lower()
+            
+            if system == "windows":
+                return self._install_font_windows(font_path, font_name)
+            elif system == "linux":
+                return self._install_font_linux(font_path, font_name)
+            elif system == "darwin":  # macOS
+                return self._install_font_macos(font_path, font_name)
+            else:
+                log_message("ATTENTION", f"Système non supporté pour installation temporaire: {system}", category="font_manager")
+                return False
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur installation temporaire {font_name}: {e}", category="font_manager")
+            return False
+    
+    def _install_font_windows(self, font_path: str, font_name: str) -> bool:
+        """Installe temporairement une police sur Windows"""
+        try:
+            # Vérifier si déjà installée
+            if font_name in _temporarily_installed_fonts:
+                log_message("DEBUG", f"Police '{font_name}' déjà installée temporairement", category="font_manager")
+                return True
+            
+            # Utiliser l'API Windows AddFontResourceExW avec FR_PRIVATE
+            result = ctypes.windll.gdi32.AddFontResourceExW(wintypes.LPCWSTR(font_path), 0x10, 0)
+            
+            if result != 0:
+                _temporarily_installed_fonts[font_name] = font_path
+                log_message("DEBUG", f"✅ Police '{font_name}' installée temporairement (Windows)", category="font_manager")
+                return True
+            else:
+                log_message("ATTENTION", f"Échec installation temporaire Windows pour '{font_name}'", category="font_manager")
+                return False
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur _install_font_windows pour '{font_name}': {e}", category="font_manager")
+            return False
+    
+    def _install_font_linux(self, font_path: str, font_name: str) -> bool:
+        """Installe temporairement une police sur Linux"""
+        try:
+            import subprocess
+            
+            # Copier vers le dossier fonts temporaire
+            temp_fonts_dir = Path.home() / ".local/share/fonts"
+            temp_fonts_dir.mkdir(parents=True, exist_ok=True)
+            
+            dest_path = temp_fonts_dir / f"renextract_temp_{font_name}{Path(font_path).suffix}"
+            shutil.copy2(font_path, dest_path)
+            
+            # Rafraîchir le cache des polices
+            try:
+                subprocess.run(["fc-cache", "-f"], check=False, capture_output=True, timeout=5)
+            except:
+                pass  # Ignorer si fc-cache échoue
+            
+            _temporarily_installed_fonts[font_name] = str(dest_path)
+            log_message("INFO", f"✅ Police '{font_name}' installée temporairement (Linux)", category="font_manager")
+            return True
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur _install_font_linux pour '{font_name}': {e}", category="font_manager")
+            return False
+    
+    def _install_font_macos(self, font_path: str, font_name: str) -> bool:
+        """Installe temporairement une police sur macOS"""
+        try:
+            # Copier vers le dossier Fonts utilisateur
+            user_fonts_dir = Path.home() / "Library/Fonts"
+            user_fonts_dir.mkdir(parents=True, exist_ok=True)
+            
+            dest_path = user_fonts_dir / f"renextract_temp_{font_name}{Path(font_path).suffix}"
+            shutil.copy2(font_path, dest_path)
+            
+            _temporarily_installed_fonts[font_name] = str(dest_path)
+            log_message("INFO", f"✅ Police '{font_name}' installée temporairement (macOS)", category="font_manager")
+            return True
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur _install_font_macos pour '{font_name}': {e}", category="font_manager")
+            return False
+    
+    def uninstall_font_temporarily(self, font_name: str) -> bool:
+        """Désinstalle temporairement une police"""
+        try:
+            if font_name not in _temporarily_installed_fonts:
+                return True  # Pas installée, donc OK
+            
+            font_path = _temporarily_installed_fonts[font_name]
+            system = platform.system().lower()
+            
+            if system == "windows":
+                success = self._uninstall_font_windows(font_path, font_name)
+            elif system == "linux":
+                success = self._uninstall_font_linux(font_path, font_name)
+            elif system == "darwin":
+                success = self._uninstall_font_macos(font_path, font_name)
+            else:
+                success = True
+            
+            if success:
+                del _temporarily_installed_fonts[font_name]
+            return success
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur désinstallation temporaire {font_name}: {e}", category="font_manager")
+            return False
+    
+    def _uninstall_font_without_log(self, font_name: str) -> bool:
+        """Désinstalle temporairement une police sans logs (pour nettoyage en lot)"""
+        try:
+            if font_name not in _temporarily_installed_fonts:
+                return True
+            
+            font_path = _temporarily_installed_fonts[font_name]
+            system = platform.system().lower()
+            
+            if system == "windows":
+                result = ctypes.windll.gdi32.RemoveFontResourceExW(wintypes.LPCWSTR(font_path), 0x10, 0)
+                success = result != 0
+            elif system == "linux":
+                if os.path.exists(font_path):
+                    os.remove(font_path)
+                success = True
+            elif system == "darwin":
+                if os.path.exists(font_path):
+                    os.remove(font_path)
+                success = True
+            else:
+                success = True
+            
+            if success:
+                del _temporarily_installed_fonts[font_name]
+            return success
+                
+        except Exception:
+            return False
+    
+    def get_temporarily_installed_fonts(self) -> dict:
+        """Retourne le dictionnaire des polices temporairement installées"""
+        return _temporarily_installed_fonts.copy()
+    
+    def cleanup_unused_temporary_fonts(self, used_font_names: set) -> int:
+        """Nettoie les polices temporaires non utilisées"""
+        try:
+            fonts_to_remove = []
+            for font_name in list(_temporarily_installed_fonts.keys()):
+                if font_name not in used_font_names:
+                    fonts_to_remove.append(font_name)
+            
+            if fonts_to_remove:
+                # Désinstaller toutes les polices sans logs individuels
+                for font_name in fonts_to_remove:
+                    self._uninstall_font_without_log(font_name)
+                
+                # Log unique regroupé
+                log_message("INFO", f"🗑️ Polices non utilisées : {', '.join(fonts_to_remove)} désinstallées ({len(fonts_to_remove)} polices)", category="font_manager")
+            
+            return len(fonts_to_remove)
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur nettoyage polices non utilisées: {e}", category="font_manager")
+            return 0
+    
+    def cleanup_all_temporary_fonts(self) -> int:
+        """Nettoie toutes les polices installées temporairement"""
+        try:
+            fonts_to_remove = list(_temporarily_installed_fonts.keys())
+            if fonts_to_remove:
+                # Désinstaller toutes les polices sans logs individuels
+                for font_name in fonts_to_remove:
+                    self._uninstall_font_without_log(font_name)
+                
+                # Log unique regroupé
+                log_message("INFO", f"🗑️ Nettoyage complet : {', '.join(fonts_to_remove)} désinstallées ({len(fonts_to_remove)} polices)", category="font_manager")
+            
+            return len(fonts_to_remove)
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur nettoyage complet polices temporaires: {e}", category="font_manager")
+            return 0

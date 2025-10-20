@@ -563,6 +563,27 @@ def main():
                 os.remove(lock_file_path)
         except:
             pass
+        
+        # 🆕 NETTOYAGE INTELLIGENT : Garder les polices utilisées, supprimer les autres
+        try:
+            from core.services.translation.font_manager import FontManager
+            from infrastructure.config.config import config_manager
+            
+            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            font_manager = FontManager(tools_dir)
+            
+            # Récupérer les polices utilisées
+            prefs = config_manager.get_font_preferences()
+            individual_fonts = prefs.get('individual_fonts', {})
+            used_font_names = set()
+            for font_type, font_config in individual_fonts.items():
+                if font_config.get('enabled', False):
+                    used_font_names.add(font_config.get('font_name', ''))
+            
+            # Nettoyage intelligent
+            font_manager.cleanup_unused_temporary_fonts(used_font_names)
+        except Exception as e:
+            log_message("DEBUG", f"Erreur nettoyage intelligent polices temporaires: {e}", category="main")
 
 if __name__ == "__main__":
     main()

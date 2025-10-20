@@ -75,12 +75,11 @@ desktop.ini
 *~
 
 # ============================================
-# SCRIPTS DE DÉVELOPPEMENT LOCAL
+# FICHIERS DE BACKUP DES CONSTANTES
 # ============================================
-clean_project.py
-create_windows_exe.py
+infrastructure/config/constants.py.backup
 
 # ============================================
-# NOTES ET TO-DO LOCAUX
+# SCRIPTS ET NOTES DE DÉVELOPPEMENT
 # ============================================
 Z_Ne_Pas_supprimer/

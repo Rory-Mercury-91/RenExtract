@@ -23,6 +23,34 @@ from core.services.translation.font_manager import FontManager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox, show_custom_messagebox
 
+# ===== WRAPPERS POUR FONTMANAGER =====
+
+def _get_font_manager():
+    """Retourne une instance du FontManager"""
+    tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+    return FontManager(tools_dir)
+
+def cleanup_unused_temporary_fonts_only():
+    """Nettoie intelligemment les polices temporaires via FontManager"""
+    try:
+        prefs = config_manager.get_font_preferences()
+        individual_fonts = prefs.get('individual_fonts', {})
+        
+        used_font_names = set()
+        for font_type, font_config in individual_fonts.items():
+            if font_config.get('enabled', False):
+                used_font_names.add(font_config.get('font_name', ''))
+        
+        font_manager = _get_font_manager()
+        removed_count = font_manager.cleanup_unused_temporary_fonts(used_font_names)
+        
+        kept_fonts = font_manager.get_temporarily_installed_fonts()
+        if kept_fonts:
+            log_message("DEBUG", f"Polices conservées: {list(kept_fonts.keys())}", category="renpy_generator_tl")
+        
+    except Exception as e:
+        log_message("ERREUR", f"Erreur nettoyage intelligent polices: {e}", category="renpy_generator_tl")
+
 def get_available_fonts_with_accents():
     """Retourne les polices depuis le FontManager centralisé"""
     try:
@@ -182,7 +210,7 @@ def get_enabled_fonts_info(main_interface):
         return {}
 
 def add_custom_font_with_refresh(main_interface):
-    """Ajoute une police personnalisée et met à jour tous les éléments"""
+    """Ajoute une police personnalisée et l'installe temporairement pour l'aperçu"""
     try:
         from tkinter import filedialog
         
@@ -208,6 +236,10 @@ def add_custom_font_with_refresh(main_interface):
             success, message = font_manager.add_custom_font(filename)
             if success:
                 font_name = Path(filename).stem
+                
+                # 🆕 INSTALLATION TEMPORAIRE pour l'aperçu (seulement custom fonts)
+                install_success = font_manager.install_font_temporarily(filename, font_name)
+                # Logs gérés par font_manager
                 
                 # Mise à jour globale de toutes les listes
                 refresh_all_font_lists_globally(main_interface)
@@ -295,67 +327,37 @@ def update_font_preview_fixed(main_interface):
             font_manager = FontManager(tools_dir)
             custom_font_path = font_manager.get_font_for_project(selected_font)
             is_custom_font = custom_font_path and Path(custom_font_path).exists()
-            if is_custom_font:
-                log_message("DEBUG", f"Police personnalisée détectée: {selected_font} -> {custom_font_path}", category="renpy_generator_tl")
+            # Log supprimé pour éviter le spam sur les polices système
         except:
             pass
         
-        # Méthode 1: Police personnalisée avec rendu d'image via PIL/Pillow (PRIORITAIRE)
+        # Méthode 1: Police personnalisée - aperçu avec installation temporaire via FontManager
         if not preview_updated and is_custom_font and custom_font_path:
             try:
-                log_message("DEBUG", f"🖼️ Tentative création image pour police: {selected_font} ({custom_font_path})", category="renpy_generator_tl")
+                font_manager = _get_font_manager()
+                temporarily_installed = font_manager.get_temporarily_installed_fonts()
                 
-                # Utiliser PIL/Pillow pour créer une image avec la police personnalisée
+                # Vérifier si la police est déjà installée temporairement
+                if selected_font not in temporarily_installed:
+                    # Tenter l'installation temporaire (seulement pour custom fonts)
+                    font_manager.install_font_temporarily(custom_font_path, selected_font)
+                
+                # Essayer l'aperçu direct avec la police
                 try:
-                    from PIL import Image, ImageDraw, ImageFont, ImageTk
-                    
-                    # Texte de prévisualisation
                     preview_text = "Voix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis."
-                    
-                    # Charger la police personnalisée avec une taille plus grande pour meilleure qualité
-                    pil_font = ImageFont.truetype(custom_font_path, 16)
-                    log_message("DEBUG", f"Police PIL chargée: {custom_font_path}", category="renpy_generator_tl")
-                    
-                    # Créer une image temporaire pour calculer la taille du texte
-                    temp_img = Image.new('RGB', (1, 1), 'white')
-                    temp_draw = ImageDraw.Draw(temp_img)
-                    bbox = temp_draw.textbbox((0, 0), preview_text, font=pil_font)
-                    text_width = bbox[2] - bbox[0]
-                    text_height = bbox[3] - bbox[1]
-                    
-                    log_message("DEBUG", f"Dimensions texte: {text_width}x{text_height}", category="renpy_generator_tl")
-                    
-                    # Créer l'image finale avec une taille appropriée et marges
-                    img_width = min(text_width + 40, 650)  # Max 650px avec marges
-                    img_height = max(text_height + 30, 50)  # Minimum 50px de hauteur
-                    img = Image.new('RGB', (img_width, img_height), 'white')
-                    draw = ImageDraw.Draw(img)
-                    
-                    # Dessiner le texte centré verticalement, aligné à gauche avec marge
-                    x = 10  # Marge gauche
-                    y = (img_height - text_height) // 2
-                    draw.text((x, y), preview_text, font=pil_font, fill='black')
-                    
-                    log_message("DEBUG", f"Image créée: {img_width}x{img_height}, texte à position ({x}, {y})", category="renpy_generator_tl")
-                    
-                    # Convertir en PhotoImage pour Tkinter
-                    photo = ImageTk.PhotoImage(img)
-                    
-                    # Mettre à jour le label avec l'image
-                    main_interface.preview_text_label.config(image=photo, text="", compound='center')
-                    main_interface.preview_text_label.image = photo  # Garder une référence
+                    main_interface.preview_text_label.config(image="", text=preview_text)
+                    main_interface.preview_text_label.config(font=(selected_font, 11))
                     preview_updated = True
-                    log_message("INFO", f"✅ Aperçu mis à jour avec police personnalisée (image): {selected_font}", category="renpy_generator_tl")
-                except ImportError as ie:
-                    log_message("ATTENTION", f"PIL/Pillow non disponible pour l'aperçu de: {selected_font} - {ie}", category="renpy_generator_tl")
-                except Exception as e2:
-                    log_message("ERREUR", f"Erreur création image pour {selected_font}: {e2}", category="renpy_generator_tl")
-                    import traceback
-                    log_message("DEBUG", f"Traceback: {traceback.format_exc()}", category="renpy_generator_tl")
+                    log_message("INFO", f"✅ Aperçu police: {selected_font}", category="renpy_generator_tl")
+                except Exception as e_preview:
+                    # Fallback vers indication textuelle
+                    preview_text = f"📝 Police: {selected_font}\n\nVoix ambiguë d'un cœur qui au zéphyr préfère les jattes de kiwis.\n\n(Sera appliquée dans le jeu)"
+                    main_interface.preview_text_label.config(image="", text=preview_text, font=('Arial', 10))
+                    preview_updated = True
+                    log_message("DEBUG", f"Aperçu textuel pour: {selected_font} ({e_preview})", category="renpy_generator_tl")
+                    
             except Exception as e:
-                log_message("ERREUR", f"Échec méthode police personnalisée pour {selected_font}: {e}", category="renpy_generator_tl")
-                import traceback
-                log_message("DEBUG", f"Traceback: {traceback.format_exc()}", category="renpy_generator_tl")
+                log_message("ERREUR", f"Échec aperçu police pour {selected_font}: {e}", category="renpy_generator_tl")
         
         # Méthode 2: Police système standard par nom
         if not preview_updated:
@@ -1418,6 +1420,14 @@ def apply_fonts_only(main_interface):
         if font_success:
             main_interface._update_status(f"✓ Polices appliquées avec succès")
             log_message("INFO", f"Polices appliquées : {font_info}", category="renpy_generator_tl")
+            
+            # 🆕 NETTOYAGE : Garder seulement les polices utilisées
+            try:
+                font_manager = _get_font_manager()
+                used_font_names = set(info['name'] for info in enabled_fonts.values())
+                font_manager.cleanup_unused_temporary_fonts(used_font_names)
+            except Exception as e_cleanup:
+                log_message("DEBUG", f"Erreur nettoyage après application: {e_cleanup}", category="renpy_generator_tl")
         else:
             main_interface._update_status(f"✗ Échec application polices : {font_info}")
             log_message("ATTENTION", f"Échec polices : {font_info}", category="renpy_generator_tl")

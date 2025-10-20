@@ -395,6 +395,17 @@ pyinstaller --onefile --windowed \
 
 ### Problèmes Courants
 
+#### ⚠️ Mon antivirus bloque RenExtract.exe
+**Problème** : Votre antivirus signale RenExtract comme "virus" ou "logiciel potentiellement indésirable"  
+**Réponse** : **C'est un faux positif**. RenExtract est sûr (code open-source, pas de collecte de données).
+
+**Solutions** :
+1. **Ajouter une exception** dans votre antivirus pour `RenExtract.exe`
+2. **Vérifier sur VirusTotal** : [VirusTotal.com](https://www.virustotal.com/) → 0-2 détections sur 60+ = faux positif
+3. **Utiliser Python** (évite le problème) : `python main.py`
+
+📖 **Plus d'infos** : Voir `ANTIVIRUS_FALSE_POSITIVE.md`
+
 #### ❌ Fichier screens.rpy non trouvé
 **Solution** : Le fichier `screens.rpy` doit exister dans `game/` ou ses sous-dossiers (hors `tl/`)
 
