@@ -237,8 +237,13 @@ def _create_custom_editor_section(parent, settings_instance):
     input_container = tk.Frame(editor_frame, bg=theme["bg"])
     input_container.pack(fill='x', pady=(0, 10))
     
-    # Variable pour l'éditeur personnalisé
-    settings_instance.custom_editor_var = tk.StringVar()
+    # 🔧 CORRECTIF: Ne pas écraser custom_editor_var si elle existe déjà (initialisée dans _init_all_variables)
+    if not hasattr(settings_instance, 'custom_editor_var') or settings_instance.custom_editor_var is None:
+        settings_instance.custom_editor_var = tk.StringVar()
+        # Charger la valeur depuis la config si disponible
+        custom_editor_path = config_manager.get('custom_editor_path', '')
+        if custom_editor_path:
+            settings_instance.custom_editor_var.set(custom_editor_path)
     
     # Champ de saisie
     settings_instance.custom_editor_entry = tk.Entry(

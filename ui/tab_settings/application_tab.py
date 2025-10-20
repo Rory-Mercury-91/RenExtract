@@ -142,19 +142,23 @@ def _update_editor_combo_values(settings_instance):
         if custom_editor_path and custom_editor_path.strip():
             # Extraire le nom de l'exécutable
             import os
-            editor_name = os.path.basename(custom_editor_path)
-            # Enlever l'extension .exe si présente
-            if editor_name.lower().endswith('.exe'):
-                editor_name = editor_name[:-4]
+            from ui.tab_settings.paths_tab import get_editor_name_from_path
+            editor_name = get_editor_name_from_path(custom_editor_path)
             
             # Mettre à jour les valeurs de la combobox
             editor_options = ['Défaut Windows', editor_name]
             settings_instance.editor_combo['values'] = editor_options
             
-            # Si l'éditeur personnalisé est sélectionné, le garder sélectionné
-            if settings_instance.editor_choice_var.get() == editor_name:
+            # 🔧 CORRECTIF: Vérifier si l'éditeur personnalisé est configuré ET si editor_choice_var 
+            # correspond soit au nom de l'éditeur, soit s'il n'est pas "Défaut Windows"
+            current_choice = settings_instance.editor_choice_var.get()
+            
+            # Si l'utilisateur a sélectionné l'éditeur personnalisé OU si la config dit d'utiliser un éditeur personnalisé
+            if current_choice == editor_name or (current_choice != "Défaut Windows" and current_choice not in ['Défaut Windows']):
                 settings_instance.editor_combo.set(editor_name)
+                settings_instance.editor_choice_var.set(editor_name)
             else:
+                # Par défaut, sélectionner "Défaut Windows" mais garder l'éditeur personnalisé dans la liste
                 settings_instance.editor_combo.set("Défaut Windows")
         else:
             # Pas d'éditeur personnalisé, utiliser les valeurs par défaut

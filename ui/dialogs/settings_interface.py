@@ -360,6 +360,11 @@ class UnifiedSettingsInterface:
                 if editor_name in self.editor_path_vars:
                     self.editor_path_vars[editor_name].set(custom_path or "")
             
+            # 🔧 CORRECTIF: Mettre à jour la combobox éditeur après chargement du chemin personnalisé
+            if hasattr(self, 'editor_combo'):
+                from ui.tab_settings.application_tab import _update_editor_combo_values
+                _update_editor_combo_values(self)
+            
             log_message("INFO", "Configuration chargée dans l'interface settings", category="settings")
             
         except Exception as e:
