@@ -551,7 +551,7 @@ class AppController:
             self._update_interface_for_content()
 
             # 🆕 NOUVEAU : Vérifier si la vérification des lignes non traduites est activée
-            auto_check_untranslated = config_manager.get('reconstruction_auto_check_untranslated', False)
+            auto_check_untranslated = config_manager.get('reconstruction_auto_check_untranslated', True)
             
             if auto_check_untranslated:
                 # Utiliser le système unifié avec l'option par défaut
@@ -1046,7 +1046,7 @@ class AppController:
             self._clean_old_warning_files(file_path)
         
             # 🆕 NOUVEAU : Vérifier si la vérification des lignes non traduites est activée
-            auto_check_untranslated = config_manager.get('reconstruction_auto_check_untranslated', False)
+            auto_check_untranslated = config_manager.get('reconstruction_auto_check_untranslated', True)
             
             if auto_check_untranslated:
                 # Utiliser le système unifié avec l'option par défaut
