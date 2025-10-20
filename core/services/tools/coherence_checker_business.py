@@ -445,11 +445,19 @@ class UnifiedCoherenceChecker:
         
         text = old_text.strip()
         
-        # Récupérer la liste des exclusions simples depuis la config
+        # 1. Vérifier les exclusions simples (liste de strings)
         excluded_lines = config_manager.get('coherence_excluded_lines', [])
+        if text in excluded_lines:
+            return True
         
-        # Vérifier si le contenu exact est dans la liste d'exclusions
-        return text in excluded_lines
+        # 2. Vérifier les exclusions précises (liste d'objets avec file/line/text)
+        if self.project_path:
+            exclusions = config_manager.get_coherence_exclusions(self.project_path)
+            for excl in exclusions:
+                if excl.get('text', '').strip() == text:
+                    return True
+        
+        return False
     
     def _is_untranslated_line(self, old_text, new_text, file_path, line_num):
         """
