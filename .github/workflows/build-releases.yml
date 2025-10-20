@@ -81,11 +81,9 @@ jobs:
           
           # Créer l'exécutable avec PyInstaller
           # --noupx : Désactive compression UPX (réduit faux positifs antivirus)
-          # --runtime-tmpdir : Utilise dossier courant au lieu de temp système
           pyinstaller --onefile --windowed `
             --name "RenExtract" `
             --noupx `
-            --runtime-tmpdir=. `
             $iconArg `
             $versionInfoArg `
             --add-data "core;core" `
