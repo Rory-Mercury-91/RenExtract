@@ -110,7 +110,7 @@ def edit_coherence_line(project_path: str, file_path: str, line_number: int,
     Modifie une ligne dans un fichier de traduction
     
     Args:
-        project_path: Racine du projet
+        project_path: Racine du projet OU chemin complet du fichier (auto-détecté)
         file_path: Chemin relatif du fichier
         line_number: Numéro de ligne (1-indexed)
         new_content: Nouveau contenu pour la partie "new"
@@ -124,8 +124,19 @@ def edit_coherence_line(project_path: str, file_path: str, line_number: int,
         if not is_valid:
             return False, f"Syntaxe invalide: {error_msg}"
         
-        # Reconstruire le chemin absolu
-        absolute_path = _reconstruct_absolute_path(project_path, file_path)
+        # 🔧 CORRECTIF: Détecter si project_path est déjà un chemin de fichier complet
+        # Si project_path contient file_path à la fin, c'est qu'on a reçu le chemin complet
+        project_path_normalized = project_path.replace('\\', '/')
+        file_path_normalized = file_path.replace('\\', '/')
+        
+        if project_path_normalized.endswith(file_path_normalized):
+            # project_path contient déjà le chemin complet du fichier
+            absolute_path = project_path
+            log_message("DEBUG", f"Chemin complet détecté: {absolute_path}", category="coherence_editor")
+        else:
+            # Reconstruire le chemin absolu
+            absolute_path = _reconstruct_absolute_path(project_path, file_path)
+            log_message("DEBUG", f"Chemin reconstruit: {absolute_path}", category="coherence_editor")
         
         if not os.path.exists(absolute_path):
             return False, f"Fichier introuvable: {absolute_path}"
