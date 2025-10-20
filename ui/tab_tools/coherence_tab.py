@@ -92,38 +92,47 @@ def _create_coherence_content(parent, main_interface):
         pass
     
     # === 2. TYPES DE CONTRÔLES ===
+    # Note sur les contrôles obligatoires
+    mandatory_note = tk.Label(
+        parent,
+        text="ℹ️ Certains contrôles critiques (Variables [], Balises {}, Séquences \\n, Structure old/new) sont toujours actifs pour garantir l'intégrité du jeu.",
+        font=('Segoe UI', 8, 'italic'),
+        bg=theme["bg"],
+        fg=theme["fg_secondary"],
+        wraplength=900,
+        justify='left'
+    )
+    mandatory_note.pack(anchor='w', padx=20, pady=(15, 5))
+    
     # Options d'analyse
     options_title = tk.Label(
         parent,
-        text="🔧 Types de vérifications à effectuer :",
+        text="🔧 Types de vérifications configurables :",
         font=('Segoe UI', 10, 'bold'),
         bg=theme["bg"],
         fg=theme["accent"]
     )
-    options_title.pack(anchor='w', padx=20, pady=(20, 10))
+    options_title.pack(anchor='w', padx=20, pady=(10, 10))
     
-    # Frame pour les options en grille 5x3
+    # Frame pour les options en grille 5x2
     options_container = tk.Frame(parent, bg=theme["bg"])
     options_container.pack(fill='x', padx=20, pady=(0, 10))
     
-    # Configuration de la grille 5x3 (5 colonnes, 3 lignes)
+    # Configuration de la grille 5x2 (5 colonnes, 2 lignes)
     grid_columns = 5
     
-    # Liste des options avec leurs variables et textes
+    # ✅ LISTE DES OPTIONS CONFIGURABLES (les 4 options obligatoires ont été retirées)
+    # Retirées : check_variables_var, check_tags_var, check_escape_sequences_var, check_line_structure_var
     options_data = [
-        (main_interface.check_variables_var, "Variables [] incohérentes"),
-        (main_interface.check_tags_var, "Balises {} incohérentes"),
         (main_interface.check_untranslated_var, "Lignes non traduites"),
         (main_interface.check_ellipsis_var, "… Ellipsis (-- → ...)"),
-        (main_interface.check_escape_sequences_var, "\\ Séquences d'échappement (\\n, \\t, \\r, \\\\)"),
         (main_interface.check_percentages_var, "% Variables de formatage (%s, %d, %%)"),
         (main_interface.check_quotations_var, "\" Guillemets et échappements"),
         (main_interface.check_parentheses_var, "() Parenthèses et crochets"),
         (main_interface.check_syntax_var, "Syntaxe Ren'Py et structure"),
         (main_interface.check_deepl_ellipsis_var, "[…] Ellipses DeepL [...] → ..."),
         (main_interface.check_isolated_percent_var, "% Pourcentages isolés (% → %%)"),
-        (main_interface.check_french_quotes_var, "«» Guillemets français «» → \""),
-        (main_interface.check_line_structure_var, "Structure des lignes old/new")
+        (main_interface.check_french_quotes_var, "«» Guillemets français «» → \"")
     ]
     
     # Créer les cases à cocher en grille
