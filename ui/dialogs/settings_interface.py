@@ -1488,7 +1488,7 @@ Configuration :
             # Créer la fenêtre
             settings_window = Toplevel(self.window)
             settings_window.title("⚙️ Paramètres de cohérence")
-            settings_window.geometry("600x450")
+            settings_window.geometry("700x550")
             settings_window.configure(bg=theme["bg"])
             settings_window.resizable(False, False)
             
@@ -1530,16 +1530,21 @@ Configuration :
             right_column = tk.Frame(options_frame, bg=theme["bg"])
             right_column.pack(side='right', fill='both', expand=True, padx=(10, 0))
             
-            # Options de vérification
+            # Options de vérification (VRAIES clés utilisées par le checker)
             verification_options = [
-                ("Variables incohérentes", "coherence_check_variables"),
-                ("Doublons détectés", "coherence_check_duplicates"),
-                ("Traductions manquantes", "coherence_check_missing"),
-                ("Traductions inutilisées", "coherence_check_unused"),
-                ("Blocs vides", "coherence_check_empty"),
-                ("Textes non traduits", "coherence_check_untranslated"),
-                ("Incohérences de formatage", "coherence_check_inconsistent"),
-                ("Problèmes d'encodage", "coherence_check_encoding")
+                ("🔤 Variables []", "coherence_check_variables"),
+                ("🏷️ Balises {}", "coherence_check_tags"),
+                ("📝 Lignes non traduites", "coherence_check_untranslated"),
+                ("% Variables %", "coherence_check_percentages"),
+                ("💬 Guillemets", "coherence_check_quotations"),
+                ("() Parenthèses", "coherence_check_parentheses"),
+                ("… Points de suspension", "coherence_check_ellipsis"),
+                ("🔡 Séquences échappement", "coherence_check_escape_sequences"),
+                ("📐 Syntaxe Ren'Py", "coherence_check_syntax"),
+                ("🇫🇷 Guillemets français «»", "coherence_check_french_quotes"),
+                ("📏 Structure de ligne", "coherence_check_line_structure"),
+                ("💬 DeepL ellipsis", "coherence_check_deepl_ellipsis"),
+                ("% Pourcentage isolé", "coherence_check_isolated_percent")
             ]
             
             # Variables pour les checkboxes
