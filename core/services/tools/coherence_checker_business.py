@@ -34,21 +34,21 @@ class UnifiedCoherenceChecker:
         self.results_by_file = {}
         self.project_path = None  # 🆕 Stocke le chemin du projet pour les exclusions
         
-        # Chargement des options depuis la config (sans valeurs par défaut codées)
-        self.check_variables = config_manager.get('coherence_check_variables')
-        self.check_tags = config_manager.get('coherence_check_tags')
+        # Chargement des options depuis la config (avec valeurs par défaut True)
+        self.check_variables = config_manager.get('coherence_check_variables', True)
+        self.check_tags = config_manager.get('coherence_check_tags', True)
         self.check_special_codes = False  # Désactivé - redondant avec les autres contrôles
-        self.check_untranslated = config_manager.get('coherence_check_untranslated')
-        self.check_ellipsis = config_manager.get('coherence_check_ellipsis')
-        self.check_escape_sequences = config_manager.get('coherence_check_escape_sequences')
-        self.check_percentages = config_manager.get('coherence_check_percentages')
-        self.check_quotations = config_manager.get('coherence_check_quotations')
-        self.check_parentheses = config_manager.get('coherence_check_parentheses')
-        self.check_syntax = config_manager.get('coherence_check_syntax')
-        self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis')
-        self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent')
-        self.check_french_quotes = config_manager.get('coherence_check_french_quotes')
-        self.check_line_structure = config_manager.get('coherence_check_line_structure')
+        self.check_untranslated = config_manager.get('coherence_check_untranslated', True)
+        self.check_ellipsis = config_manager.get('coherence_check_ellipsis', True)
+        self.check_escape_sequences = config_manager.get('coherence_check_escape_sequences', True)
+        self.check_percentages = config_manager.get('coherence_check_percentages', True)
+        self.check_quotations = config_manager.get('coherence_check_quotations', True)
+        self.check_parentheses = config_manager.get('coherence_check_parentheses', True)
+        self.check_syntax = config_manager.get('coherence_check_syntax', True)
+        self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)
+        self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)
+        self.check_french_quotes = config_manager.get('coherence_check_french_quotes', True)
+        self.check_line_structure = config_manager.get('coherence_check_line_structure', True)
         # Placeholders désactivés - validation redondante
         self.check_placeholders = False
         
