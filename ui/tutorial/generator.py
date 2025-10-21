@@ -517,7 +517,7 @@ class TutorialGenerator:
   --card-bg: #ffffff; --nav-bg: #f7fafc;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.6; transition: all 0.3s ease; }
 
 .floating-controls { 
@@ -1040,21 +1040,12 @@ ul {
             const targetElement = document.getElementById(targetSection);
             if (targetElement) {
               targetElement.scrollIntoView({ 
-                behavior: 'smooth', 
+                behavior: 'instant', 
                 block: 'start',
                 inline: 'nearest'
               });
-              
-              targetElement.style.transition = 'all 0.5s ease';
-              targetElement.style.backgroundColor = 'rgba(74, 144, 226, 0.2)';
-              targetElement.style.transform = 'scale(1.01)';
-              
-              setTimeout(() => {
-                targetElement.style.backgroundColor = '';
-                targetElement.style.transform = 'scale(1)';
-              }, 1500);
             }
-          }, 200);
+          }, 10);
         }
       }
     });
