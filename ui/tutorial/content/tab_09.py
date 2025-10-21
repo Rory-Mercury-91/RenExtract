@@ -58,125 +58,105 @@ def generate_content(generator, language=None, translations=None):
             <h2>❓ Questions Fréquentes</h2>
             <p>Réponses aux questions les plus courantes sur l'utilisation de RenExtract.</p>
             
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px;">
+            <div style="margin-top: 20px;">
                 
                 <!-- Question 1 -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>🎯 Quelle différence entre les différentes interfaces ?</h4>
-                    <p><strong>Règle simple :</strong></p>
-                    <ul>
-                        <li><strong>Interface Principale</strong> : pour traiter un fichier spécifique (.rpy → .txt → .rpy)</li>
-                        <li><strong>Générateur Ren'Py</strong> : pour configurer l'infrastructure complète du projet</li>
-                        <li><strong>Outils spécialisés</strong> : pour optimiser le dossier de traduction</li>
-                    </ul>
-                </div>
+                <h4>🎯 Quelle différence entre les différentes interfaces ?</h4>
+                <ul style="margin-left: 40px;">
+                    <li><strong>Générateur Ren'Py</strong> : pour configurer l'infrastructure complète du projet</li>
+                    <li><strong>Interface Principale</strong> : pour traduire les fichiers (.rpy → .txt → .rpy)</li>
+                    <li><strong>Outils spécialisés</strong> : pour améliorer les fichiers de traduction</li>
+                </ul>
                 
                 <!-- Question 2 -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
-                    <h4>💥 Le jeu plante après ma traduction !</h4>
-                    <p><strong>Solutions :</strong> Analyse le fichier <code>traceback.txt</code> ou <code>error.txt</code> présent dans le répertoire racine du jeu pour comprendre le problème. Tu peux aussi utiliser le <strong>Vérificateur de Cohérence</strong> dans Outils Spécialisés.</p>
-                    <p>Le rapport HTML pourra te montrer la ligne problématique et le type d'erreur (variable manquante, balise mal fermée, etc.).</p>
-                </div>
+                <h4>💥 Le jeu plante après ma traduction !</h4>
+                <p><strong>Solutions :</strong> Analysez le fichier <code>traceback.txt</code> ou <code>error.txt</code> présent dans le répertoire racine du jeu pour comprendre le problème. Vous pouvez aussi utiliser le <strong>Vérificateur de Cohérence</strong> dans Outils Spécialisés.</p>
+                <p>Le rapport HTML pourra vous montrer peut-être la ligne problématique et le type d'erreur (variable manquante, balise mal fermée, etc.).</p>
                 
                 <!-- Question 3 -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>📁 Où sont mes fichiers à traduire ?</h4>
-                    <p>Dans le dossier <code>01_Temporaires</code> après une extraction.</p>
-                    <p><strong>Accès rapide :</strong> Interface Principale → Onglet <strong>OUTILS</strong> → <strong>📂 Temporaires</strong>.</p>
-                </div>
+                <h4>📁 Où sont mes fichiers à traduire ?</h4>
+                <p>Dans le dossier <code>01_Temporaires</code> après une extraction.</p>
+                <p><strong>Accès rapide :</strong> Interface Principale → Onglet <strong>OUTILS</strong> → <strong>📂 Temporaires</strong>.</p>
                 
                 <!-- Question 4 -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #10b981;">
-                    <h4>🔄 Comment récupérer un fichier cassé ?</h4>
-                    <p><strong>Gestionnaire de Sauvegardes</strong> :</p>
-                    <ol>
-                        <li>Ouvre le gestionnaire (Interface Principale → OUTILS)</li>
-                        <li>Filtre par le jeu concerné</li>
-                        <li>Sélectionnez le <strong>Type</strong></li>
-                        <li>Restaure la dernière version fonctionnelle</li>
-                    </ol>
-                </div>
+                <h4>🔄 Comment récupérer un fichier cassé ?</h4>
+                <p><strong>Gestionnaire de Sauvegardes</strong> :</p>
+                <ol style="margin-left: 40px;">
+                    <li>Ouvrez le gestionnaire (Interface Principale → OUTILS)</li>
+                    <li>Filtrez par le jeu concerné</li>
+                    <li>Sélectionnez le <strong>Type</strong></li>
+                    <li>Restaurez la dernière version fonctionnelle</li>
+                </ol>
                 
                 <!-- Question 5 -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>🔤 Les caractères français accentués ne s'affichent pas ?</h4>
-                    <p>Dans <strong>Générateur Ren'Py</strong> :</p>
-                    <ol>
-                        <li>Va dans l'onglet <strong>Génération</strong></li>
-                        <li>Teste d'abord dans l'<strong>aperçu des polices</strong></li>
-                        <li>Sélectionnez <strong>uniquement</strong> les polices marquées comme "disponibles"</li>
-                    </ol>
-                </div>
+                <h4>🔤 Les caractères français accentués ne s'affichent pas en jeu ?</h4>
+                <p>Dans <strong>Générateur Ren'Py</strong> :</p>
+                <ol style="margin-left: 40px;">
+                    <li>Allez dans l'onglet <strong>Génération</strong></li>
+                    <li>Testez d'abord dans l'<strong>aperçu des polices</strong></li>
+                    <li>Sélectionnez <strong>uniquement</strong> les polices marquées comme "disponibles"</li>
+                </ol>
                 
                 <!-- Question 6 -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                    <h4>⚡ Comment utiliser l'Éditeur Temps Réel ?</h4>
-                    <p><strong>Étapes :</strong></p>
-                    <ol>
-                        <li>Outils Spécialisés → <strong>Éditeur Temps Réel</strong></li>
-                        <li>Installe le module dans votre jeu</li>
-                        <li>Lance le jeu</li>
-                        <li>Consultez le <strong>tutoriel complet</strong> (Onglet Outils) pour toutes les fonctionnalités</li>
-                    </ol>
-                </div>
+                <h4>⚡ Comment utiliser l'Éditeur Temps Réel ?</h4>
+                <p><strong>Étapes :</strong></p>
+                <ol style="margin-left: 40px;">
+                    <li>Outils Spécialisés → <strong>Éditeur Temps Réel</strong></li>
+                    <li>Installez le module dans votre jeu</li>
+                    <li>Lancez le jeu</li>
+                    <li>Consultez le <strong>tutoriel complet</strong> (Onglet Outils) pour toutes les fonctionnalités</li>
+                </ol>
                 
-                <!-- Question 7 (NOUVELLE) -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <h4>🛡️ Pourquoi certains fichiers sont automatiquement exclus ?</h4>
-                    <p><strong>Fichiers système protégés :</strong></p>
-                    <ul>
-                        <li><code>common.rpy</code> (Ren'Py)</li>
-                        <li><code>99_Z_Console.rpy</code> (RenExtract)</li>
-                        <li><code>99_Z_ScreenPreferences.rpy</code> (RenExtract)</li>
-                        <li><code>99_Z_FontSystem.rpy</code> (RenExtract)</li>
-                    </ul>
-                    <p>Protection contre la suppression accidentelle lors du nettoyage.</p>
-                </div>
+                <!-- Question 7 -->
+                <h4>🛡️ Pourquoi certains fichiers sont automatiquement exclus ?</h4>
+                <p><strong>Fichiers système protégés :</strong></p>
+                <ul style="margin-left: 40px;">
+                    <li><code>common.rpy</code> (Ren'Py)</li>
+                    <li><code>99_Z_Console.rpy</code> (RenExtract)</li>
+                    <li><code>99_Z_ScreenPreferences.rpy</code> (RenExtract)</li>
+                    <li><code>99_Z_FontSystem.rpy</code> (RenExtract)</li>
+                </ul>
+                <p>Protection contre la suppression accidentelle lors du nettoyage.</p>
                 
-                <!-- Question 8 (NOUVELLE) -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>🧹 Comment nettoyer un gros projet avec plusieurs langues ?</h4>
-                    <p><strong>Nettoyage Intelligent</strong> :</p>
-                    <ol>
-                        <li>Outils Spécialisés → <strong>Nettoyage Intelligent</strong></li>
-                        <li>Sélectionnez votre projet multi-langues</li>
-                        <li>Choisissez les langues à nettoyer (sélection multiple)</li>
-                        <li>Lance le nettoyage → rapport HTML détaillé automatique</li>
-                    </ol>
-                </div>
+                <!-- Question 8 -->
+                <h4>🧹 Comment nettoyer un gros projet avec plusieurs langues ?</h4>
+                <p><strong>Nettoyage Intelligent</strong> :</p>
+                <ol style="margin-left: 40px;">
+                    <li>Outils Spécialisés → <strong>Nettoyage Intelligent</strong></li>
+                    <li>Sélectionnez votre projet multi-langues</li>
+                    <li>Choisissez les langues à nettoyer (sélection multiple)</li>
+                    <li>Lancez le nettoyage → rapport HTML détaillé automatique</li>
+                </ol>
                 
-                <!-- Question 9 (NOUVELLE) -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>💾 Quelle est la différence entre les 5 types de sauvegardes ?</h4>
-                    <ul>
-                        <li><strong>Sécurité</strong> : avant extraction (conservée indéfiniment)</li>
-                        <li><strong>Nettoyage</strong> : avant nettoyage projet (conservée indéfiniment)</li>
-                        <li><strong>Avant RPA</strong> : avant compilation RPA (conservée indéfiniment)</li>
-                        <li><strong>Avant combinaison</strong> : avant fusion de fichiers (conservée indéfiniment)</li>
-                        <li><strong>Édition temps réel</strong> : modifications en direct (max 10 fichiers, rotation automatique)</li>
-                    </ul>
-                </div>
+                <!-- Question 9 -->
+                <h4>💾 Quelle est la différence entre les 6 types de sauvegardes ?</h4>
+                <ul style="margin-left: 40px;">
+                    <li><strong>Sécurité</strong> : avant extraction (conservée indéfiniment)</li>
+                    <li><strong>Nettoyage</strong> : avant nettoyage projet (conservée indéfiniment)</li>
+                    <li><strong>Avant RPA</strong> : avant compilation RPA (conservée indéfiniment)</li>
+                    <li><strong>Avant combinaison</strong> : avant fusion de fichiers (conservée indéfiniment)</li>
+                    <li><strong>Modification cohérence</strong> : avant modification depuis le rapport de cohérence HTML (conservée indéfiniment)</li>
+                    <li><strong>Édition temps réel</strong> : modifications en direct (max 10 fichiers, rotation automatique)</li>
+                </ul>
                 
-                <!-- Question 10 (NOUVELLE) -->
-                <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
-                    <h4>🎨 Comment personnaliser les patterns de protection ?</h4>
-                    <p><strong>Paramètres → Patterns de protection</strong> :</p>
-                    <ol>
-                        <li>Configurez vos patterns personnalisés (Astérisques, Tildes)</li>
-                        <li>Teste-les avec le <strong>générateur de placeholders</strong></li>
-                        <li>Utilisez le <strong>suffixe numérique</strong> recommandé pour éviter les conflits</li>
-                    </ol>
-                </div>
+                <!-- Question 10 -->
+                <h4>🎨 Comment personnaliser les patterns de protection ?</h4>
+                <p><strong>Paramètres → Patterns de protection</strong> :</p>
+                <ol style="margin-left: 40px;">
+                    <li>Configurez vos patterns personnalisés (Astérisques, Tildes)</li>
+                    <li>Testez-les avec le <strong>générateur de placeholders</strong></li>
+                    <li>Utilisez le <strong>suffixe numérique</strong> recommandé pour éviter les conflits</li>
+                </ol>
                 
             </div>
             
             <!-- Conseils rapides -->
             <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-top: 30px;">
                 <h4>💡 Conseils rapides</h4>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>Sauvegarde toujours le jeu original</strong> avant toute modification</li>
+                <ul style="margin: 10px 0; padding-left: 40px;">
+                    <li><strong>Sauvegardez toujours le jeu original</strong> avant toute modification</li>
                     <li><strong>Consultez les logs</strong> dans le dossier <code>04_Configs</code> en cas d'erreur</li>
-                    <li><strong>Garde vos paramètres d'exclusion</strong> pour éviter les faux positifs lors des vérifications</li>
+                    <li><strong>Gardez vos paramètres d'exclusion</strong> pour éviter les faux positifs lors des vérifications</li>
                 </ul>
             </div>
         </div>
@@ -189,79 +169,52 @@ def generate_content(generator, language=None, translations=None):
             <h2>🔧 Dépannage Technique</h2>
             <p>Solutions aux problèmes techniques les plus courants rencontrés lors de l'utilisation de RenExtract.</p>
             
-            <!-- Problèmes 1 et 2 côte à côte -->
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0;">
-                <!-- Problème 1 -->
-                <div>
-                    <h3>⚠️ "Aucun texte trouvé"</h3>
-                    <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                        <h4>Causes possibles :</h4>
-                        <ul>
-                            <li>Archives <code>.rpa</code> ou <code>.rpyc</code> non décompilées</li>
-                            <li>Fichier ne contenant que du code (pas de dialogue)</li>
-                        </ul>
-                        <h4>Solutions :</h4>
-                        <ul>
-                            <li><strong>Décompiler :</strong> Les archives <code>.rpa</code> et <code>.rpyc</code> doivent être décompilées</li>
-                            <li><strong>Utiliser Générateur → Extraction Config</strong> pour les textes d'interface</li>
-                            <li><strong>Tenter avec le SDK officiel</strong> (Paramètres → SDK Ren'Py)</li>
-                            <li><strong>Tester avec un autre fichier</strong> du même jeu</li>
-                        </ul>
-                    </div>
-                </div>
-                
-                <!-- Problème 2 -->
-                <div>
-                    <h3>❌ "Échec de validation"</h3>
-                    <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #ef4444;">
-                        <h4>Diagnostic :</h4>
-                        <ul>
-                            <li>Consultez le <strong>rapport détaillé</strong> dans le dossier <code>03_Rapports</code></li>
-                            <li>Utilisez le <strong>Vérificateur de Cohérence</strong> pour localiser précisément les erreurs</li>
-                        </ul>
-                        <h4>Corrections courantes :</h4>
-                        <ul>
-                            <li><strong>Variables <code>[]</code> :</strong> vérifiez que toutes les variables sont conservées intactes</li>
-                            <li><strong>Balises <code>{{}}</code> :</strong> assure-vous que toutes les balises sont bien fermées</li>
-                            <li><strong>Codes spéciaux :</strong> ne modifie pas les <code>\\n</code>, <code>%</code>, etc.</li>
-                        </ul>
-                        <h4>Solution de secours :</h4>
-                        <p>Restaure une version valide depuis le <strong>Gestionnaire de Sauvegardes</strong>.</p>
-                    </div>
-                </div>
-            </div>
+            <!-- Problème 1 -->
+            <h3>⚠️ "Aucun texte trouvé"</h3>
+            <h4>Causes possibles :</h4>
+            <ul style="margin-left: 40px;">
+                <li>Archives <code>.rpa</code> ou <code>.rpyc</code> non décompilées</li>
+                <li>Fichier ne contenant que du code (pas de dialogue)</li>
+            </ul>
+            <h4>Solutions :</h4>
+            <ul style="margin-left: 40px;">
+                <li><strong>Décompiler :</strong> Les archives <code>.rpa</code> et <code>.rpyc</code> doivent être décompilées</li>
+                <li><strong>Utiliser Générateur → Extraction Config</strong> pour les textes oubliés</li>
+                <li><strong>Tenter avec le SDK officiel</strong> (Paramètres → SDK Ren'Py)</li>
+                <li><strong>Tester avec un autre fichier</strong> du même jeu</li>
+            </ul>
             
-            <!-- Problème 3 -->
+            <!-- Problème 2 -->
             <h3>🐌 "L'extraction est très lente"</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0;">
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div>
                     <h5>🛡️ Antivirus</h5>
-                    <p>Ajoute RenExtract aux <strong>exclusions de votre antivirus</strong>. L'analyse en temps réel peut considérablement ralentir le traitement.</p>
+                    <p>Ajoutez RenExtract aux <strong>exclusions de votre antivirus</strong>. L'analyse en temps réel peut considérablement ralentir le traitement.</p>
                 </div>
                 
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div>
                     <h5>💾 Stockage</h5>
                     <p>Utilisez un <strong>SSD</strong> si possible pour améliorer les performances d'écriture/lecture.</p>
                 </div>
                 
-                <div style="background: var(--card-bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent);">
+                <div>
                     <h5>📁 Espace disque</h5>
-                    <p>Assure-vous que votre <strong>disque n'est pas plein</strong> et dispose d'espace suffisant.</p>
+                    <p>Assurez-vous que votre <strong>disque n'est pas plein</strong> et dispose d'espace suffisant.</p>
                 </div>
             </div>
             
-            <!-- Problème 4 -->
+            <!-- Problème 3 -->
             <h3>🔒 "Erreur d'accès fichier"</h3>
-            <ul>
-                <li><strong>Ferme le jeu Ren'Py</strong> s'il est en cours d'exécution</li>
-                <li><strong>Lance RenExtract en administrateur</strong> (clic droit → Exécuter en tant qu'administrateur)</li>
+            <ul style="margin-left: 40px;">
+                <li><strong>Fermez le jeu Ren'Py</strong> s'il est en cours d'exécution</li>
+                <li><strong>Lancez RenExtract en administrateur</strong> (clic droit → Exécuter en tant qu'administrateur)</li>
                 <li><strong>Vérifiez que le fichier n'est pas ouvert</strong> dans un éditeur de texte</li>
                 <li><strong>Vérifiez les propriétés du fichier</strong> : il ne doit pas être en lecture seule</li>
             </ul>
             
-            <!-- Problèmes 5 et diagnostic côte à côte -->
+            <!-- Problème 4 et diagnostic côte à côte -->
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0;">
-                <!-- Problème 5 -->
+                <!-- Problème 4 -->
                 <div>
                     <h3>🚨 Problèmes de compatibilité</h3>
                     <div style="background: var(--card-bg); padding: 20px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
@@ -285,10 +238,10 @@ def generate_content(generator, language=None, translations=None):
                     <div style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(74, 144, 226, 0.05) 100%); padding: 20px; border-radius: 8px; border-left: 4px solid var(--accent);">
                         <p>Si les problèmes persistent :</p>
                         <ul>
-                            <li><strong>Vérifier la source :</strong> Assure-vous que le problème vient de RenExtract et pas d'un outil de traduction externe</li>
+                            <li><strong>Vérifier la source :</strong> Assurez-vous que le problème vient de RenExtract et pas d'un outil de traduction externe</li>
                             <li><strong>Consulter les logs :</strong> Le dossier <code>04_Configs</code> contient les logs détaillés (mode debug recommandé)</li>
-                            <li><strong>Vérifier la version :</strong> Assure-vous d'avoir la dernière version de RenExtract</li>
-                            <li><strong>Test minimal :</strong> Teste avec un petit fichier <code>.rpy</code> simple pour isoler le problème</li>
+                            <li><strong>Vérifier la version :</strong> Assurez-vous d'avoir la dernière version de RenExtract</li>
+                            <li><strong>Test minimal :</strong> Testez avec un petit fichier <code>.rpy</code> simple pour isoler le problème</li>
                         </ul>
                     </div>
                 </div>
@@ -345,7 +298,7 @@ def generate_content(generator, language=None, translations=None):
                     <p style="font-size: 1.2em; margin: 10px 0;">
                         <strong><a href="https://discord.gg/Yp2Hm8JWQ2" target="_blank" class="contact-link">Rejoindre le serveur</a></strong>
                     </p>
-                    <p>Communauté activez, support rapide et discussions.</p>
+                    <p>Communauté active, support rapide et discussions.</p>
                     <p style="opacity: 0.8; font-style: italic;">Réponse la plus rapide, entraide communautaire.</p>
                 </div>
                 
@@ -355,7 +308,7 @@ def generate_content(generator, language=None, translations=None):
                     <p style="font-size: 1.2em; margin: 10px 0;">
                         <strong><a href="https://github.com/Rory-Mercury-91/RenExtract/issues" target="_blank" class="contact-link">GitHub Issues</a></strong> ou bien le <strong><a href="https://discord.gg/Yp2Hm8JWQ2" target="_blank" class="contact-link">Discord</a></strong>
                     </p>
-                    <p>Rapporte les bugs et demande des fonctionnalités.</p>
+                    <p>Rapportez les bugs et demandez des fonctionnalités.</p>
                     <p style="opacity: 0.8; font-style: italic;">GitHub pour bugs confirmés, Discord pour diagnostic rapide.</p>
                 </div>
                 
@@ -374,12 +327,12 @@ def generate_content(generator, language=None, translations=None):
             <!-- Conseils pour obtenir de l'aide -->
             <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-top: 30px;">
                 <h4>💡 Conseils pour obtenir de l'aide</h4>
-                <ul style="margin: 10px 0; padding-left: 20px;">
+                <ul style="margin: 10px 0; padding-left: 40px;">
                     <li><strong>Discord</strong> est le moyen le plus rapide pour obtenir de l'aide (réponse rapide)</li>
                     <li><strong>Email</strong> pour les questions complexes nécessitant des captures d'écran ou des logs</li>
                     <li><strong>GitHub Issues</strong> uniquement pour les bugs liés au code lui-même</li>
-                    <li>Précise toujours votre <strong>version de RenExtract</strong> et votre <strong>système d'exploitation</strong></li>
-                    <li>Joins les <strong>logs du dossier <code>04_Configs</code></strong> si vous es en mode debug</li>
+                    <li>Précisez toujours votre <strong>version de RenExtract</strong> et votre <strong>système d'exploitation</strong></li>
+                    <li>Joignez les <strong>logs du dossier <code>04_Configs</code></strong> si vous êtes en mode debug</li>
                 </ul>
             </div>
         </div>
@@ -428,7 +381,7 @@ def generate_content(generator, language=None, translations=None):
                     <p style="font-size: 1.2em; margin: 10px 0;">
                         <strong>Principalement DxSnake</strong>
                     </p>
-                    <p>Pour tous les tests effectués dans la cave (c'est une blague pour qu'il comprenne). Retours précieux, tests et suggestions d'amélioration.</p>
+                    <p>Retours précieux, tests et suggestions d'amélioration.</p>
                 </div>
                 
             </div>
@@ -463,21 +416,21 @@ def generate_content(generator, language=None, translations=None):
             <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 15px 0;">
                 <p>RenExtract est un projet open source disponible sur GitHub. Les contributions, suggestions et rapports de bugs sont les bienvenus !</p>
                 <p style="margin-top: 15px;"><strong>Comment contribuer :</strong></p>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Signale les bugs via <strong>GitHub Issues</strong></li>
-                    <li>Propose des améliorations sur <strong>Discord</strong></li>
+                <ul style="margin: 10px 0; padding-left: 40px;">
+                    <li>Signalez les bugs via <strong>GitHub Issues</strong></li>
+                    <li>Proposez des améliorations sur <strong>Discord</strong></li>
                     <li>Partagez vos retours d'expérience</li>
-                    <li>Aide d'autres utilisateurs sur la communauté</li>
+                    <li>Aidez d'autres utilisateurs sur la communauté</li>
                 </ul>
             </div>
             
             <!-- Citation finale -->
             <div style="text-align: center; margin-top: 40px; padding: 30px; background: linear-gradient(135deg, var(--hdr) 0%, rgba(74, 144, 226, 0.05) 100%); border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                 <p style="font-style: italic; opacity: 0.9; font-size: 1.2em; line-height: 1.6; margin-bottom: 15px;">
-                    "Merci à tous ceux qui contribuent à faire de RenExtract un outil toujours meilleur pour la communauté de traduction Ren'Py !"
+                    "Merci à tous pour votre contribution à RenExtract !"
                 </p>
                 <p style="opacity: 0.7; font-size: 1em;">
-                    — L'équipe RenExtract
+                    Rory-Mercury-91
                 </p>
             </div>
         </div>
