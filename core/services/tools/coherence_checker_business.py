@@ -1456,20 +1456,6 @@ def _create_empty_results_compatible(error_message, selection_info=None):
     
     return results
 
-# def check_coherence_unified(path, return_details=False):
-#     """
-#     Fonction principale unifiée pour vérifier la cohérence
-    
-#     Args:
-#         path (str): Chemin du fichier .rpy ou dossier tl
-#         return_details (bool): Si True, retourne les détails pour l'interface
-        
-#     Returns:
-#         str ou dict: Chemin du rapport ou détails selon return_details
-#     """
-#     checker = UnifiedCoherenceChecker()
-#     return checker.analyze_path(path, return_details)
-
 def get_coherence_options():
     """Retourne les options actuelles de cohérence"""
     return {
