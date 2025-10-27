@@ -304,6 +304,71 @@ def _create_editor_section(parent, settings_instance):
     settings_instance.editor_combo.pack(side='left', padx=(10, 0))
     settings_instance.editor_combo.bind('<<ComboboxSelected>>', settings_instance._on_editor_choice_changed)
     
+    # Bouton de test de l'éditeur
+    def test_current_editor():
+        """Teste l'éditeur actuellement sélectionné"""
+        from pathlib import Path
+        
+        try:
+            # Créer le fichier de test dans le dossier 04_Configs
+            from infrastructure.config.constants import FOLDERS
+            
+            config_dir = Path(FOLDERS["configs"])
+            config_dir.mkdir(parents=True, exist_ok=True)
+            
+            test_file = config_dir / "test_editor_compatibility.rpy"
+            
+            # Contenu du fichier de test
+            test_content = """# TEST DE COMPATIBILITÉ
+
+# 04_Configs/test_editor_compatibility.rpy:1
+translate test:
+
+    # RenExtract "je veux la ligne 7"
+    RenExtract "✅ Le test est passé ! Le curseur devrait être sur cette ligne (ligne 7)"
+    
+# Si votre curseur est sur la ligne 7 (celle avec le ✅), le test est réussi !
+# Vous pouvez fermer ce fichier.
+"""
+            
+            # Écrire le fichier
+            test_file.write_text(test_content, encoding='utf-8')
+            
+            # Utiliser la fonction d'ouverture existante (la même que pour les rapports de cohérence)
+            from ui.shared.editor_manager import open_file_with_editor
+            
+            success = open_file_with_editor(str(test_file), 7)
+            
+            if success:
+                if hasattr(settings_instance, '_show_toast'):
+                    settings_instance._show_toast(
+                        "🧪 Fichier de test ouvert - Le curseur est-il ligne 7 avec ✅ ?",
+                        type="info"
+                    )
+            else:
+                if hasattr(settings_instance, '_show_toast'):
+                    settings_instance._show_toast(
+                        "⚠️ Fichier ouvert, mais l'éditeur ne supporte peut-être pas l'ouverture à une ligne spécifique",
+                        type="warning"
+                    )
+                
+        except Exception as e:
+            log_message("ERREUR", f"Erreur test éditeur : {e}", category="application_tab")
+            if hasattr(settings_instance, '_show_toast'):
+                settings_instance._show_toast(f"❌ Erreur test : {str(e)[:60]}", type="error")
+    
+    test_editor_btn = tk.Button(
+        editor_selection_frame,
+        text="🧪",
+        font=('Segoe UI', 9),
+        bg=theme["button_utility_bg"],
+        fg="#000000",
+        command=test_current_editor,
+        width=4,
+        cursor='hand2'
+    )
+    test_editor_btn.pack(side='left', padx=(5, 0))
+    
     # Mettre à jour les valeurs de la combobox
     _update_editor_combo_values(settings_instance)
 
@@ -392,6 +457,111 @@ def _create_groq_section(parent, settings_instance):
         width=3
     )
     toggle_btn.pack(side='left', padx=(5, 0))
+    
+    # Bouton de test de la clé API
+    def test_groq_api_key():
+        """Teste la validité de la clé API Groq avec un prompt simple"""
+        import threading
+        
+        api_key = settings_instance.groq_api_key_entry.get().strip()
+        
+        if not api_key:
+            # Utiliser la méthode _show_toast de settings_instance
+            if hasattr(settings_instance, '_show_toast'):
+                settings_instance._show_toast("⚠️ Veuillez entrer une clé API Groq avant de tester.", type="warning")
+            return
+        
+        # Désactiver le bouton pendant le test
+        test_btn['state'] = 'disabled'
+        test_btn['text'] = "⏳ Test..."
+        test_btn.update_idletasks()
+        
+        def run_test():
+            try:
+                from groq import Groq
+                
+                # Initialiser le client Groq avec la clé fournie
+                client = Groq(api_key=api_key)
+                
+                # Envoyer un prompt de test simple
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[
+                        {"role": "system", "content": "Tu es un assistant de test. Réponds uniquement 'OK' si tu reçois ce message."},
+                        {"role": "user", "content": "Test de connexion"}
+                    ],
+                    temperature=0.1,
+                    max_tokens=10
+                )
+                
+                # Vérifier la réponse
+                if response and response.choices:
+                    result_text = response.choices[0].message.content.strip()
+                    
+                    # Réactiver le bouton et afficher le succès
+                    def show_success():
+                        test_btn.config(state='normal', text="🔍 Tester")
+                        if hasattr(settings_instance, '_show_toast'):
+                            settings_instance._show_toast(
+                                f"✅ Groq AI opérationnel - Réponse : {result_text}",
+                                type="success"
+                            )
+                    
+                    test_btn.after(0, show_success)
+                    log_message("INFO", f"Test API Groq réussi - Réponse: {result_text}", category="settings")
+                else:
+                    raise Exception("Réponse vide du serveur")
+                    
+            except ImportError:
+                def show_import_error():
+                    test_btn.config(state='normal', text="🔍 Tester")
+                    if hasattr(settings_instance, '_show_toast'):
+                        settings_instance._show_toast(
+                            "❌ Module 'groq' non installé - Utilisez : pip install groq",
+                            type="error"
+                        )
+                
+                test_btn.after(0, show_import_error)
+                log_message("ERREUR", "Module groq non installé", category="settings")
+                
+            except Exception as e:
+                error_msg = str(e)
+                
+                # Messages d'erreur personnalisés selon le type
+                if "401" in error_msg or "invalid" in error_msg.lower():
+                    toast_msg = "❌ Clé API invalide ou expirée - Vérifiez sur console.groq.com"
+                elif "403" in error_msg or "denied" in error_msg.lower():
+                    toast_msg = "❌ Accès refusé - Désactivez votre VPN et réessayez"
+                elif "429" in error_msg or "rate" in error_msg.lower():
+                    toast_msg = "⚠️ Limite de requêtes atteinte - Réessayez dans quelques instants"
+                elif "network" in error_msg.lower() or "connection" in error_msg.lower():
+                    toast_msg = "❌ Erreur réseau - Vérifiez votre connexion Internet"
+                else:
+                    toast_msg = f"❌ Test échoué : {error_msg[:80]}"
+                
+                def show_error():
+                    test_btn.config(state='normal', text="🔍 Tester")
+                    if hasattr(settings_instance, '_show_toast'):
+                        settings_instance._show_toast(toast_msg, type="error")
+                
+                test_btn.after(0, show_error)
+                log_message("ERREUR", f"Test API Groq échoué : {error_msg}", category="settings")
+        
+        # Lancer le test dans un thread séparé pour ne pas bloquer l'interface
+        threading.Thread(target=run_test, daemon=True).start()
+    
+    test_btn = tk.Button(
+        api_key_frame,
+        text="🔍 Tester",
+        font=('Segoe UI', 9),
+        bg=theme["accent"],
+        fg=theme["button_fg"],
+        activebackground=theme["select_bg"],
+        activeforeground=theme["button_fg"],
+        command=test_groq_api_key,
+        width=8
+    )
+    test_btn.pack(side='left', padx=(5, 0))
     
     # Avertissement clé API
     warning_frame = tk.Frame(groq_frame, bg=theme["bg"])

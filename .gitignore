@@ -19,11 +19,10 @@ __pycache__/
 .Python
 
 # Environnements virtuels
-.venv/
+.venv*/
 venv/
 ENV/
 env/
-
 # ============================================
 # PYINSTALLER
 # ============================================

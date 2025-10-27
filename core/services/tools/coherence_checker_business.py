@@ -49,14 +49,13 @@ class UnifiedCoherenceChecker:
         self.check_syntax = config_manager.get('coherence_check_syntax', True)
         self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)
         self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)
-        self.check_french_quotes = config_manager.get('coherence_check_french_quotes', True)
         self.check_length_difference = config_manager.get('coherence_check_length_difference', True)
         # ⭐ Placeholders TOUJOURS actifs (contrôle obligatoire, non configurable)
         
         # Exclusions de fichiers depuis la config
         self.excluded_files = config_manager.get('coherence_excluded_files')
         
-        log_message("DEBUG", f"Options cohérence: variables={self.check_variables}, tags={self.check_tags}, untranslated={self.check_untranslated}, ellipsis={self.check_ellipsis}, escape={self.check_escape_sequences}, percent={self.check_percentages}, quotes={self.check_quotations}, parens={self.check_parentheses}, syntax={self.check_syntax}, deepl={self.check_deepl_ellipsis}, isolated={self.check_isolated_percent}, french={self.check_french_quotes}, length={self.check_length_difference}, structure={self.check_line_structure}", category="coherence_options")
+        log_message("DEBUG", f"Options cohérence: variables={self.check_variables}, tags={self.check_tags}, untranslated={self.check_untranslated}, ellipsis={self.check_ellipsis}, escape={self.check_escape_sequences}, percent={self.check_percentages}, quotes={self.check_quotations}, parens={self.check_parentheses}, syntax={self.check_syntax}, deepl={self.check_deepl_ellipsis}, isolated={self.check_isolated_percent}, length={self.check_length_difference}, structure={self.check_line_structure}", category="coherence_options")
         log_message("DEBUG", f"Fichiers exclus: {config_manager.get('coherence_excluded_files')}", category="coherence_options")
     
     def analyze_path(self, path, return_details=False):
@@ -413,19 +412,13 @@ class UnifiedCoherenceChecker:
             if isolated_issues:
                 return isolated_issues
         
-        # 12. Vérifier les guillemets français (si activé) - PRIORITÉ BASSE
-        if self.check_french_quotes:
-            french_issues = self._check_french_quotes_coherence(old_text, new_text, old_line_num, new_line_num)
-            if french_issues:
-                return french_issues
-        
-        # 13. Vérifier la structure des lignes (si activé) - PRIORITÉ TRÈS BASSE
+        # 12. Vérifier la structure des lignes (si activé) - PRIORITÉ TRÈS BASSE
         if self.check_line_structure:
             structure_issues = self._check_line_structure_coherence(old_text, new_text, old_line_num, new_line_num)
             if structure_issues:
                 return structure_issues
         
-        # 14. Vérifier la différence de longueur (si activé) - PRIORITÉ INDICATIVE
+        # 13. Vérifier la différence de longueur (si activé) - PRIORITÉ INDICATIVE
         if self.check_length_difference:
             length_issues = self._check_length_difference_coherence(old_text, new_text, old_line_num, new_line_num)
             if length_issues:
@@ -730,34 +723,46 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_quotations_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence des guillemets \" et échappés \\\" (1 seule erreur fusionnée)"""
+        """Vérifie la cohérence du NOMBRE de guillemets (tous types confondus)"""
         issues = []
         
         try:
-            # Guillemets échappés \"
-            old_escaped_quotes = old_text.count('\\"')
-            new_escaped_quotes = new_text.count('\\"')
+            # Compter TOUS les types de guillemets dans OLD
+            old_total = 0
+            old_total += old_text.count('\\"')  # Guillemets échappés \"
+            old_total += len(re.findall(r'(?<!\\)"', old_text))  # Guillemets non échappés "
+            # Guillemets simples ' UNIQUEMENT si précédés d'un espace/ponctuation (pas lettre'lettre pour élisions françaises)
+            old_total += len(re.findall(r"(?<=\s)'(?=[a-zA-ZÀ-ÿ])", old_text))
+            old_total += len(re.findall(r"^'(?=[a-zA-ZÀ-ÿ])", old_text))  # Début de ligne
+            old_total += old_text.count('«')  # Guillemets français ouvrants
+            old_total += old_text.count('»')  # Guillemets français fermants
+            old_total += old_text.count('"')  # Guillemets courbes ouvrants
+            old_total += old_text.count('"')  # Guillemets courbes fermants
+            old_total += old_text.count(''')  # Apostrophes typographiques (si en début de mot)
+            old_total += len(re.findall(r'(?<![<>])<<(?![<>])', old_text))  # Chevrons ouvrants <<
+            old_total += len(re.findall(r'(?<![<>])>>(?![<>])', old_text))  # Chevrons fermants >>
             
-            # Guillemets non échappés (dans le contenu)
-            old_unescaped_quotes = len(re.findall(r'(?<!\\)"', old_text))
-            new_unescaped_quotes = len(re.findall(r'(?<!\\)"', new_text))
+            # Compter TOUS les types de guillemets dans NEW
+            new_total = 0
+            new_total += new_text.count('\\"')  # Guillemets échappés \"
+            new_total += len(re.findall(r'(?<!\\)"', new_text))  # Guillemets non échappés "
+            # Guillemets simples ' UNIQUEMENT si précédés d'un espace/ponctuation (pas lettre'lettre pour élisions françaises)
+            new_total += len(re.findall("(?<=\\s)'" + r'(?=[a-zA-ZÀ-ÿ])', new_text))
+            new_total += len(re.findall(r"^'(?=[a-zA-ZÀ-ÿ])", new_text))  # Début de ligne
+            new_total += new_text.count('«')  # Guillemets français ouvrants
+            new_total += new_text.count('»')  # Guillemets français fermants
+            new_total += new_text.count('"')  # Guillemets courbes ouvrants
+            new_total += new_text.count('"')  # Guillemets courbes fermants
+            new_total += new_text.count(''')  # Apostrophes typographiques (si en début de mot)
+            new_total += len(re.findall(r'(?<![<>])<<(?![<>])', new_text))  # Chevrons ouvrants <<
+            new_total += len(re.findall(r'(?<![<>])>>(?![<>])', new_text))  # Chevrons fermants >>
             
-            # Fusionner les vérifications
-            escaped_mismatch = old_escaped_quotes != new_escaped_quotes
-            unescaped_mismatch = old_unescaped_quotes != new_unescaped_quotes
-            
-            if escaped_mismatch or unescaped_mismatch:
-                # Construire une description détaillée
-                details = []
-                if escaped_mismatch:
-                    details.append(f"Échappés \\\" (Attendu: {old_escaped_quotes}, Présent: {new_escaped_quotes})")
-                if unescaped_mismatch:
-                    details.append(f"Non échappés \" (Attendu: {old_unescaped_quotes}, Présent: {new_unescaped_quotes})")
-                
+            # Vérifier que le nombre TOTAL de guillemets est cohérent
+            if old_total != new_total:
                 issues.append({
                     'line': new_line_num,
                     'type': 'QUOTES_MISMATCH',
-                    'description': f"Guillemets incohérents => {', '.join(details)}",
+                    'description': f"Nombre de guillemets incohérent => Attendu: {old_total}, Présent: {new_total}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -823,7 +828,7 @@ class UnifiedCoherenceChecker:
                 issues.append({
                     'line': new_line_num,
                     'type': 'QUOTE_BALANCE_ERROR',
-                    'description': f"Guillemets non équilibrés => OLD: {old_quotes}, NEW: {new_quotes}",
+                    'description': f"Guillemets non équilibrés => ANCIEN: {old_quotes}, NOUVEAU: {new_quotes}",
                     'old_content': old_text,
                     'new_content': new_text
                 })
@@ -890,56 +895,13 @@ class UnifiedCoherenceChecker:
         
         return issues
     
-    def _check_french_quotes_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie les guillemets français «» ou << >> → \" (1 seule erreur fusionnée)"""
-        issues = []
-        
-        try:
-            # Guillemets français
-            old_french_open = old_text.count('«')
-            new_french_open = new_text.count('«')
-            old_french_close = old_text.count('»')
-            new_french_close = new_text.count('»')
-            
-            # Chevrons
-            old_chevron_open = len(re.findall(r'(?<![<>])<<(?![<>])', old_text))
-            new_chevron_open = len(re.findall(r'(?<![<>])<<(?![<>])', new_text))
-            old_chevron_close = len(re.findall(r'(?<![<>])>>(?![<>])', old_text))
-            new_chevron_close = len(re.findall(r'(?<![<>])>>(?![<>])', new_text))
-            
-            # Fusionner toutes les vérifications en une seule erreur
-            french_mismatch = (old_french_open != new_french_open or 
-                               old_french_close != new_french_close)
-            chevron_mismatch = (old_chevron_open != new_chevron_open or 
-                                old_chevron_close != new_chevron_close)
-            
-            if french_mismatch or chevron_mismatch:
-                # Construire une description détaillée
-                details = []
-                if french_mismatch:
-                    details.append(f"« » (Attendu: {old_french_open}/{old_french_close}, Présent: {new_french_open}/{new_french_close})")
-                if chevron_mismatch:
-                    details.append(f"<< >> (Attendu: {old_chevron_open}/{old_chevron_close}, Présent: {new_chevron_open}/{new_chevron_close})")
-                
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'FRENCH_QUOTES_MISMATCH',
-                    'description': f"Guillemets français incohérents => {', '.join(details)} (devraient être transformés en \")",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-        
-        except Exception:
-            pass
-        
-        return issues
     
     def _check_length_difference_coherence(self, old_text, new_text, old_line_num, new_line_num):
         """
         Vérifie la différence de longueur entre OLD et NEW (indicatif, non critique).
         
         Signale si la traduction est significativement plus courte ou plus longue que l'original.
-        Seuil : ±50% de différence de longueur.
+        Seuil : 250% de différence de longueur (ratio > 2.5).
         """
         issues = []
         
@@ -947,16 +909,18 @@ class UnifiedCoherenceChecker:
             old_length = len(old_text.strip())
             new_length = len(new_text.strip())
             
-            # Ignorer les lignes trop courtes (moins de 20 caractères)
-            if old_length < 20 or new_length < 20:
+            # Ignorer les lignes OLD trop courtes (moins de 10 caractères)
+            if old_length < 10:
                 return issues
             
-            # Calculer la différence en pourcentage
-            if old_length > 0:
-                length_diff_percent = abs((new_length - old_length) / old_length) * 100
+            # Calculer le ratio de différence
+            if old_length > 0 and new_length > 0:
+                length_ratio = max(old_length, new_length) / min(old_length, new_length)
                 
-                # Seuil : 50% de différence
-                if length_diff_percent > 50:
+                # Seuil : 250% de différence (ratio > 2.5)
+                if length_ratio > 2.5:
+                    length_diff_percent = abs((new_length - old_length) / old_length) * 100
+                    
                     if new_length > old_length:
                         status = f"⬆️ +{length_diff_percent:.0f}% plus longue"
                     else:
@@ -965,7 +929,7 @@ class UnifiedCoherenceChecker:
                     issues.append({
                         'line': new_line_num,
                         'type': 'LENGTH_DIFFERENCE_WARNING',
-                        'description': f"Différence de longueur importante {status} => OLD: {old_length} caractères, NEW: {new_length} caractères (avertissement indicatif)",
+                        'description': f"Différence de longueur importante {status} => ANCIEN: {old_length} caractères, NOUVEAU: {new_length} caractères (ratio: {length_ratio:.1f})",
                         'old_content': old_text,
                         'new_content': new_text
                     })
@@ -980,22 +944,6 @@ class UnifiedCoherenceChecker:
         issues = []
         
         try:
-            # Vérifier la cohérence de longueur (approximative)
-            old_length = len(old_text.strip())
-            new_length = len(new_text.strip())
-            
-            # Si la différence est très importante (plus de 50% de différence)
-            if old_length > 0 and new_length > 0:
-                length_ratio = max(old_length, new_length) / min(old_length, new_length)
-                if length_ratio > 3.0:  # Plus de 200% de différence (plus tolérant pour EN→FR)
-                    issues.append({
-                        'line': new_line_num,
-                        'type': 'LENGTH_DISCREPANCY',
-                        'description': f"Différence de longueur importante => OLD: {old_length} chars, NEW: {new_length} chars (ratio: {length_ratio:.1f})",
-                        'old_content': old_text,
-                        'new_content': new_text
-                    })
-            
             # Vérifier les caractères spéciaux non échappés
             special_chars = ['{', '}', '[', ']', '%']
             for char in special_chars:
@@ -1276,7 +1224,6 @@ class UnifiedCoherenceChecker:
             "MALFORMED_PLACEHOLDER": "Placeholder malformé",
             "SPECIAL_CODE_MISMATCH": "Codes spéciaux incohérents",
             "PARENTHESES_MISMATCH": "Parenthèses incohérentes",
-            "FRENCH_QUOTES_MISMATCH": "Guillemets français incohérents",
             "QUOTE_COUNT_MISMATCH": "Nombre de guillemets différent",
             "UNTRANSLATED_LINE": "Ligne potentiellement non traduite",
             "MISSING_OLD": "Ligne ANCIENNE manquante",
@@ -1284,10 +1231,11 @@ class UnifiedCoherenceChecker:
             "CONTENT_SUFFIX_MISMATCH": "Suffixe de contenu incohérent",
             "FILE_ERROR": "Erreur de fichier",
             "ANALYSIS_ERROR": "Erreur d'analyse",
-            "LENGTH_DISCREPANCY": "Différence de longueur",
             # Nouveaux types fusionnés
             "QUOTES_MISMATCH": "Guillemets incohérents",
-            "PERCENTAGE_MISMATCH": "Pourcentages incohérents"
+            "PERCENTAGE_MISMATCH": "Pourcentages incohérents",
+            # Avertissements indicatifs
+            "LENGTH_DIFFERENCE_WARNING": "Différence de longueur importante"
         }
         return type_names.get(issue_type, issue_type)
     
@@ -1471,7 +1419,6 @@ def get_coherence_options():
         'check_syntax': config_manager.get('coherence_check_syntax', True),
         'check_deepl_ellipsis': config_manager.get('coherence_check_deepl_ellipsis', True),
         'check_isolated_percent': config_manager.get('coherence_check_isolated_percent', True),
-        'check_french_quotes': config_manager.get('coherence_check_french_quotes', True),
         'check_line_structure': config_manager.get('coherence_check_line_structure', True),
         'custom_exclusions': config_manager.get('coherence_custom_exclusions', {}),  # 🆕 Dictionnaire (projet → exclusions)
         'auto_open_report': config_manager.is_coherence_auto_open_report_enabled()
@@ -1496,7 +1443,6 @@ def set_coherence_options(options):
     config_manager.set('coherence_check_syntax', options.get('check_syntax', True))
     config_manager.set('coherence_check_deepl_ellipsis', options.get('check_deepl_ellipsis', True))
     config_manager.set('coherence_check_isolated_percent', options.get('check_isolated_percent', True))
-    config_manager.set('coherence_check_french_quotes', options.get('check_french_quotes', True))
     config_manager.set('coherence_check_line_structure', options.get('check_line_structure', True))
     # 🆕 NE PLUS sauvegarder coherence_custom_exclusions ici
     # Elle est gérée exclusivement via add_coherence_exclusion() et remove_coherence_exclusion()

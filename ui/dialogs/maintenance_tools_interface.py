@@ -137,8 +137,8 @@ class MaintenanceToolsInterface:
             self.check_syntax_var = tk.BooleanVar(value=True)
             self.check_deepl_ellipsis_var = tk.BooleanVar(value=True)
             self.check_isolated_percent_var = tk.BooleanVar(value=True)
-            self.check_french_quotes_var = tk.BooleanVar(value=True)
             self.check_line_structure_var = tk.BooleanVar(value=True)
+            self.check_length_difference_var = tk.BooleanVar(value=True)
             self.coherence_excluded_files_var = tk.StringVar(value="common.rpy")
             self.custom_exclusions_var = tk.StringVar(value="")
             
@@ -633,7 +633,6 @@ class MaintenanceToolsInterface:
             self.check_syntax_var.set(config_manager.get('coherence_check_syntax', True))
             self.check_deepl_ellipsis_var.set(config_manager.get('coherence_check_deepl_ellipsis', True))
             self.check_isolated_percent_var.set(config_manager.get('coherence_check_isolated_percent', True))
-            self.check_french_quotes_var.set(config_manager.get('coherence_check_french_quotes', True))
             self.check_line_structure_var.set(config_manager.get('coherence_check_line_structure', True))
             
             # Exclusions cohérence

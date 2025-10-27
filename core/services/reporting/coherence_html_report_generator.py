@@ -171,38 +171,39 @@ class HtmlCoherenceReportGenerator:
             border-left: 4px solid var(--success);
           }
           
-          .exclude-checkbox-container {
+          .exclude-toggle-container {
             display: flex; align-items: center; gap: 8px;
             padding: 8px; margin-top: 10px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 6px;
           }
-          .exclude-checkbox {
-            width: 18px; height: 18px; cursor: pointer;
-            accent-color: var(--success); flex-shrink: 0;
+          .exclude-toggle-btn {
+            cursor: pointer; user-select: none; font-size: 0.85rem;
+            padding: 6px 14px; border-radius: 6px;
+            transition: all 0.2s ease;
+            border: 1px solid var(--sep);
+            background: transparent;
+            color: var(--fg);
+            font-weight: 500;
+            flex-shrink: 0;
           }
-          .exclude-label {
-            cursor: pointer; user-select: none; font-size: 0.9rem;
-            flex: 1; display: flex; align-items: center;
-            padding: 4px 8px; border-radius: 4px;
-            transition: background 0.2s, color 0.2s;
+          .exclude-toggle-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
           }
-          .exclude-label:hover { 
-            color: var(--success); 
-            background: rgba(100, 200, 100, 0.08);
+          .exclude-toggle-btn.excluded {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
           }
-          .exclusion-text {
-            font-size: 0.85rem; opacity: 0.7;
+          .exclude-toggle-btn .toggle-text-include {
+            display: inline;
           }
-          .exclusion-status {
-            font-size: 0.85rem; opacity: 0.9; font-style: italic;
-            color: var(--success); font-weight: 500;
+          .exclude-toggle-btn .toggle-text-exclude {
             display: none;
           }
-          .exclude-checkbox:checked ~ .exclude-label .exclusion-text {
+          .exclude-toggle-btn.excluded .toggle-text-include {
             display: none;
           }
-          .exclude-checkbox:checked ~ .exclude-label .exclusion-status {
+          .exclude-toggle-btn.excluded .toggle-text-exclude {
             display: inline;
           }
           
@@ -358,6 +359,7 @@ class HtmlCoherenceReportGenerator:
         (function() {{
             // URL du serveur d'édition (configurable pour support WSL)
             window.RENEXTRACT_SERVER_URL = '{server_url}';
+            window.RENEXTRACT_LANGUAGE = '{language}';
             
             // Informations sur la sélection harmonisée
             window.coherenceSelectionInfo = {{
@@ -439,7 +441,16 @@ class HtmlCoherenceReportGenerator:
                                 data.exclusions.map(excl => `${{project}}|${{excl.file}}|${{excl.line}}|${{excl.text}}`)
                             );
                             console.log(`✅ ${{data.exclusions.length}} exclusion(s) chargée(s) pour ce projet`);
-                            updateCheckboxStates();
+                            
+                            // 🆕 Log des clés pour débogage
+                            if (data.exclusions.length > 0 && data.exclusions.length <= 5) {{
+                                data.exclusions.forEach(excl => {{
+                                    const key = `${{project}}|${{excl.file}}|${{excl.line}}|${{excl.text}}`;
+                                    console.log('  📋 Clé chargée:', key.substring(0, 120) + '...');
+                                }});
+                            }}
+                            
+                            updateToggleStates();
                             // Masquer l'avertissement si présent
                             const warningBanner = document.getElementById('server-warning-banner');
                             if (warningBanner) warningBanner.style.display = 'none';
@@ -518,38 +529,46 @@ class HtmlCoherenceReportGenerator:
                 }}
             }}
             
-            // Mettre à jour l'état des checkboxes selon les exclusions
-            function updateCheckboxStates() {{
+            // Mettre à jour l'état des boutons toggle selon les exclusions
+            function updateToggleStates() {{
                 const project = window.coherenceSelectionInfo.project_path;
                 
-                document.querySelectorAll('.exclude-checkbox').forEach(checkbox => {{
-                    const text = checkbox.getAttribute('data-exclusion-text');
-                    const file = checkbox.getAttribute('data-exclusion-file');
-                    const line = parseInt(checkbox.getAttribute('data-exclusion-line'));
+                document.querySelectorAll('.exclude-toggle-btn').forEach(btn => {{
+                    const text = btn.getAttribute('data-exclusion-text');
+                    const file = btn.getAttribute('data-exclusion-file');
+                    const line = parseInt(btn.getAttribute('data-exclusion-line'));
                     
                     // Construire la clé complète
                     const cacheKey = `${{project}}|${{file}}|${{line}}|${{text}}`;
                     const isExcluded = window.exclusionsCache.has(cacheKey);
                     
-                    checkbox.checked = isExcluded;
+                    // Mettre à jour l'état du bouton
+                    if (isExcluded) {{
+                        btn.classList.add('excluded');
+                    }} else {{
+                        btn.classList.remove('excluded');
+                    }}
                     
                     // Marquer visuellement la ligne comme exclue
-                    const issueItem = checkbox.closest('.issue-item');
-                    const statusSpan = checkbox.closest('.exclude-checkbox-container').querySelector('.exclusion-status');
-                    
+                    const issueItem = btn.closest('.issue-item');
                     if (isExcluded) {{
                         issueItem.classList.add('excluded');
-                        statusSpan.textContent = '✓ Ignoré';
                     }} else {{
                         issueItem.classList.remove('excluded');
-                        statusSpan.textContent = '';
                     }}
                 }});
             }}
             
             // Ajouter une exclusion
             async function addExclusion(text, file, line, project) {{
-                console.log('📤 POST /exclude:', {{ text: text.substring(0, 50), file, line, project: project.substring(0, 50) }});
+                const cacheKey = `${{project}}|${{file}}|${{line}}|${{text}}`;
+                console.log('📤 POST /exclude:', {{ 
+                    text: text.substring(0, 50), 
+                    file, 
+                    line, 
+                    project: project.substring(0, 50),
+                    cacheKey: cacheKey.substring(0, 100) + '...'
+                }});
                 try {{
                     const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/exclude`, {{
                         method: 'POST',
@@ -561,9 +580,8 @@ class HtmlCoherenceReportGenerator:
                         const data = await response.json();
                         if (data.ok) {{
                             // Stocker la clé complète dans le cache
-                            const cacheKey = `${{project}}|${{file}}|${{line}}|${{text}}`;
                             window.exclusionsCache.add(cacheKey);
-                            console.log('✅ Exclusion ajoutée:', file, 'ligne', line);
+                            console.log('✅ Exclusion ajoutée avec clé:', cacheKey.substring(0, 100) + '...');
                             return true;
                         }}
                     }}
@@ -603,41 +621,36 @@ class HtmlCoherenceReportGenerator:
                 }}
             }}
             
-            // Handler pour les checkboxes
-            async function handleExcludeCheckbox(checkbox) {{
-                const text = checkbox.getAttribute('data-exclusion-text');
-                const file = checkbox.getAttribute('data-exclusion-file');  // 🆕
-                const line = parseInt(checkbox.getAttribute('data-exclusion-line'));  // 🆕
-                const project = window.coherenceSelectionInfo.project_path;  // 🆕
+            // Handler pour les boutons toggle d'exclusion
+            async function handleExcludeToggle(btn) {{
+                const text = btn.getAttribute('data-exclusion-text');
+                const file = btn.getAttribute('data-exclusion-file');
+                const line = parseInt(btn.getAttribute('data-exclusion-line'));
+                const project = window.coherenceSelectionInfo.project_path;
                 
-                // 🆕 Validation des données avant envoi
+                // Validation des données avant envoi
                 if (!text || !file || !line || !project) {{
                     console.error('❌ Données manquantes:', {{ text: !!text, file: !!file, line: !!line, project: !!project }});
                     alert("⚠️ Erreur: données incomplètes pour l\'exclusion");
-                    checkbox.checked = false;
                     return;
                 }}
                 
-                const issueItem = checkbox.closest('.issue-item');
-                const statusSpan = checkbox.closest('.exclude-checkbox-container').querySelector('.exclusion-status');
+                const issueItem = btn.closest('.issue-item');
+                const isCurrentlyExcluded = btn.classList.contains('excluded');
                 
-                if (checkbox.checked) {{
+                if (!isCurrentlyExcluded) {{
                     // Ajouter l'exclusion
                     const success = await addExclusion(text, file, line, project);
                     if (success) {{
+                        btn.classList.add('excluded');
                         issueItem.classList.add('excluded');
-                        statusSpan.textContent = '✓ Ignoré';
-                    }} else {{
-                        checkbox.checked = false;
                     }}
                 }} else {{
                     // Retirer l'exclusion
                     const success = await removeExclusion(text, file, line, project);
                     if (success) {{
+                        btn.classList.remove('excluded');
                         issueItem.classList.remove('excluded');
-                        statusSpan.textContent = '';
-                    }} else {{
-                        checkbox.checked = true;
                     }}
                 }}
             }}
@@ -733,7 +746,7 @@ class HtmlCoherenceReportGenerator:
                     const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/edit`, {{
                         method: 'POST',
                         headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify({{ file, line, new_content: newContent, project }})
+                        body: JSON.stringify({{ file, line, new_content: newContent, project, language: window.RENEXTRACT_LANGUAGE }})
                     }});
                     
                     if (response.ok) {{
@@ -901,10 +914,11 @@ class HtmlCoherenceReportGenerator:
                     if (f && l) window.openInEditor(f, l);
                 }});
                 
-                // Délégation: changement sur checkboxes d'exclusion
-                document.body.addEventListener('change', function(e) {{
-                    if (e.target.classList.contains('exclude-checkbox')) {{
-                        handleExcludeCheckbox(e.target);
+                // Délégation: clic sur boutons toggle d'exclusion
+                document.body.addEventListener('click', function(e) {{
+                    if (e.target.classList.contains('exclude-toggle-btn') || e.target.closest('.exclude-toggle-btn')) {{
+                        const btn = e.target.classList.contains('exclude-toggle-btn') ? e.target : e.target.closest('.exclude-toggle-btn');
+                        handleExcludeToggle(btn);
                     }}
                 }});
                 
@@ -1339,7 +1353,7 @@ class HtmlCoherenceReportGenerator:
         priority_order = [
             'VARIABLE_MISMATCH', 'TAG_MISMATCH', 'PLACEHOLDER_MISMATCH',
             'UNRESTORED_PLACEHOLDER', 'MALFORMED_PLACEHOLDER', 'SPECIAL_CODE_MISMATCH',
-            'PARENTHESES_MISMATCH', 'FRENCH_QUOTES_MISMATCH', 'QUOTE_COUNT_MISMATCH',
+            'PARENTHESES_MISMATCH', 'QUOTE_COUNT_MISMATCH',
             'UNTRANSLATED_LINE', 'MISSING_OLD', 'CONTENT_PREFIX_MISMATCH', 
             'CONTENT_SUFFIX_MISMATCH', 'FILE_ERROR', 'ANALYSIS_ERROR'
         ]
@@ -1416,14 +1430,61 @@ class HtmlCoherenceReportGenerator:
         return html
     
     
+    def _highlight_issues_in_text(self, text: str, issue_type: str) -> str:
+        """Surligne les éléments problématiques selon le type d'erreur"""
+        import re
+        
+        if not text:
+            return text
+        
+        # Style de surlignage
+        highlight_style = 'background: rgba(255, 193, 7, 0.3); padding: 2px 4px; border-radius: 3px; font-weight: 500;'
+        
+        if issue_type == 'VARIABLE_MISMATCH':
+            # Surligner les variables [...]
+            text = re.sub(r'(\[[^\]]*\])', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        elif issue_type == 'TAG_MISMATCH':
+            # Surligner les balises {...}
+            text = re.sub(r'(\{[^}]*\})', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        elif issue_type == 'QUOTES_MISMATCH':
+            # Surligner tous les guillemets (", ', «, », ", ", ', \")
+            # Utiliser les codes Unicode pour les guillemets courbes
+            text = re.sub(r'(&quot;|&#39;|«|»|\u201c|\u201d|\u2018|\\&quot;)', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        elif issue_type == 'PARENTHESES_MISMATCH':
+            # Surligner les parenthèses
+            text = re.sub(r'([\(\)])', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        elif issue_type in ['PERCENTAGE_MISMATCH', 'PERCENTAGE_FORMAT_MISMATCH', 'DOUBLE_PERCENT_MISMATCH', 'ISOLATED_PERCENT_MISMATCH']:
+            # Surligner les %
+            text = re.sub(r'(%[sd%]?)', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        elif issue_type == 'PLACEHOLDER_MISMATCH':
+            # Surligner les placeholders (...)
+            text = re.sub(r'(\([^)]*\))', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        elif issue_type in ['ELLIPSIS_MISMATCH', 'DEEPL_ELLIPSIS_MISMATCH']:
+            # Surligner les ellipses
+            text = re.sub(r'(\.{2,}|…|\[…\]|\[\.\.\.\])', r'<span style="' + highlight_style + r'">\1</span>', text)
+        
+        return text
+    
     def _generate_issue_item(self, issue: Dict) -> str:
         """Génère un élément d'erreur individuel avec édition en ligne"""
         line = int(issue.get('line', 0) or 0)
         file_path = issue.get('file_path', '') or ''
         description = _html.escape(issue.get('description', ''))
-        old_content = _html.escape(issue.get('old_content', ''))
-        new_content = _html.escape(issue.get('new_content', ''))
+        old_content_raw = issue.get('old_content', '')
+        new_content_raw = issue.get('new_content', '')
+        old_content = _html.escape(old_content_raw)
+        new_content = _html.escape(new_content_raw)
         issue_type = issue.get('type', '')
+        
+        # Appliquer le surlignage si le type d'erreur le nécessite
+        old_content_highlighted = self._highlight_issues_in_text(old_content, issue_type)
+        new_content_highlighted = self._highlight_issues_in_text(new_content, issue_type)
 
         # Bouton "Ouvrir dans l'éditeur" uniquement si on a un chemin ET une ligne valide
         if file_path and line > 0:
@@ -1446,9 +1507,9 @@ class HtmlCoherenceReportGenerator:
         import hashlib
         unique_id = hashlib.md5(f'{file_path}{line}'.encode()).hexdigest()[:8]
         
-        # Checkbox d'exclusion pour les types d'erreurs configurables
+        # Bouton toggle d'exclusion pour les types d'erreurs configurables
         # Note : Les placeholders ne sont PAS excludables (contrôle obligatoire critique)
-        exclude_checkbox_html = ''
+        exclude_button_html = ''
         excludable_types = [
             # Groupe 1 : Détection de contenu
             'UNTRANSLATED_LINE',                      # coherence_check_untranslated
@@ -1462,9 +1523,7 @@ class HtmlCoherenceReportGenerator:
             'PARENTHESES_MISMATCH',                   # coherence_check_parentheses
             'DEEPL_ELLIPSIS_MISMATCH',                # coherence_check_deepl_ellipsis
             'ISOLATED_PERCENT_MISMATCH',              # coherence_check_isolated_percent
-            # Groupe 3 : Formatage
-            'FRENCH_QUOTES_MISMATCH',                 # coherence_check_french_quotes
-            # Groupe 4 : Avertissements indicatifs
+            # Groupe 3 : Avertissements indicatifs
             'LENGTH_DIFFERENCE_WARNING'               # coherence_check_length_difference
         ]
         
@@ -1473,24 +1532,20 @@ class HtmlCoherenceReportGenerator:
             if exclusion_key:
                 escaped_key = _html.escape(exclusion_key).replace('"', '&quot;')
                 
-                exclude_checkbox_html = f"""
-            <div class="exclude-checkbox-container">
-                <input type="checkbox" id="excl-{unique_id}" class="exclude-checkbox" 
-                       data-exclusion-text="{escaped_key}"
-                       data-exclusion-file="{escaped_file}"
-                       data-exclusion-line="{line}"
-                       title="Ignorer cette ligne dans les futurs rapports">
-                <label for="excl-{unique_id}" class="exclude-label" title="Cliquez pour ignorer cette ligne">
-                    <span class="exclusion-text">Cliquer pour ignorer</span>
-                    <span class="exclusion-status"></span>
-                </label>
-            </div>
-                """
+                exclude_button_html = f"""
+                    <button type="button" class="exclude-toggle-btn" 
+                        data-exclusion-text="{escaped_key}"
+                        data-exclusion-file="{escaped_file}"
+                        data-exclusion-line="{line}"
+                        style="padding: 8px 12px; border: 1px solid var(--sep); background: transparent; color: var(--fg); border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap; transition: all 0.2s ease;"
+                        title="Basculer l'état d'exclusion">
+                        <span class="toggle-text-include">❌ Ignorer</span>
+                        <span class="toggle-text-exclude">✅ Inclure</span>
+                    </button>"""
         
         # 🆕 Interface d'édition en ligne (pour tous les types d'erreurs)
-        # Pré-remplir avec le contenu OLD (la version originale à corriger)
-        # L'utilisateur corrige OLD pour qu'il devienne conforme
-        edit_value = issue.get('old_content', '')
+        # Pré-remplir avec le contenu NEW (la version traduite à corriger)
+        edit_value = new_content_raw
         # Échapper pour l'attribut HTML mais pas pour le contenu du textarea
         escaped_edit_value = _html.escape(edit_value) if edit_value else ''
         
@@ -1510,6 +1565,7 @@ class HtmlCoherenceReportGenerator:
                     title="Modifiez le texte ici puis cliquez sur Enregistrer"
                 >{escaped_edit_value}</textarea>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
+                    {exclude_button_html}
                     <button type="button" class="translate-btn btn" id="translate-{unique_id}"
                         data-edit-field="editField-{unique_id}"
                         style="padding: 8px 12px; background: var(--info); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;"
@@ -1539,15 +1595,28 @@ class HtmlCoherenceReportGenerator:
             <div class="issue-description">{description}</div>
             <div class="content-comparison">
                 <div class="content-block old-content">
-                    <div class="content-label">Ancien</div>
-                    <div>{old_content if old_content else '<em>Vide</em>'}</div>
+                    <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Ancien</span>
+                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{_html.escape(old_content_raw).replace("'", "\\'")}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
+                            style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
+                            title="Copier le texte original">
+                            📋 Copier
+                        </button>
+                    </div>
+                    <div>{old_content_highlighted if old_content_highlighted else '<em>Vide</em>'}</div>
                 </div>
                 <div class="content-block new-content">
-                    <div class="content-label">Nouveau</div>
-                    <div>{new_content if new_content else '<em>Vide</em>'}</div>
+                    <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Nouveau</span>
+                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{_html.escape(new_content_raw).replace("'", "\\'")}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
+                            style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
+                            title="Copier le texte traduit">
+                            📋 Copier
+                        </button>
+                    </div>
+                    <div>{new_content_highlighted if new_content_highlighted else '<em>Vide</em>'}</div>
                 </div>
             </div>
-            {exclude_checkbox_html}
             {edit_interface_html}
         </div>
         """
@@ -1563,7 +1632,6 @@ class HtmlCoherenceReportGenerator:
             "MALFORMED_PLACEHOLDER": "Placeholder malformé",
             "SPECIAL_CODE_MISMATCH": "Codes spéciaux incohérents",
             "PARENTHESES_MISMATCH": "Parenthèses incohérentes",
-            "FRENCH_QUOTES_MISMATCH": "Guillemets français incohérents",
             "QUOTE_COUNT_MISMATCH": "Nombre de guillemets différent",
             "UNTRANSLATED_LINE": "Ligne potentiellement non traduite",
             "MISSING_OLD": "Ligne ANCIENNE manquante",
@@ -1571,7 +1639,6 @@ class HtmlCoherenceReportGenerator:
             "CONTENT_SUFFIX_MISMATCH": "Suffixe de contenu incohérent",
             "FILE_ERROR": "Erreur de fichier",
             "ANALYSIS_ERROR": "Erreur d'analyse",
-            "LENGTH_DISCREPANCY": "Différence de longueur",
             # Nouveaux types fusionnés
             "QUOTES_MISMATCH": "Guillemets incohérents",
             "PERCENTAGE_MISMATCH": "Pourcentages incohérents",
@@ -1596,7 +1663,6 @@ class HtmlCoherenceReportGenerator:
             "MALFORMED_PLACEHOLDER": "⚠️",
             "SPECIAL_CODE_MISMATCH": "💻",
             "PARENTHESES_MISMATCH": "〔〕",
-            "FRENCH_QUOTES_MISMATCH": "「」",
             "QUOTE_COUNT_MISMATCH": "\"\"",
             "UNTRANSLATED_LINE": "🌐",
             "MISSING_OLD": "❌",
@@ -1622,7 +1688,6 @@ class HtmlCoherenceReportGenerator:
             "MALFORMED_PLACEHOLDER": "badge-placeholder",
             "SPECIAL_CODE_MISMATCH": "badge-special",
             "PARENTHESES_MISMATCH": "badge-special",
-            "FRENCH_QUOTES_MISMATCH": "badge-special",
             "QUOTE_COUNT_MISMATCH": "badge-special",
             "UNTRANSLATED_LINE": "badge-untranslated",
             "MISSING_OLD": "badge-other",
@@ -1648,26 +1713,44 @@ class HtmlCoherenceReportGenerator:
         """
     
     def _get_relative_file_path(self, file_path):
-        """Retourne le chemin relatif du fichier depuis le dossier tl"""
+        """
+        Retourne le chemin relatif du fichier depuis le dossier tl
+        NORMALISÉ pour garantir la cohérence entre rapports globaux et reconstruction
+        """
         try:
+            # Normaliser les séparateurs de chemin d'abord
+            normalized_path = file_path.replace('\\', '/')
+            
             # Trouver la position de 'tl/' dans le chemin
-            if '/tl/' in file_path:
-                parts = file_path.split('/tl/')
+            if '/tl/' in normalized_path:
+                parts = normalized_path.split('/tl/')
                 if len(parts) > 1:
                     # Retourner ce qui est après tl/langue/
                     sub_parts = parts[1].split('/', 1)
                     if len(sub_parts) > 1:
-                        return sub_parts[1].replace('\\', '/')
-            elif '\\tl\\' in file_path:
-                parts = file_path.split('\\tl\\')
-                if len(parts) > 1:
-                    sub_parts = parts[1].split('\\', 1)
-                    if len(sub_parts) > 1:
-                        return sub_parts[1].replace('\\', '/')
+                        # Format final: "script.rpy" ou "subfolder/script.rpy"
+                        return sub_parts[1]
+                    else:
+                        # Si pas de sous-dossier, retourner juste le nom de fichier
+                        return os.path.basename(normalized_path)
             
-            # Fallback: retourner le nom du fichier
-            return os.path.basename(file_path)
-        except Exception:
+            # Si 'tl/' n'est pas trouvé mais le chemin contient 'game/'
+            if '/game/' in normalized_path:
+                # Extraire depuis game/ (cas reconstruction)
+                parts = normalized_path.split('/game/')
+                if len(parts) > 1:
+                    game_relative = parts[1]
+                    # Si ça commence par tl/langue/, extraire la partie après
+                    if game_relative.startswith('tl/'):
+                        sub_parts = game_relative.split('/', 2)
+                        if len(sub_parts) > 2:
+                            return sub_parts[2]
+            
+            # Fallback: retourner le nom du fichier uniquement
+            return os.path.basename(normalized_path)
+        except Exception as e:
+            from infrastructure.logging.logging import log_message
+            log_message("DEBUG", f"Erreur normalisation chemin '{file_path}': {e}", category="report")
             return os.path.basename(file_path)
 
 

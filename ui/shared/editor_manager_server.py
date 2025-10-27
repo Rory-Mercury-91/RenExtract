@@ -213,21 +213,26 @@ class _Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/coherence/edit":
             try:
                 from core.services.tools.coherence_line_editor import edit_coherence_line
+                import traceback
                 
                 data = self._read_request_body()
                 file_path = data.get('file', '').strip()
                 line = data.get('line', 0)
-                new_content = data.get('new_content', '').strip()
+                # Ne pas strip new_content pour conserver les espaces intentionnels
+                new_content = data.get('new_content', '')
                 project_path = data.get('project', '').strip()
+                language = data.get('language', 'french').strip()
                 
-                log_message("DEBUG", f"POST /edit - file={file_path}, line={line}, project={project_path}", category="coherence_api")
+                log_message("DEBUG", f"POST /edit - file={file_path}, line={line}, project={project_path}, language={language}", category="coherence_api")
+                log_message("DEBUG", f"POST /edit - new_content: {repr(new_content)[:200]}", category="coherence_api")
                 
-                if not file_path or not new_content or not project_path or line == 0:
-                    self._send_json_response({'ok': False, 'error': 'Données incomplètes'}, 400)
+                # Vérifier uniquement file_path, project_path et line (new_content peut être vide)
+                if not file_path or not project_path or line == 0:
+                    self._send_json_response({'ok': False, 'error': 'Données incomplètes (fichier, projet ou ligne manquant)'}, 400)
                     return
                 
                 # Effectuer la modification
-                success, message = edit_coherence_line(project_path, file_path, line, new_content)
+                success, message = edit_coherence_line(project_path, file_path, line, new_content, language)
                 
                 if success:
                     log_message("INFO", f"✅ Ligne modifiée: {file_path}:{line}", category="coherence_edit")
@@ -237,7 +242,9 @@ class _Handler(BaseHTTPRequestHandler):
                     self._send_json_response({'ok': False, 'error': message}, 500)
                 
             except Exception as e:
-                log_message("ERREUR", f"Erreur modification ligne: {e}", category="coherence_api")
+                error_trace = traceback.format_exc()
+                log_message("ERREUR", f"Exception modification ligne: {e}", category="coherence_api")
+                log_message("DEBUG", f"Traceback complet:\n{error_trace}", category="coherence_api")
                 self._send_json_response({'ok': False, 'error': str(e)}, 500)
             return
         

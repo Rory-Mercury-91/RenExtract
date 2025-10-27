@@ -316,7 +316,7 @@ DEFAULT_CONFIG = {
     "cleanup_excluded_files":"common.rpy",
     "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_check_ellipsis":True,
     "coherence_check_escape_sequences":True,"coherence_check_percentages":True,"coherence_check_quotations":True,"coherence_check_parentheses":True,
-    "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_french_quotes":True,"coherence_check_line_structure":True,
+    "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_line_structure":True,"coherence_check_length_difference":True,
     "coherence_custom_exclusions":{},
     "coherence_excluded_files":"",
     "coherence_auto_open_report":True,

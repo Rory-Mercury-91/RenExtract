@@ -312,7 +312,10 @@ def _create_custom_editor_section(parent, settings_instance):
 
 
 def _test_custom_editor_path(settings_instance):
-    """Teste si le chemin de l'éditeur personnalisé est valide"""
+    """Teste si l'éditeur peut ouvrir un fichier à une ligne spécifique"""
+    import tempfile
+    from pathlib import Path
+    
     try:
         path = settings_instance.custom_editor_var.get().strip()
         
@@ -320,33 +323,81 @@ def _test_custom_editor_path(settings_instance):
             _show_toast(settings_instance, "⚠️ Aucun chemin configuré pour l'éditeur personnalisé", "warning")
             return
         
-        if os.path.exists(path) and os.path.isfile(path):
-            # Test simple : vérifier que le fichier existe et est exécutable
-            try:
-                # Flags pour masquer la fenêtre console sur Windows
-                creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                
-                # Test rapide avec --version (marche pour la plupart des éditeurs)
-                result = subprocess.run([path, "--version"], 
-                                    capture_output=True, 
-                                    timeout=3, 
-                                    text=True,
-                                    creationflags=creationflags)
-                editor_name = get_editor_name_from_path(path)
-                _show_toast(settings_instance, f"✅ {editor_name} : Chemin valide", "success")
-            except subprocess.TimeoutExpired:
-                editor_name = get_editor_name_from_path(path)
-                _show_toast(settings_instance, f"✅ {editor_name} : Chemin valide (timeout OK)", "success")
-            except Exception:
-                # Si --version échoue, on considère que le fichier existe = OK
-                editor_name = get_editor_name_from_path(path)
-                _show_toast(settings_instance, f"✅ {editor_name} : Fichier trouvé", "success")
-        else:
+        if not (os.path.exists(path) and os.path.isfile(path)):
             _show_toast(settings_instance, "❌ Éditeur personnalisé : Fichier non trouvé", "error")
-            
+            return
+        
+        # Créer le fichier de test dans le dossier 04_Configs de RenExtract
+        from infrastructure.config.constants import FOLDERS
+        
+        config_dir = Path(FOLDERS["configs"])
+        config_dir.mkdir(parents=True, exist_ok=True)
+        
+        test_file = config_dir / "test_editor_compatibility.rpy"
+        
+        # Contenu du fichier de test
+        test_content = """# TEST DE COMPATIBILITÉ
+
+# 04_Configs/test_editor_compatibility.rpy:1
+translate test:
+
+    # RenExtract "je veux la ligne 7"
+    RenExtract "✅ Le test est passé ! Le curseur devrait être sur cette ligne (ligne 7)"
+    
+# Si votre curseur est sur la ligne 7 (celle avec le ✅), le test est réussi !
+# Vous pouvez fermer ce fichier.
+"""
+        
+        # Écrire le fichier
+        test_file.write_text(test_content, encoding='utf-8')
+        log_message("INFO", f"Fichier de test créé : {test_file}", category="paths_tab")
+        
+        # Détecter l'éditeur et construire la commande appropriée
+        editor_name = get_editor_name_from_path(path)
+        exe_name = os.path.basename(path).lower()
+        
+        # Commandes selon l'éditeur pour ouvrir à la ligne 7
+        if 'code' in exe_name or 'vscode' in editor_name.lower():
+            # VSCode: code --goto file.rpy:7
+            cmd = [path, "--goto", f"{test_file}:7"]
+        elif 'sublime' in exe_name or 'sublime' in editor_name.lower():
+            # Sublime Text: sublime_text file.rpy:7
+            cmd = [path, f"{test_file}:7"]
+        elif 'notepad++' in exe_name:
+            # Notepad++: notepad++ -n7 file.rpy
+            cmd = [path, f"-n7", str(test_file)]
+        elif 'atom' in exe_name or 'pulsar' in exe_name:
+            # Atom/Pulsar: atom file.rpy:7
+            cmd = [path, f"{test_file}:7"]
+        elif 'pycharm' in exe_name or 'idea' in exe_name:
+            # PyCharm/IntelliJ: idea --line 7 file.rpy
+            cmd = [path, "--line", "7", str(test_file)]
+        else:
+            # Format générique (espérer que ça marche)
+            cmd = [path, f"{test_file}:7"]
+        
+        # Exécuter la commande
+        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        
+        subprocess.Popen(
+            cmd,
+            creationflags=creationflags,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        
+        log_message("INFO", f"Test éditeur lancé : {' '.join(cmd)}", category="paths_tab")
+        
+        # Message de confirmation
+        _show_toast(
+            settings_instance, 
+            f"🧪 {editor_name} : Fichier de test ouvert - Vérifiez que le curseur est sur la ligne 7 ✅", 
+            "info"
+        )
+        
     except Exception as e:
-        log_message("ERREUR", f"Erreur test chemin éditeur personnalisé: {e}", category="paths_tab")
-        _show_toast(settings_instance, "❌ Erreur test éditeur personnalisé", "error")
+        log_message("ERREUR", f"Erreur test ouverture éditeur : {e}", category="paths_tab")
+        _show_toast(settings_instance, f"❌ Erreur test : {str(e)[:60]}", "error")
 
 
 def _browse_custom_editor_path(settings_instance):

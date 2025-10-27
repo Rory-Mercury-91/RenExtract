@@ -22,16 +22,32 @@ def _get_default_editor_for_rpy():
         return ("unknown", None)
         
     try:
-        # Récupérer l'association de fichier pour .rpy
-        with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, ".rpy") as key:
-            file_type = winreg.QueryValue(key, "")
+        # Windows 10/11 : Essayer d'abord HKEY_CURRENT_USER (priorité utilisateur)
+        file_type = None
+        command = None
         
-        # Récupérer la commande d'ouverture
-        with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, f"{file_type}\\shell\\open\\command") as key:
-            command = winreg.QueryValue(key, "")
+        try:
+            # Essayer UserChoice (Windows 10+)
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.rpy\UserChoice") as key:
+                prog_id = winreg.QueryValueEx(key, "ProgId")[0]
+                
+                # Récupérer la commande depuis le ProgId
+                with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, f"{prog_id}\\shell\\open\\command") as cmd_key:
+                    command = winreg.QueryValue(cmd_key, "")
+                    file_type = prog_id
+        except (FileNotFoundError, OSError):
+            # Fallback sur l'ancien système (HKEY_CLASSES_ROOT)
+            with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, ".rpy") as key:
+                file_type = winreg.QueryValue(key, "")
+            
+            with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, f"{file_type}\\shell\\open\\command") as key:
+                command = winreg.QueryValue(key, "")
+        
+        if not command:
+            log_message("ATTENTION", "Aucune commande trouvée pour .rpy", category="editor_opener")
+            return ("unknown", None)
         
         command_lower = command.lower()
-        # Log supprimé : redondant avec le log final d'ouverture
         
         # Détecter les éditeurs supportés
         if "sublime_text.exe" in command_lower or "subl.exe" in command_lower:
@@ -64,14 +80,41 @@ def _get_default_editor_for_rpy():
                     return ("sublime", path)
         
         if "code.exe" in command_lower:
-            vscode_path = r"C:\Program Files\Microsoft VS Code\Code.exe"
-            if os.path.exists(vscode_path):
-                return ("vscode", vscode_path)
+            # Extraire le chemin de l'exécutable depuis la commande
+            import re
+            match = re.search(r'"([^"]+code[^"]*\.exe)"', command, re.IGNORECASE)
+            if match:
+                detected_path = match.group(1)
+                if os.path.exists(detected_path):
+                    return ("vscode", detected_path)
+            
+            # Fallback : chercher dans les emplacements standards
+            possible_paths = [
+                r"C:\Program Files\Microsoft VS Code\Code.exe",
+                r"C:\Program Files (x86)\Microsoft VS Code\Code.exe",
+                os.path.expanduser(r"~\AppData\Local\Programs\Microsoft VS Code\Code.exe"),
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    return ("vscode", path)
         
         if "notepad++.exe" in command_lower:
-            notepad_path = r"C:\Program Files\Notepad++\notepad++.exe"
-            if os.path.exists(notepad_path):
-                return ("notepadpp", notepad_path)
+            # Extraire le chemin de l'exécutable depuis la commande
+            import re
+            match = re.search(r'"([^"]+notepad\+\+[^"]*\.exe)"', command, re.IGNORECASE)
+            if match:
+                detected_path = match.group(1)
+                if os.path.exists(detected_path):
+                    return ("notepadpp", detected_path)
+            
+            # Fallback : chercher dans les emplacements standards
+            possible_paths = [
+                r"C:\Program Files\Notepad++\notepad++.exe",
+                r"C:\Program Files (x86)\Notepad++\notepad++.exe",
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    return ("notepadpp", path)
         
         if "atom.exe" in command_lower or "pulsar.exe" in command_lower:
             # Vérifier Pulsar en priorité (plus récent)

@@ -281,18 +281,37 @@ jobs:
           
           ### 🆕 Nouveautés ${{ github.ref_name }}
           
-          #### 🎯 Fonctionnalités Principales
-          - ✅ **Installation temporaire des polices** : Aperçu des polices personnalisées sans Pillow (-9 MB exécutable)
-          - ✅ **Gestion intelligente des polices** : Conservation des polices utilisées, nettoyage automatique des autres
+          #### 🎯 Édition Cohérence en Ligne
+          - ✅ **Modification directe depuis rapport HTML** : Édition des traductions détectées avec pré-remplissage intelligent
+          - ✅ **Surlignage visuel** : Mise en évidence des éléments problématiques dans ANCIEN et NOUVEAU
+          - ✅ **Boutons copie** : Copie rapide du texte ANCIEN ou NOUVEAU
+          - ✅ **Boutons toggle d'exclusion** : "❌ Ignorer / ✅ Inclure" intégrés dans colonne actions
+          - ✅ **Traduction assistée** : Intégration Groq AI, DeepL, Google, Microsoft, Yandex
+          - ✅ **Validation syntaxique Ren'Py** : Vérification automatique guillemets, crochets, accolades, parenthèses
+          - ✅ **Backup automatique** : Type `COHERENCE_EDIT` avec sauvegarde avant modification
           
-          #### 🔧 Améliorations & Corrections
-          - ✅ **Optimisation taille exécutable** : Suppression de Pillow, réduction de 25 MB à ~16 MB
-          - ✅ **Logs optimisés** : Regroupement et nettoyage des messages de polices
-          - ✅ **Code mort supprimé** : -56 lignes dans font_manager.py
-          - ✅ **Build configs mises à jour** : requirements.txt, create_windows_exe.py, build-releases.yml
+          #### 🔧 Configuration des Éditeurs
+          - ✅ **Détection automatique Windows 10/11** : Lecture registre UserChoice pour respecter le choix utilisateur réel
+          - ✅ **Extraction dynamique des chemins** : Récupération chemin d'installation depuis registre (VSCode, Notepad++, Sublime)
+          - ✅ **Test de l'éditeur** : Bouton 🧪 créant fichier test dans `04_Configs` et ouvrant à ligne 7 pour validation
+          - ✅ **Persistance éditeur personnalisé** : Synchronisation champ de saisie + combobox
           
-          #### 📖 Documentation & Tutoriel
-          - ✅ **README simplifié** : Documentation utilisateur concise sur les faux positifs antivirus
+          #### 🛡️ Contrôles de Cohérence
+          - ✅ **Contrôle de longueur unifié** : Un seul contrôle avec seuil 250% et minimum 10 caractères
+          - ✅ **Guillemets intelligents** : Ignore apostrophes françaises (c'est, l'eau), compte uniquement quotes réelles
+          - ✅ **Terminologie française** : ANCIEN/NOUVEAU au lieu de OLD/NEW (évite confusion mots-clés Ren'Py)
+          - ✅ **Interface optimisée** : Grille 4×3 (3 lignes de 4 contrôles) au lieu de 5-5-2
+          - ✅ **12 types de vérifications** : Tous configurables et activables/désactivables
+          
+          #### 🔑 Test et Validation API
+          - ✅ **Test clé API Groq** : Bouton 🔍 dans onglet Application pour tester connexion
+          - ✅ **Notifications toast** : Utilisation `notification_manager` pour résultats (succès/erreur)
+          - ✅ **Thread séparé** : Test non-bloquant avec désactivation temporaire du bouton
+          
+          #### 📦 Optimisation Exécutable
+          - ✅ **Suppression Pillow** : Réduction de 25 MB à ~16 MB (Windows) / ~18 MB (Linux)
+          - ✅ **Installation temporaire polices** : Aperçu polices personnalisées sans dépendance lourde
+          - ✅ **Gestion intelligente polices** : Conservation polices utilisées, nettoyage temporaires
           
           ---
           

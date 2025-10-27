@@ -68,36 +68,44 @@ def _find_project_root(file_path: str) -> str:
         return os.path.dirname(file_path)
 
 
-def _reconstruct_absolute_path(project_path: str, relative_file: str) -> str:
+def _reconstruct_absolute_path(project_path: str, relative_file: str, language: str = 'french') -> str:
     """
     Reconstruit le chemin absolu depuis le chemin relatif
     
     Args:
         project_path: Racine du projet
         relative_file: Chemin relatif (ex: "script.rpy" ou "subfolder/choices.rpy")
+        language: Langue de traduction (ex: 'french', 'english')
     
     Returns:
         Chemin absolu du fichier
     """
     try:
-        # Essayer de trouver le fichier dans tl/*/
         project = Path(project_path)
         
-        # Chercher dans tous les dossiers de traduction
-        tl_dir = project / 'game' / 'tl'
+        # Construire le chemin directement avec la langue spécifiée
+        tl_dir = project / 'game' / 'tl' / language
         if not tl_dir.exists():
-            tl_dir = project / 'tl'
+            tl_dir = project / 'tl' / language
         
-        if tl_dir.exists():
-            # Chercher dans chaque langue
-            for lang_dir in tl_dir.iterdir():
+        potential_file = tl_dir / relative_file
+        if potential_file.exists():
+            return str(potential_file)
+        
+        # Fallback: essayer dans tous les dossiers si pas trouvé
+        tl_root = project / 'game' / 'tl'
+        if not tl_root.exists():
+            tl_root = project / 'tl'
+        
+        if tl_root.exists():
+            for lang_dir in tl_root.iterdir():
                 if lang_dir.is_dir():
                     potential_file = lang_dir / relative_file
                     if potential_file.exists():
                         return str(potential_file)
         
-        # Fallback: construire depuis project_path
-        return str(project / 'game' / 'tl' / 'french' / relative_file)
+        # Fallback final: construire avec la langue spécifiée
+        return str(project / 'game' / 'tl' / language / relative_file)
         
     except Exception as e:
         log_message("ERREUR", f"Erreur reconstruction chemin: {e}", category="coherence_editor")
@@ -105,7 +113,7 @@ def _reconstruct_absolute_path(project_path: str, relative_file: str) -> str:
 
 
 def edit_coherence_line(project_path: str, file_path: str, line_number: int, 
-                       new_content: str) -> Tuple[bool, str]:
+                       new_content: str, language: str = 'french') -> Tuple[bool, str]:
     """
     Modifie une ligne dans un fichier de traduction
     
@@ -114,15 +122,22 @@ def edit_coherence_line(project_path: str, file_path: str, line_number: int,
         file_path: Chemin relatif du fichier
         line_number: Numéro de ligne (1-indexed)
         new_content: Nouveau contenu pour la partie "new"
+        language: Langue de traduction (défaut: 'french')
     
     Returns:
         (bool, str): (succès, message)
     """
     try:
+        log_message("DEBUG", f"edit_coherence_line - Début: file={file_path}, line={line_number}", category="coherence_editor")
+        log_message("DEBUG", f"edit_coherence_line - content: {repr(new_content)[:100]}", category="coherence_editor")
+        
         # Valider la syntaxe avant toute modification
         is_valid, error_msg = _validate_renpy_syntax(new_content)
         if not is_valid:
+            log_message("ERREUR", f"Validation syntaxe échouée: {error_msg}", category="coherence_editor")
             return False, f"Syntaxe invalide: {error_msg}"
+        
+        log_message("DEBUG", "Validation syntaxe OK", category="coherence_editor")
         
         # 🔧 CORRECTIF: Détecter si project_path est déjà un chemin de fichier complet
         # Si project_path contient file_path à la fin, c'est qu'on a reçu le chemin complet
@@ -134,9 +149,9 @@ def edit_coherence_line(project_path: str, file_path: str, line_number: int,
             absolute_path = project_path
             log_message("DEBUG", f"Chemin complet détecté: {absolute_path}", category="coherence_editor")
         else:
-            # Reconstruire le chemin absolu
-            absolute_path = _reconstruct_absolute_path(project_path, file_path)
-            log_message("DEBUG", f"Chemin reconstruit: {absolute_path}", category="coherence_editor")
+            # Reconstruire le chemin absolu avec la langue
+            absolute_path = _reconstruct_absolute_path(project_path, file_path, language)
+            log_message("DEBUG", f"Chemin reconstruit: {absolute_path} (langue: {language})", category="coherence_editor")
         
         if not os.path.exists(absolute_path):
             return False, f"Fichier introuvable: {absolute_path}"

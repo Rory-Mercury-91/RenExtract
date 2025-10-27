@@ -81,7 +81,6 @@ class UnifiedSettingsInterface:
             self.coherence_check_parentheses_var = tk.BooleanVar(value=True)
             self.coherence_check_deepl_ellipsis_var = tk.BooleanVar(value=True)
             self.coherence_check_isolated_percent_var = tk.BooleanVar(value=True)
-            self.coherence_check_french_quotes_var = tk.BooleanVar(value=True)
             
             # Variable limite de lignes d'extraction
             line_limit = config_manager.get('extraction_line_limit')
@@ -1561,7 +1560,7 @@ Configuration :
                 ("📐 Syntaxe Ren'Py", "coherence_check_syntax"),
                 ("💬 DeepL ellipsis", "coherence_check_deepl_ellipsis"),
                 ("% Pourcentage isolé", "coherence_check_isolated_percent"),
-                ("🇫🇷 Guillemets français «»", "coherence_check_french_quotes")
+                ("📏 Différence de longueur", "coherence_check_length_difference")
             ]
             
             # Variables pour les checkboxes

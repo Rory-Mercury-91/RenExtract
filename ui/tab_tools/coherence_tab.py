@@ -102,12 +102,12 @@ def _create_coherence_content(parent, main_interface):
     )
     options_title.pack(anchor='w', padx=20, pady=(20, 10))
     
-    # Frame pour les options en grille 5x3
+    # Frame pour les options en grille 4x3
     options_container = tk.Frame(parent, bg=theme["bg"])
     options_container.pack(fill='x', padx=20, pady=(0, 10))
     
-    # Configuration de la grille 5x3 (5 colonnes, 3 lignes)
-    grid_columns = 5
+    # Configuration de la grille 4x3 (4 colonnes, 3 lignes)
+    grid_columns = 4
     
     # Liste des options avec leurs variables et textes
     options_data = [
@@ -122,7 +122,6 @@ def _create_coherence_content(parent, main_interface):
         (main_interface.check_syntax_var, "Syntaxe Ren'Py et structure"),
         (main_interface.check_deepl_ellipsis_var, "[…] Ellipses DeepL [...] → ..."),
         (main_interface.check_isolated_percent_var, "% Pourcentages isolés (% → %%)"),
-        (main_interface.check_french_quotes_var, "«» Guillemets français «» → \""),
         (main_interface.check_line_structure_var, "Structure des lignes old/new")
     ]
     
@@ -313,7 +312,6 @@ def _select_all_coherence_options(main_interface):
             main_interface.check_syntax_var,
             main_interface.check_deepl_ellipsis_var,
             main_interface.check_isolated_percent_var,
-            main_interface.check_french_quotes_var,
             main_interface.check_line_structure_var
         ]
         
@@ -354,7 +352,6 @@ def _select_no_coherence_options(main_interface):
             main_interface.check_syntax_var,
             main_interface.check_deepl_ellipsis_var,
             main_interface.check_isolated_percent_var,
-            main_interface.check_french_quotes_var,
             main_interface.check_line_structure_var
         ]
         
@@ -584,7 +581,6 @@ def _get_coherence_analysis_options(main_interface):
         'check_syntax': main_interface.check_syntax_var.get(),
         'check_deepl_ellipsis': main_interface.check_deepl_ellipsis_var.get(),
         'check_isolated_percent': main_interface.check_isolated_percent_var.get(),
-        'check_french_quotes': main_interface.check_french_quotes_var.get(),
         'check_line_structure': main_interface.check_line_structure_var.get(),
         'custom_exclusions': ['OK', 'Menu', 'Continue', 'Level']  # Valeurs par défaut
     }
@@ -819,8 +815,8 @@ def _save_coherence_options(main_interface):
         config_manager.set('coherence_check_syntax', main_interface.check_syntax_var.get())
         config_manager.set('coherence_check_deepl_ellipsis', main_interface.check_deepl_ellipsis_var.get())
         config_manager.set('coherence_check_isolated_percent', main_interface.check_isolated_percent_var.get())
-        config_manager.set('coherence_check_french_quotes', main_interface.check_french_quotes_var.get())
         config_manager.set('coherence_check_line_structure', main_interface.check_line_structure_var.get())
+        config_manager.set('coherence_check_length_difference', main_interface.check_length_difference_var.get())
         
         # Sauvegarder les exclusions de fichiers
         config_manager.set('coherence_excluded_files', main_interface.coherence_excluded_files_var.get())
@@ -848,9 +844,13 @@ def _save_coherence_options(main_interface):
             main_interface.check_syntax_var.get(),
             main_interface.check_deepl_ellipsis_var.get(),
             main_interface.check_isolated_percent_var.get(),
-            main_interface.check_french_quotes_var.get(),
-            main_interface.check_line_structure_var.get()
+            main_interface.check_line_structure_var.get(),
+            main_interface.check_length_difference_var.get()
         ])
+        
+        # Calculer le nombre d'exclusions de fichiers
+        exclusions_str = main_interface.coherence_excluded_files_var.get()
+        exclusions_list = [f.strip() for f in exclusions_str.split(',') if f.strip()]
         
         _update_coherence_status(main_interface, f"💾 Options sauvegardées - {enabled_count} vérifications, {len(exclusions_list)} exclusions")
         
@@ -879,8 +879,8 @@ def _setup_auto_save_coherence_options(main_interface):
         (main_interface.check_syntax_var, 'coherence_check_syntax'),
         (main_interface.check_deepl_ellipsis_var, 'coherence_check_deepl_ellipsis'),
         (main_interface.check_isolated_percent_var, 'coherence_check_isolated_percent'),
-        (main_interface.check_french_quotes_var, 'coherence_check_french_quotes'),
-        (main_interface.check_line_structure_var, 'coherence_check_line_structure')
+        (main_interface.check_line_structure_var, 'coherence_check_line_structure'),
+        (main_interface.check_length_difference_var, 'coherence_check_length_difference')
     ]
     
     # Configurer la sauvegarde automatique pour chaque variable
@@ -922,8 +922,8 @@ def _auto_save_coherence_option(main_interface, config_key, value):
             'coherence_check_syntax': 'Syntaxe Ren\'Py',
             'coherence_check_deepl_ellipsis': 'Ellipses DeepL',
             'coherence_check_isolated_percent': 'Pourcentages isolés',
-            'coherence_check_french_quotes': 'Guillemets français',
-            'coherence_check_line_structure': 'Structure des lignes'
+            'coherence_check_line_structure': 'Structure des lignes',
+            'coherence_check_length_difference': 'Différence de longueur'
         }
         
         option_name = option_translations.get(config_key, config_key.replace('coherence_check_', '').replace('_', ' ').title())
