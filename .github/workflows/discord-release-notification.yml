@@ -1,0 +1,85 @@
+name: Discord Release Notification
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  notify-discord:
+    name: Notify Discord
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Extract Changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          # Extraire la section du CHANGELOG pour cette version
+          awk "/## [0-9]{4}-[0-9]{2}-[0-9]{2} \($VERSION\)/,/^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ {
+            if (/^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ && !started) {
+              started=1
+              next
+            }
+            if (/^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ && started) {
+              exit
+            }
+            if (started) print
+          }" CHANGELOG.md > changelog_extract.txt
+          
+          # Limiter à 1800 caractères pour Discord embed
+          head -c 1800 changelog_extract.txt > changelog_short.txt
+          
+          # Échapper les caractères JSON
+          CHANGELOG_TEXT=$(cat changelog_short.txt | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "text=$CHANGELOG_TEXT" >> $GITHUB_OUTPUT
+
+      - name: Send Discord Notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ steps.version.outputs.version }}
+          VERSION_NUMBER: ${{ steps.version.outputs.version_number }}
+          CHANGELOG: ${{ steps.changelog.outputs.text }}
+        run: |
+          curl -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "username": "RenExtract Release Bot",
+              "avatar_url": "https://github.com/Rory-Mercury-91.png",
+              "embeds": [{
+                "title": "🚀 RenExtract '"$VERSION"' - Nouvelle Version !",
+                "description": "Une nouvelle version de RenExtract est disponible !",
+                "color": 5814783,
+                "fields": [
+                  {
+                    "name": "📝 Changelog",
+                    "value": "'"$CHANGELOG"'",
+                    "inline": false
+                  },
+                  {
+                    "name": "⬇️ Téléchargement",
+                    "value": "[🪟 Windows](https://github.com/Rory-Mercury-91/RenExtract/releases/download/'"$VERSION"'/RenExtract-'"$VERSION"'-Windows.zip) • [🐧 Linux](https://github.com/Rory-Mercury-91/RenExtract/releases/download/'"$VERSION"'/RenExtract-'"$VERSION"'-Linux.tar.gz)",
+                    "inline": false
+                  },
+                  {
+                    "name": "🔗 Liens",
+                    "value": "[📦 Release GitHub](https://github.com/Rory-Mercury-91/RenExtract/releases/tag/'"$VERSION"') • [📝 CHANGELOG](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md)",
+                    "inline": false
+                  }
+                ],
+                "footer": {
+                  "text": "RenExtract v'"$VERSION_NUMBER"' • Production Ready"
+                },
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"'"
+              }]
+            }'
+
