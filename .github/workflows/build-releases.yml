@@ -398,4 +398,6 @@ jobs:
           prerelease: false
           generate_release_notes: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Utiliser PAT_TOKEN pour permettre de déclencher le workflow Discord automatiquement
+          # Si PAT_TOKEN n'est pas défini, utilise GITHUB_TOKEN par défaut
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
