@@ -3,6 +3,12 @@ name: Discord Release Notification
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag de la release (ex: v1.2.7)'
+        required: true
+        default: 'v1.2.7'
 
 jobs:
   notify-discord:
@@ -14,7 +20,12 @@ jobs:
       - name: Extract Version
         id: version
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
+          # Utiliser le tag de l'événement release ou l'input manuel
+          if [ "${{ github.event_name }}" == "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="${{ github.event.inputs.tag_name }}"
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
 
