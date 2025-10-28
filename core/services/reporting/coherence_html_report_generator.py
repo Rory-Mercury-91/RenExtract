@@ -1482,6 +1482,10 @@ class HtmlCoherenceReportGenerator:
         new_content = _html.escape(new_content_raw)
         issue_type = issue.get('type', '')
         
+        # Préparer les versions échappées pour JavaScript (pour les boutons de copie)
+        old_content_js_escaped = _html.escape(old_content_raw).replace("'", "\\'")
+        new_content_js_escaped = _html.escape(new_content_raw).replace("'", "\\'")
+        
         # Appliquer le surlignage si le type d'erreur le nécessite
         old_content_highlighted = self._highlight_issues_in_text(old_content, issue_type)
         new_content_highlighted = self._highlight_issues_in_text(new_content, issue_type)
@@ -1597,7 +1601,7 @@ class HtmlCoherenceReportGenerator:
                 <div class="content-block old-content">
                     <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Ancien</span>
-                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{_html.escape(old_content_raw).replace("'", "\\'")}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
+                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{old_content_js_escaped}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
                             style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
                             title="Copier le texte original">
                             📋 Copier
@@ -1608,7 +1612,7 @@ class HtmlCoherenceReportGenerator:
                 <div class="content-block new-content">
                     <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Nouveau</span>
-                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{_html.escape(new_content_raw).replace("'", "\\'")}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
+                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{new_content_js_escaped}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
                             style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
                             title="Copier le texte traduit">
                             📋 Copier
