@@ -47,6 +47,25 @@ jobs:
           }
         shell: pwsh
 
+      - name: Update version metadata (anti-detection)
+        run: |
+          echo "📝 Mise à jour des métadonnées anti-détection..."
+          
+          # Générer une version lisible
+          $version = "${{ env.RELEASE_NAME }}"
+          if (-not $version.StartsWith("v")) {
+            $version = "dev-$(Get-Date -Format 'yyyyMMdd')"
+          }
+          
+          # Mettre à jour version_info.txt avec le script
+          if (Test-Path "Z_Ne_Pas_supprimer/update_version_info.py") {
+            python "Z_Ne_Pas_supprimer/update_version_info.py" "RenExtract $version"
+            echo "✅ Métadonnées version_info.txt mises à jour"
+          } else {
+            echo "⚠️  Script update_version_info.py non trouvé, version_info.txt utilisé tel quel"
+          }
+        shell: pwsh
+
       - name: Build Windows Executable
         run: |
           echo "🔨 Construction de RenExtract pour Windows..."
@@ -72,7 +91,7 @@ jobs:
           
           # Vérifier la présence de version_info.txt
           if (Test-Path version_info.txt) {
-            echo "📋 version_info.txt détecté"
+            echo "📋 version_info.txt détecté (avec métadonnées anti-détection)"
             $versionInfoArg = "--version-file=version_info.txt"
           } else {
             echo "⚠️  version_info.txt non trouvé"
@@ -80,10 +99,14 @@ jobs:
           }
           
           # Créer l'exécutable avec PyInstaller
+          # Options anti-détection :
           # --noupx : Désactive compression UPX (réduit faux positifs antivirus)
+          # --log-level=WARN : Logs propres
+          # Imports cachés explicites pour éviter comportements suspects
           pyinstaller --onefile --windowed `
             --name "RenExtract" `
             --noupx `
+            --log-level=WARN `
             $iconArg `
             $versionInfoArg `
             --add-data "core;core" `
@@ -92,6 +115,9 @@ jobs:
             --add-data "04_Configs;04_Configs" `
             --hidden-import=groq `
             --hidden-import=typing_extensions `
+            --hidden-import=tkinter `
+            --hidden-import=tkinterdnd2 `
+            --hidden-import=requests `
             main.py
           
           # Copier l'exécutable
@@ -107,11 +133,40 @@ jobs:
           echo "✅ Build Windows terminé: RenExtract-$version-Windows.zip"
         shell: pwsh
 
+      - name: Generate VirusTotal info
+        shell: pwsh
+        run: |
+          echo "🔐 Génération des hash pour VirusTotal..."
+          
+          $exePath = "artifacts/windows/RenExtract.exe"
+          $sha256 = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
+          $md5 = (Get-FileHash -Path $exePath -Algorithm MD5).Hash
+          
+          # Créer le contenu du fichier
+          $content = "# VirusTotal Analysis`n`n"
+          $content += "Pour vérifier la sécurité de cet exécutable:`n`n"
+          $content += "1. Visitez: https://www.virustotal.com/`n"
+          $content += "2. Uploadez le fichier ou utilisez les hash ci-dessous`n`n"
+          $content += "**SHA256:** $sha256`n"
+          $content += "**MD5:** $md5`n`n"
+          $content += "**Note:** 2-3 détections heuristiques sont normales (faux positifs).`n"
+          $content += "Le code source est 100% open source et vérifiable sur GitHub.`n`n"
+          $content += "**Améliorations anti-détection appliquées:**`n"
+          $content += "- Métadonnées complètes (auteur, copyright, licence)`n"
+          $content += "- Manifest Windows (pas de droits admin requis)`n"
+          $content += "- Options PyInstaller optimisées (--noupx, imports explicites)`n"
+          $content += "- Lien GitHub visible dans les propriétés de l'exe`n"
+          
+          $content | Out-File -FilePath "artifacts/windows/virustotal_info.txt" -Encoding UTF8
+          echo "✅ Fichier virustotal_info.txt créé"
+
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-${{ env.RELEASE_NAME }}
-          path: artifacts/windows/*.zip
+          path: |
+            artifacts/windows/*.zip
+            artifacts/windows/virustotal_info.txt
           retention-days: 30
 
   build-linux:
@@ -336,6 +391,7 @@ jobs:
           name: RenExtract ${{ github.ref_name }}
           files: |
             release/windows/*.zip
+            release/windows/virustotal_info.txt
             release/linux/*.tar.gz
           body_path: release_notes.md
           draft: false
