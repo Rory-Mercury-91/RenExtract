@@ -35,23 +35,41 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           
           # Extraire la section du CHANGELOG pour cette version
-          awk "/## [0-9]{4}-[0-9]{2}-[0-9]{2} \($VERSION\)/,/^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ {
-            if (/^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ && !started) {
-              started=1
-              next
+          # Recherche flexible : accepte "## YYYY-MM-DD (vX.Y.Z)" ou "## YYYY-MM-DD (X.Y.Z)"
+          awk -v ver="$VERSION" '
+            BEGIN { 
+              # Nettoyer la version (enlever le v si présent)
+              gsub(/^v/, "", ver)
             }
-            if (/^## [0-9]{4}-[0-9]{2}-[0-9]{2}/ && started) {
-              exit
+            /^## [0-9]{4}-[0-9]{2}-[0-9]{2} \(/ {
+              # Extraire la version entre parenthèses
+              match($0, /\(v?([0-9]+\.[0-9]+\.[0-9]+)\)/, arr)
+              if (arr[1] == ver) {
+                started = 1
+                next
+              } else if (started) {
+                exit
+              }
             }
-            if (started) print
-          }" CHANGELOG.md > changelog_extract.txt
+            started { print }
+          ' CHANGELOG.md > changelog_extract.txt
+          
+          # Vérifier si le changelog a été extrait
+          if [ ! -s changelog_extract.txt ]; then
+            echo "ATTENTION: Changelog vide pour $VERSION" >&2
+            echo "Contenu disponible dans les prochaines releases." > changelog_extract.txt
+          fi
           
           # Limiter à 1800 caractères pour Discord embed
           head -c 1800 changelog_extract.txt > changelog_short.txt
           
-          # Échapper les caractères JSON
+          # Échapper les caractères JSON et formater pour Discord
           CHANGELOG_TEXT=$(cat changelog_short.txt | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
           echo "text=$CHANGELOG_TEXT" >> $GITHUB_OUTPUT
+          
+          # Extraire un résumé court (première ligne de chaque catégorie)
+          SUMMARY=$(awk '/^### / { if (count++ < 3) print "• " $0 }' changelog_extract.txt | sed 's/### //' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
 
       - name: Send Discord Notification
         env:
@@ -59,6 +77,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           VERSION_NUMBER: ${{ steps.version.outputs.version_number }}
           CHANGELOG: ${{ steps.changelog.outputs.text }}
+          SUMMARY: ${{ steps.changelog.outputs.summary }}
         run: |
           curl -X POST "$DISCORD_WEBHOOK" \
             -H "Content-Type: application/json" \
@@ -66,28 +85,34 @@ jobs:
               "username": "RenExtract Release Bot",
               "avatar_url": "https://github.com/Rory-Mercury-91.png",
               "embeds": [{
-                "title": "🚀 RenExtract '"$VERSION"' - Nouvelle Version !",
-                "description": "Une nouvelle version de RenExtract est disponible !",
+                "title": "🚀 RenExtract '"$VERSION"' - Nouvelle Version Disponible !",
+                "description": "**Une mise à jour importante de RenExtract est maintenant disponible.**\n\n",
                 "color": 5814783,
                 "fields": [
                   {
-                    "name": "📝 Changelog",
-                    "value": "'"$CHANGELOG"'",
+                    "name": "✨ Points Clés de cette Version",
+                    "value": "'"${SUMMARY:-Consultez le changelog complet ci-dessous}"'",
                     "inline": false
                   },
                   {
-                    "name": "⬇️ Téléchargement",
-                    "value": "[🪟 Windows](https://github.com/Rory-Mercury-91/RenExtract/releases/download/'"$VERSION"'/RenExtract-'"$VERSION"'-Windows.zip) • [🐧 Linux](https://github.com/Rory-Mercury-91/RenExtract/releases/download/'"$VERSION"'/RenExtract-'"$VERSION"'-Linux.tar.gz)",
+                    "name": "📝 Changements Complets",
+                    "value": "'"${CHANGELOG:-Aucun changelog disponible}"'",
                     "inline": false
                   },
                   {
-                    "name": "🔗 Liens",
-                    "value": "[📦 Release GitHub](https://github.com/Rory-Mercury-91/RenExtract/releases/tag/'"$VERSION"') • [📝 CHANGELOG](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md)",
+                    "name": "⬇️ Téléchargements",
+                    "value": "**Windows** : [💾 Télécharger](https://github.com/Rory-Mercury-91/RenExtract/releases/download/'"$VERSION"'/RenExtract-'"$VERSION"'-Windows.zip)\n**Linux** : [💾 Télécharger](https://github.com/Rory-Mercury-91/RenExtract/releases/download/'"$VERSION"'/RenExtract-'"$VERSION"'-Linux.tar.gz)",
+                    "inline": false
+                  },
+                  {
+                    "name": "🔗 Liens Utiles",
+                    "value": "📦 [Page de la Release](https://github.com/Rory-Mercury-91/RenExtract/releases/tag/'"$VERSION"')\n📝 [CHANGELOG Complet](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md)\n🐛 [Signaler un Bug](https://github.com/Rory-Mercury-91/RenExtract/issues)",
                     "inline": false
                   }
                 ],
                 "footer": {
-                  "text": "RenExtract v'"$VERSION_NUMBER"' • Production Ready"
+                  "text": "RenExtract v'"$VERSION_NUMBER"' • Production Ready • Merci de votre soutien !",
+                  "icon_url": "https://github.com/Rory-Mercury-91.png"
                 },
                 "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"'"
               }]
