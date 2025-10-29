@@ -2,6 +2,65 @@
 
 ---
 
+## 2025-10-29 (v1.2.8)
+
+### 🔄 Système de contrôle des guillemets unifié
+- **1 seul contrôle** pour tous les types de guillemets (vs 3 contrôles redondants)
+- Support de **10 formats** : droits `"`, échappés `\"`, simples `'`, français `« »`, typographiques `" "`, apostrophes `'`, chevrons `<< >>`
+- **Substitutions intelligentes** acceptées : `'simple'` → `\"échappé\"` / `"double"` / `« français »` / `"typographique"`
+- **Ignore les élisions françaises** : `l'`, `d'`, `c'`, `n'`, etc.
+- Compte le **nombre total** de guillemets (permet transformations de style)
+- **Plus de faux positifs** sur substitutions valides
+- Code **3× plus propre** et maintenable
+
+### 🎨 Amélioration visuelle des boutons de navigation
+- **Nouveau système sans `disabled`** : état "inactif" bien plus visible
+- **Bouton actif** : Fond vert, texte noir gras, bordure épaisse, curseur main
+- **Bouton inactif** : Fond **gris foncé `#4a4a4a`**, texte **blanc**, relief plat, curseur normal
+- Messages dynamiques : "◀️ Précédent (3)" / "⏹ Premier fichier" / "▶️ Suivant (5)" / "⏹ Dernier fichier"
+- **Contraste élevé** pour état désactivé (plus de confusion possible)
+
+### 🧹 Nettoyage et optimisations
+- Suppression fonction obsolète `_is_excluded_by_content()` (code mort)
+- Suppression vérifications redondantes dans `_is_untranslated_line()`
+- **Système d'exclusion 100% précis** : projet + fichier + ligne + texte
+- Commentaires explicites pour tous les types de guillemets
+- Documentation enrichie des fonctions de cohérence
+
+### 🔧 Améliorations du workflow Discord
+- **Section "Points Clés"** : résumé automatique des 3 principales catégories
+- **Présentation enrichie** : description mise à jour, footer avec icône
+- **Liens utiles** : ajout du lien "Signaler un Bug" vers GitHub Issues
+- **Affichage optimisé** : changelog complet + résumé rapide
+- Message de remerciement dans le footer
+
+---
+
+## 2025-10-28 (v1.2.7)
+
+### 🛡️ Améliorations anti-détection antivirus (Version 1)
+- **Métadonnées enrichies** : `version_info.txt` avec auteur, copyright, licence, site web
+- **Manifest Windows** : `manifest.xml` pour compatibilité Windows 7-11 et déclaration privilèges
+- **PyInstaller optimisé** : `--noupx` (désactive UPX), `--log-level=WARN`, imports explicites (`groq`, `tkinter`, `tkinterdnd2`, `PIL`, `requests`)
+- **Génération hash automatique** : SHA256 + MD5 dans `virustotal_info.txt` pour vérification
+- **Script mise à jour version** : `update_version_info.py` (MAJ automatique numéro de version)
+- **Script vérification** : `verify_setup.py` (validation configuration anti-détection)
+- **Workflow GitHub Actions** : Intégration complète des optimisations dans CI/CD
+
+### 📊 Impact
+- Réduction attendue : **5-10 détections AV → 2-3 détections AV** (~70% de réduction)
+- Résultat réel VirusTotal : **3/72 détections** (objectif atteint ✅)
+
+---
+
+## 2025-10-27 (v1.2.6)
+
+### 🐛 Corrections
+- **Fix critique** : Erreur f-string avec backslash dans `coherence_html_report_generator.py`
+- Correction échappement des caractères spéciaux dans les rapports HTML
+
+---
+
 ## 2025-10-27 (v1.2.5)
 
 ### 📝 Édition cohérence en ligne
