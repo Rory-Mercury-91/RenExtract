@@ -55,6 +55,10 @@ jobs:
           ' CHANGELOG.md > changelog_extract.txt
           
           # Vérifier si le changelog a été extrait
+          echo "=== DEBUG: Contenu du changelog extrait ==="
+          cat changelog_extract.txt
+          echo "=== FIN DEBUG ==="
+          
           if [ ! -s changelog_extract.txt ]; then
             echo "ATTENTION: Changelog vide pour $VERSION" >&2
             echo "Contenu disponible dans les prochaines releases." > changelog_extract.txt
@@ -66,10 +70,12 @@ jobs:
           # Échapper les caractères JSON et formater pour Discord
           CHANGELOG_TEXT=$(cat changelog_short.txt | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
           echo "text=$CHANGELOG_TEXT" >> $GITHUB_OUTPUT
+          echo "=== DEBUG CHANGELOG_TEXT: $CHANGELOG_TEXT"
           
           # Extraire un résumé court (première ligne de chaque catégorie)
           SUMMARY=$(awk '/^### / { if (count++ < 3) print "• " $0 }' changelog_extract.txt | sed 's/### //' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
           echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+          echo "=== DEBUG SUMMARY: $SUMMARY"
 
       - name: Send Discord Notification
         env:
