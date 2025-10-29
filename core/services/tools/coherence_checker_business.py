@@ -731,9 +731,12 @@ class UnifiedCoherenceChecker:
             old_total = 0
             old_total += old_text.count('\\"')  # Guillemets échappés \"
             old_total += len(re.findall(r'(?<!\\)"', old_text))  # Guillemets non échappés "
-            # Guillemets simples ' UNIQUEMENT si précédés d'un espace/ponctuation (pas lettre'lettre pour élisions françaises)
-            old_total += len(re.findall(r"(?<=\s)'(?=[a-zA-ZÀ-ÿ])", old_text))
-            old_total += len(re.findall(r"^'(?=[a-zA-ZÀ-ÿ])", old_text))  # Début de ligne
+            # Guillemets simples ' : TOUS sauf élisions françaises (lettre'lettre comme c'est, l'eau)
+            # Compte 'texte' mais ignore c'est, l'eau, d'accord
+            old_single_quotes = old_text.count("'")
+            # Soustraire les élisions (lettre ' lettre)
+            old_elisions = len(re.findall(r"[a-zA-ZÀ-ÿ]'[a-zA-ZÀ-ÿ]", old_text))
+            old_total += (old_single_quotes - old_elisions)
             old_total += old_text.count('«')  # Guillemets français ouvrants
             old_total += old_text.count('»')  # Guillemets français fermants
             old_total += old_text.count('"')  # Guillemets courbes ouvrants
@@ -746,9 +749,12 @@ class UnifiedCoherenceChecker:
             new_total = 0
             new_total += new_text.count('\\"')  # Guillemets échappés \"
             new_total += len(re.findall(r'(?<!\\)"', new_text))  # Guillemets non échappés "
-            # Guillemets simples ' UNIQUEMENT si précédés d'un espace/ponctuation (pas lettre'lettre pour élisions françaises)
-            new_total += len(re.findall("(?<=\\s)'" + r'(?=[a-zA-ZÀ-ÿ])', new_text))
-            new_total += len(re.findall(r"^'(?=[a-zA-ZÀ-ÿ])", new_text))  # Début de ligne
+            # Guillemets simples ' : TOUS sauf élisions françaises (lettre'lettre comme c'est, l'eau)
+            # Compte 'texte' mais ignore c'est, l'eau, d'accord
+            new_single_quotes = new_text.count("'")
+            # Soustraire les élisions (lettre ' lettre)
+            new_elisions = len(re.findall(r"[a-zA-ZÀ-ÿ]'[a-zA-ZÀ-ÿ]", new_text))
+            new_total += (new_single_quotes - new_elisions)
             new_total += new_text.count('«')  # Guillemets français ouvrants
             new_total += new_text.count('»')  # Guillemets français fermants
             new_total += new_text.count('"')  # Guillemets courbes ouvrants
