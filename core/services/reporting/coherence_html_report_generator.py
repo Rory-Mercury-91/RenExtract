@@ -745,7 +745,7 @@ class HtmlCoherenceReportGenerator:
                     const project = window.coherenceSelectionInfo.project_path;
                     
                     // Afficher un indicateur de chargement
-                    const translateBtn = document.querySelector(`[data-edit-field="${{editFieldId}}"]`);
+                    const translateBtn = document.querySelector(`.translate-btn[data-edit-field="${{editFieldId}}"]`);
                     if (translateBtn) {{
                         translateBtn.disabled = true;
                         translateBtn.textContent = '⏳ Traduction...';
@@ -787,7 +787,7 @@ class HtmlCoherenceReportGenerator:
                     showGlobalMessage('⚠️ RenExtract doit être ouvert pour utiliser la traduction', 'error', 5000);
                     
                     // Restaurer le bouton
-                    const translateBtn = document.querySelector(`[data-edit-field="${{editFieldId}}"]`);
+                    const translateBtn = document.querySelector(`.translate-btn[data-edit-field="${{editFieldId}}"]`);
                     if (translateBtn) {{
                         translateBtn.disabled = false;
                         translateBtn.textContent = '🌐 Traduire';

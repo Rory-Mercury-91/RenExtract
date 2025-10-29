@@ -7,6 +7,7 @@
 ### 🐛 Correctifs critiques rapport HTML
 - **Sections collapsibles bloquées** : Correction apostrophes françaises non échappées (`l'éditeur`, `l'enregistrement`, `l'accès`)
 - **Bouton Copier défaillant** : Correction échappement guillemets doubles dans attributs HTML `onclick="..."`
+- **Bouton Coller → Traduire** : Correction sélecteur trop générique transformant "Coller" en "Traduire" après traduction Groq
 - **JavaScript robuste** : Entités HTML `&quot;` pour guillemets dans template literals (onclick)
 - **0 erreur JavaScript** : Tous les rapports de cohérence fonctionnent parfaitement
 
