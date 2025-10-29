@@ -2,6 +2,27 @@
 
 ---
 
+## 2025-10-29 (v1.2.9)
+
+### 🐛 Correctifs critiques rapport HTML
+- **Sections collapsibles bloquées** : Correction apostrophes françaises non échappées (`l'éditeur`, `l'enregistrement`, `l'accès`)
+- **Bouton Copier défaillant** : Correction échappement guillemets doubles dans attributs HTML `onclick="..."`
+- **JavaScript robuste** : Entités HTML `&quot;` pour guillemets dans template literals (onclick)
+- **0 erreur JavaScript** : Tous les rapports de cohérence fonctionnent parfaitement
+
+### 🎨 Amélioration contrôle balises non traduites
+- **Surlignage visuel** : Contenu non traduit dans balises Ren'Py surligné en jaune/orange
+- **Pattern avancé** : Détection `{tag}contenu{/tag}` avec mise en évidence du contenu uniquement
+- **Cohérence visuelle** : Même style que variables `[...]` et balises `{...}` existantes
+- **Priorité affichage** : `TAG_CONTENT_UNTRANSLATED` positionné après `TAG_MISMATCH`
+
+### 📊 Impact
+- **100% fonctionnel** : Rapports HTML sans erreurs JavaScript
+- **UX améliorée** : Identification instantanée des zones problématiques
+- **0 faux négatif** : Sections collapsibles et copie toujours opérationnelles
+
+---
+
 ## 2025-10-29 (v1.2.8)
 
 ### 🔄 Système de contrôle des guillemets unifié

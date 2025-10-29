@@ -113,6 +113,7 @@ def _create_coherence_content(parent, main_interface):
     options_data = [
         (main_interface.check_variables_var, "Variables [] incohérentes"),
         (main_interface.check_tags_var, "Balises {} incohérentes"),
+        (main_interface.check_tags_content_var, "🔖 Contenu balises non traduit ({b}text{/b})"),
         (main_interface.check_untranslated_var, "Lignes non traduites"),
         (main_interface.check_ellipsis_var, "… Ellipsis (-- → ...)"),
         (main_interface.check_escape_sequences_var, "\\ Séquences d'échappement (\\n, \\t, \\r, \\\\)"),
@@ -303,6 +304,7 @@ def _select_all_coherence_options(main_interface):
         coherence_vars = [
             main_interface.check_variables_var,
             main_interface.check_tags_var,
+            main_interface.check_tags_content_var,
             main_interface.check_untranslated_var,
             main_interface.check_ellipsis_var,
             main_interface.check_escape_sequences_var,
@@ -343,6 +345,7 @@ def _select_no_coherence_options(main_interface):
         coherence_vars = [
             main_interface.check_variables_var,
             main_interface.check_tags_var,
+            main_interface.check_tags_content_var,
             main_interface.check_untranslated_var,
             main_interface.check_ellipsis_var,
             main_interface.check_escape_sequences_var,
@@ -571,6 +574,7 @@ def _get_coherence_analysis_options(main_interface):
     return {
         'check_variables': main_interface.check_variables_var.get(),
         'check_tags': main_interface.check_tags_var.get(),
+        'check_tags_content': main_interface.check_tags_content_var.get(),
         'check_special_codes': main_interface.check_special_codes_var.get(),
         'check_untranslated': main_interface.check_untranslated_var.get(),
         'check_ellipsis': main_interface.check_ellipsis_var.get(),
@@ -805,6 +809,7 @@ def _save_coherence_options(main_interface):
         # Sauvegarder les options d'analyse
         config_manager.set('coherence_check_variables', main_interface.check_variables_var.get())
         config_manager.set('coherence_check_tags', main_interface.check_tags_var.get())
+        config_manager.set('coherence_check_tags_content', main_interface.check_tags_content_var.get())
         config_manager.set('coherence_check_special_codes', main_interface.check_special_codes_var.get())
         config_manager.set('coherence_check_untranslated', main_interface.check_untranslated_var.get())
         config_manager.set('coherence_check_ellipsis', main_interface.check_ellipsis_var.get())
@@ -833,7 +838,8 @@ def _save_coherence_options(main_interface):
         # Compter les options activées
         enabled_count = sum([
             main_interface.check_variables_var.get(),
-            main_interface.check_tags_var.get(), 
+            main_interface.check_tags_var.get(),
+            main_interface.check_tags_content_var.get(),
             main_interface.check_special_codes_var.get(),
             main_interface.check_untranslated_var.get(),
             main_interface.check_ellipsis_var.get(),
@@ -869,6 +875,7 @@ def _setup_auto_save_coherence_options(main_interface):
     coherence_vars = [
         (main_interface.check_variables_var, 'coherence_check_variables'),
         (main_interface.check_tags_var, 'coherence_check_tags'),
+        (main_interface.check_tags_content_var, 'coherence_check_tags_content'),
         (main_interface.check_special_codes_var, 'coherence_check_special_codes'),
         (main_interface.check_untranslated_var, 'coherence_check_untranslated'),
         (main_interface.check_ellipsis_var, 'coherence_check_ellipsis'),
@@ -912,6 +919,7 @@ def _auto_save_coherence_option(main_interface, config_key, value):
         option_translations = {
             'coherence_check_variables': 'Variables [] incohérentes',
             'coherence_check_tags': 'Balises {} incohérentes',
+            'coherence_check_tags_content': 'Contenu balises non traduit',
             'coherence_check_special_codes': 'Codes spéciaux',
             'coherence_check_untranslated': 'Lignes non traduites',
             'coherence_check_ellipsis': 'Ellipses (-- → ...)',

@@ -54,6 +54,10 @@ class InfoFrame(tk.Frame):
         self.current_mode = "project"  # "project" ou "single_file"
         self.single_file_path = ""
         
+        # État des boutons de navigation (pour éviter disabled peu visible)
+        self.next_btn_enabled = True
+        self.prev_btn_enabled = True
+        
         self._create_widgets()
         self._setup_drag_drop()
         self._load_initial_project()
@@ -102,11 +106,12 @@ class InfoFrame(tk.Frame):
             command=self._prev_file,
             bg=theme["button_secondary_bg"],
             fg="#000000",
-            font=('Segoe UI', 9),
+            font=('Segoe UI', 9, 'bold'),
             relief='solid',
             cursor='hand2',
             width=18,
-            pady=8
+            pady=8,
+            borderwidth=2
         )
         
         # Label de position (Fichier X/Y)
@@ -125,11 +130,12 @@ class InfoFrame(tk.Frame):
             command=self._next_file,
             bg=theme["button_secondary_bg"],
             fg="#000000",
-            font=('Segoe UI', 9),
+            font=('Segoe UI', 9, 'bold'),
             relief='solid',
             cursor='hand2',
             width=18,
-            pady=8
+            pady=8,
+            borderwidth=2
         )
         
         
@@ -600,6 +606,10 @@ class InfoFrame(tk.Frame):
     def _next_file(self):
         """Passe au fichier suivant"""
         try:
+            # Vérifier l'état fonctionnel du bouton (évite le clic si "désactivé")
+            if not self.next_btn_enabled:
+                return
+            
             if self.current_mode == "single_file":
                 self.app_controller.main_window.show_notification(
                     "Navigation non disponible en mode fichier unique.", 
@@ -641,6 +651,10 @@ class InfoFrame(tk.Frame):
     def _prev_file(self):
         """Passe au fichier précédent"""
         try:
+            # Vérifier l'état fonctionnel du bouton (évite le clic si "désactivé")
+            if not self.prev_btn_enabled:
+                return
+            
             if self.current_mode == "single_file":
                 self.app_controller.main_window.show_notification(
                     "Navigation non disponible en mode fichier unique.", 
@@ -729,19 +743,29 @@ class InfoFrame(tk.Frame):
                        self.current_file_index < len(self.current_files) - 1)
             
             if has_next:
+                # Bouton actif (vert)
+                self.next_btn_enabled = True
                 remaining = len(self.current_files) - self.current_file_index - 1
                 self.next_file_btn.config(
                     text=f"▶️ Suivant ({remaining})",
                     bg=theme_manager.get_theme()["button_secondary_bg"],
                     fg='#000000',
-                    state='normal'
+                    state='normal',
+                    cursor='hand2',
+                    relief='solid',
+                    borderwidth=2
                 )
             else:
+                # Bouton inactif (gris foncé bien visible)
+                self.next_btn_enabled = False
                 self.next_file_btn.config(
                     text="⏹ Dernier fichier",
-                    bg='#6c757d',
-                    fg='#000000',
-                    state='disabled'
+                    bg='#4a4a4a',  # Gris foncé bien visible
+                    fg='#ffffff',  # Texte blanc pour contraste
+                    state='normal',  # On garde normal pour contrôler l'apparence
+                    cursor='arrow',  # Curseur normal (pas main)
+                    relief='flat',  # Relief plat pour effet "désactivé"
+                    borderwidth=1
                 )
                 
         except Exception as e:
@@ -756,19 +780,29 @@ class InfoFrame(tk.Frame):
             has_prev = (self.current_files and self.current_file_index > 0)
             
             if has_prev:
+                # Bouton actif (vert)
+                self.prev_btn_enabled = True
                 passed = self.current_file_index
                 self.prev_file_btn.config(
-                    text=f"◀️ Précédent ({passed}) ",
+                    text=f"◀️ Précédent ({passed})",
                     bg=theme_manager.get_theme()["button_secondary_bg"],
                     fg='#000000',
-                    state='normal'
+                    state='normal',
+                    cursor='hand2',
+                    relief='solid',
+                    borderwidth=2
                 )
             else:
+                # Bouton inactif (gris foncé bien visible)
+                self.prev_btn_enabled = False
                 self.prev_file_btn.config(
                     text="⏹ Premier fichier",
-                    bg='#6c757d',
-                    fg='#000000',
-                    state='disabled'
+                    bg='#4a4a4a',  # Gris foncé bien visible
+                    fg='#ffffff',  # Texte blanc pour contraste
+                    state='normal',  # On garde normal pour contrôler l'apparence
+                    cursor='arrow',  # Curseur normal (pas main)
+                    relief='flat',  # Relief plat pour effet "désactivé"
+                    borderwidth=1
                 )
                 
         except Exception as e:
@@ -946,12 +980,24 @@ class InfoFrame(tk.Frame):
         if self.processing_label:
             self.processing_label.configure(bg=theme["bg"], fg="#ffc107")
         
-        if self.next_file_btn:
-            self.next_file_btn.configure(
-                bg=theme["button_secondary_bg"],
-                activebackground=theme.get("button_secondary_bg", "#007bff"),
-                fg='#000000'
-            )
+        # Mettre à jour les boutons de navigation selon leur état
+        if hasattr(self, 'next_file_btn') and self.next_file_btn:
+            if self.next_btn_enabled:
+                self.next_file_btn.configure(
+                    bg=theme["button_secondary_bg"],
+                    activebackground=theme.get("button_secondary_bg", "#007bff"),
+                    fg='#000000'
+                )
+            # Si désactivé, garder le style gris (pas de changement)
+        
+        if hasattr(self, 'prev_file_btn') and self.prev_file_btn:
+            if self.prev_btn_enabled:
+                self.prev_file_btn.configure(
+                    bg=theme["button_secondary_bg"],
+                    activebackground=theme.get("button_secondary_bg", "#007bff"),
+                    fg='#000000'
+                )
+            # Si désactivé, garder le style gris (pas de changement)
     
     def update_language(self):
         """Met à jour les textes selon la langue"""

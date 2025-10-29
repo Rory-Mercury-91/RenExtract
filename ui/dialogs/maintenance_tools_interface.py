@@ -127,6 +127,7 @@ class MaintenanceToolsInterface:
             # Variables d'analyse cohérence
             self.check_variables_var = tk.BooleanVar(value=True)
             self.check_tags_var = tk.BooleanVar(value=True)
+            self.check_tags_content_var = tk.BooleanVar(value=True)  # 🆕 Vérifier contenu balises
             self.check_special_codes_var = tk.BooleanVar(value=True)
             self.check_untranslated_var = tk.BooleanVar(value=True)
             self.check_ellipsis_var = tk.BooleanVar(value=True)
@@ -623,6 +624,7 @@ class MaintenanceToolsInterface:
             # Configuration cohérence
             self.check_variables_var.set(config_manager.get('coherence_check_variables', True))
             self.check_tags_var.set(config_manager.get('coherence_check_tags', True))
+            self.check_tags_content_var.set(config_manager.get('coherence_check_tags_content', True))
             self.check_special_codes_var.set(config_manager.get('coherence_check_special_codes', True))
             self.check_untranslated_var.set(config_manager.get('coherence_check_untranslated', True))
             self.check_ellipsis_var.set(config_manager.get('coherence_check_ellipsis', True))
@@ -872,6 +874,7 @@ class MaintenanceToolsInterface:
                 # Options cohérence
                 config_manager.set('coherence_check_variables', self.check_variables_var.get())
                 config_manager.set('coherence_check_tags', self.check_tags_var.get())
+                config_manager.set('coherence_check_tags_content', self.check_tags_content_var.get())
                 config_manager.set('coherence_check_special_codes', self.check_special_codes_var.get())
                 config_manager.set('coherence_check_untranslated', self.check_untranslated_var.get())
                 config_manager.set('coherence_excluded_files', self.coherence_excluded_files_var.get())

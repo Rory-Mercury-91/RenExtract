@@ -404,7 +404,7 @@ class HtmlCoherenceReportGenerator:
                     .then(async (res) => {{
                         if (!res.ok) throw new Error('HTTP ' + res.status);
                         const data = await res.json().catch(() => ({{}}));
-                        const msg = data && (data.message || (data.ok ? "Ouvert dans l'éditeur." : 'Requête envoyée.'));
+                        const msg = data && (data.message || (data.ok ? "Ouvert dans l\'éditeur." : 'Requête envoyée.'));
                         if (msg) {{
                             console.log(msg);
                         }} else {{
@@ -672,6 +672,63 @@ class HtmlCoherenceReportGenerator:
                 }}
             }}
 
+            // ===== NOUVEAU : Gestion du collage depuis le presse-papier =====
+            async function pasteText(editFieldId) {{
+                try {{
+                    const editField = document.getElementById(editFieldId);
+                    if (!editField) return;
+                    
+                    // Afficher un indicateur de chargement sur le bouton
+                    const pasteBtn = document.querySelector(`.paste-btn[data-edit-field="${{editFieldId}}"]`);
+                    if (pasteBtn) {{
+                        pasteBtn.disabled = true;
+                        pasteBtn.textContent = '⏳ Collage...';
+                    }}
+                    
+                    // Lire le contenu du presse-papier
+                    const clipboardText = await navigator.clipboard.readText();
+                    
+                    if (!clipboardText) {{
+                        showGlobalMessage('⚠️ Le presse-papier est vide', 'warning', 3000);
+                        if (pasteBtn) {{
+                            pasteBtn.disabled = false;
+                            pasteBtn.textContent = '📋 Coller';
+                        }}
+                        return;
+                    }}
+                    
+                    // Remplacer TOUT le contenu du textarea
+                    editField.value = clipboardText;
+                    
+                    // Message de confirmation
+                    showGlobalMessage('✅ Texte collé avec succès', 'success', 2000);
+                    console.log('✅ Texte collé depuis le presse-papier');
+                    
+                    // Restaurer le bouton
+                    if (pasteBtn) {{
+                        pasteBtn.disabled = false;
+                        pasteBtn.textContent = '📋 Coller';
+                    }}
+                    
+                }} catch (error) {{
+                    console.error('❌ Erreur collage:', error);
+                    
+                    // Message d'erreur adapté
+                    if (error.name === 'NotAllowedError') {{
+                        showGlobalMessage("⚠️ Permission refusée - Autorisez l\'accès au presse-papier", 'error', 4000);
+                    }} else {{
+                        showGlobalMessage('❌ Erreur lors du collage depuis le presse-papier', 'error', 4000);
+                    }}
+                    
+                    // Restaurer le bouton
+                    const pasteBtn = document.querySelector(`.paste-btn[data-edit-field="${{editFieldId}}"]`);
+                    if (pasteBtn) {{
+                        pasteBtn.disabled = false;
+                        pasteBtn.textContent = '📋 Coller';
+                    }}
+                }}
+            }}
+            
             // ===== NOUVEAU : Gestion de la traduction en ligne =====
             async function translateText(editFieldId) {{
                 try {{
@@ -875,10 +932,10 @@ class HtmlCoherenceReportGenerator:
                                 }}
                             }});
                         }} else {{
-                            showGlobalMessage("❌ Erreur lors de l'enregistrement global", 'error', 5000);
+                            showGlobalMessage("❌ Erreur lors de l\'enregistrement global", 'error', 5000);
                         }}
                     }} else {{
-                        showGlobalMessage("❌ Erreur lors de l'enregistrement global", 'error', 5000);
+                        showGlobalMessage("❌ Erreur lors de l\'enregistrement global", 'error', 5000);
                     }}
                     
                     // Restaurer le bouton
@@ -919,6 +976,14 @@ class HtmlCoherenceReportGenerator:
                     if (e.target.classList.contains('exclude-toggle-btn') || e.target.closest('.exclude-toggle-btn')) {{
                         const btn = e.target.classList.contains('exclude-toggle-btn') ? e.target : e.target.closest('.exclude-toggle-btn');
                         handleExcludeToggle(btn);
+                    }}
+                }});
+                
+                // Délégation: clic sur boutons "Coller"
+                document.body.addEventListener('click', function(e) {{
+                    if (e.target.classList.contains('paste-btn')) {{
+                        const editFieldId = e.target.getAttribute('data-edit-field');
+                        if (editFieldId) pasteText(editFieldId);
                     }}
                 }});
                 
@@ -1351,7 +1416,7 @@ class HtmlCoherenceReportGenerator:
         
         # Ordre de priorité pour l'affichage
         priority_order = [
-            'VARIABLE_MISMATCH', 'TAG_MISMATCH', 'PLACEHOLDER_MISMATCH',
+            'VARIABLE_MISMATCH', 'TAG_MISMATCH', 'TAG_CONTENT_UNTRANSLATED', 'PLACEHOLDER_MISMATCH',
             'UNRESTORED_PLACEHOLDER', 'MALFORMED_PLACEHOLDER', 'SPECIAL_CODE_MISMATCH',
             'PARENTHESES_MISMATCH', 'QUOTE_COUNT_MISMATCH',
             'UNTRANSLATED_LINE', 'MISSING_OLD', 'CONTENT_PREFIX_MISMATCH', 
@@ -1469,6 +1534,19 @@ class HtmlCoherenceReportGenerator:
             # Surligner les ellipses
             text = re.sub(r'(\.{2,}|…|\[…\]|\[\.\.\.\])', r'<span style="' + highlight_style + r'">\1</span>', text)
         
+        elif issue_type == 'TAG_CONTENT_UNTRANSLATED':
+            # Surligner le contenu non traduit dans les balises Ren'Py
+            # Pattern : {tag}contenu{/tag} → surligner "contenu"
+            # On capture les balises ouvrantes/fermantes et le contenu entre elles
+            def highlight_tag_content(match):
+                opening = match.group(1)  # {tag}
+                content = match.group(2)   # contenu
+                closing = match.group(3)   # {/tag}
+                highlighted_content = f'<span style="{highlight_style}">{content}</span>'
+                return f'{opening}{highlighted_content}{closing}'
+            
+            text = re.sub(r'(\{[a-z_]+[^}]*\})([^{]+)(\{/[a-z_]+\})', highlight_tag_content, text)
+        
         return text
     
     def _generate_issue_item(self, issue: Dict) -> str:
@@ -1483,8 +1561,31 @@ class HtmlCoherenceReportGenerator:
         issue_type = issue.get('type', '')
         
         # Préparer les versions échappées pour JavaScript (pour les boutons de copie)
-        old_content_js_escaped = _html.escape(old_content_raw).replace("'", "\\'")
-        new_content_js_escaped = _html.escape(new_content_raw).replace("'", "\\'")
+        # json.dumps() échappe pour JS, mais pour les template literals on doit aussi échapper ` et ${}
+        import json
+        
+        def escape_for_template_literal(text):
+            """Échappe pour les template literals JavaScript (backticks) dans un attribut HTML"""
+            # Les template literals acceptent tous les guillemets directement
+            # MAIS comme le template literal est dans un attribut HTML onclick="...",
+            # les guillemets doubles " cassent l'attribut HTML
+            escaped = text
+            # 1. Échapper les backslashes AVANT tout (sinon on échapperait nos propres échappements)
+            escaped = escaped.replace('\\', '\\\\')
+            # 2. Échapper les backticks
+            escaped = escaped.replace('`', '\\`')
+            # 3. Échapper les interpolations ${} (échapper le ${ ensemble)
+            escaped = escaped.replace('${', '\\${')
+            # 4. Échapper les guillemets doubles avec entité HTML (sinon ils ferment l'attribut onclick="...")
+            escaped = escaped.replace('"', '&quot;')
+            # 5. Échapper les retours à la ligne (template literals multi-lignes sont valides mais pas pratiques ici)
+            escaped = escaped.replace('\n', '\\n')
+            escaped = escaped.replace('\r', '\\r')
+            escaped = escaped.replace('\t', '\\t')
+            return escaped
+        
+        old_content_js_escaped = escape_for_template_literal(old_content_raw)
+        new_content_js_escaped = escape_for_template_literal(new_content_raw)
         
         # Appliquer le surlignage si le type d'erreur le nécessite
         old_content_highlighted = self._highlight_issues_in_text(old_content, issue_type)
@@ -1517,12 +1618,12 @@ class HtmlCoherenceReportGenerator:
         excludable_types = [
             # Groupe 1 : Détection de contenu
             'UNTRANSLATED_LINE',                      # coherence_check_untranslated
+            'TAG_CONTENT_UNTRANSLATED',               # coherence_check_tags_content
             'DASH_TO_ELLIPSIS_TRANSFORMATION',        # coherence_check_ellipsis
             'ELLIPSIS_TO_DASH_TRANSFORMATION',        # coherence_check_ellipsis
             'PERCENTAGE_MISMATCH',                    # coherence_check_percentages
             'QUOTE_COUNT_MISMATCH',                   # coherence_check_quotations
             'QUOTES_MISMATCH',                        # coherence_check_quotations
-            'QUOTE_BALANCE_ERROR',                    # coherence_check_quotations
             # Groupe 2 : Structure et syntaxe
             'PARENTHESES_MISMATCH',                   # coherence_check_parentheses
             'DEEPL_ELLIPSIS_MISMATCH',                # coherence_check_deepl_ellipsis
@@ -1570,6 +1671,12 @@ class HtmlCoherenceReportGenerator:
                 >{escaped_edit_value}</textarea>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     {exclude_button_html}
+                    <button type="button" class="paste-btn btn" id="paste-{unique_id}"
+                        data-edit-field="editField-{unique_id}"
+                        style="padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;"
+                        title="Coller le contenu du presse-papier (remplace tout le texte)">
+                        📋 Coller
+                    </button>
                     <button type="button" class="translate-btn btn" id="translate-{unique_id}"
                         data-edit-field="editField-{unique_id}"
                         style="padding: 8px 12px; background: var(--info); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;"
@@ -1601,7 +1708,7 @@ class HtmlCoherenceReportGenerator:
                 <div class="content-block old-content">
                     <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Ancien</span>
-                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{old_content_js_escaped}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
+                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText(`{old_content_js_escaped}`).then(() => {{ const btn = this; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }}).catch(() => {{ alert('Erreur lors de la copie'); }})" 
                             style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
                             title="Copier le texte original">
                             📋 Copier
@@ -1612,7 +1719,7 @@ class HtmlCoherenceReportGenerator:
                 <div class="content-block new-content">
                     <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Nouveau</span>
-                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText('{new_content_js_escaped}').then(() => {{ const btn = event.target; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }})" 
+                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText(`{new_content_js_escaped}`).then(() => {{ const btn = this; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }}).catch(() => {{ alert('Erreur lors de la copie'); }})" 
                             style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
                             title="Copier le texte traduit">
                             📋 Copier
@@ -1630,7 +1737,8 @@ class HtmlCoherenceReportGenerator:
         """Retourne le nom d'affichage d'un type d'erreur"""
         type_names = {
             "VARIABLE_MISMATCH": "Variables [] incohérentes",
-            "TAG_MISMATCH": "Balises {} incohérentes", 
+            "TAG_MISMATCH": "Balises {} incohérentes",
+            "TAG_CONTENT_UNTRANSLATED": "Contenu de balise non traduit",
             "PLACEHOLDER_MISMATCH": "Placeholders () incohérents",
             "UNRESTORED_PLACEHOLDER": "Placeholders non restaurés",
             "MALFORMED_PLACEHOLDER": "Placeholder malformé",
@@ -1648,7 +1756,6 @@ class HtmlCoherenceReportGenerator:
             "PERCENTAGE_MISMATCH": "Pourcentages incohérents",
             # Anciens types (compatibilité)
             "ESCAPED_QUOTES_MISMATCH": "Guillemets échappés incohérents",
-            "QUOTE_BALANCE_ERROR": "Guillemets non équilibrés",
             "UNESCAPED_QUOTES_MISMATCH": "Guillemets non échappés incohérents",
             "PERCENTAGE_FORMAT_MISMATCH": "Variables % incohérentes",
             "DOUBLE_PERCENT_MISMATCH": "Double % incohérent",
@@ -1662,6 +1769,7 @@ class HtmlCoherenceReportGenerator:
         icons = {
             "VARIABLE_MISMATCH": "🔤",
             "TAG_MISMATCH": "🏷️",
+            "TAG_CONTENT_UNTRANSLATED": "🔖",
             "PLACEHOLDER_MISMATCH": "📝",
             "UNRESTORED_PLACEHOLDER": "🔄",
             "MALFORMED_PLACEHOLDER": "⚠️",
@@ -1687,6 +1795,7 @@ class HtmlCoherenceReportGenerator:
         classes = {
             "VARIABLE_MISMATCH": "badge-variable",
             "TAG_MISMATCH": "badge-tag",
+            "TAG_CONTENT_UNTRANSLATED": "badge-untranslated",
             "PLACEHOLDER_MISMATCH": "badge-placeholder",
             "UNRESTORED_PLACEHOLDER": "badge-placeholder",
             "MALFORMED_PLACEHOLDER": "badge-placeholder",

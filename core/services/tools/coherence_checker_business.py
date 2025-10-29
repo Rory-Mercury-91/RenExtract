@@ -37,19 +37,30 @@ class UnifiedCoherenceChecker:
         # Chargement des options depuis la config (avec valeurs par défaut True)
         # Note : Les 4 options critiques (variables, tags, escape_sequences, line_structure) 
         # sont masquées de l'interface mais restent configurables via config.json
-        self.check_variables = config_manager.get('coherence_check_variables', True)
-        self.check_tags = config_manager.get('coherence_check_tags', True)
-        self.check_escape_sequences = config_manager.get('coherence_check_escape_sequences', True)
-        self.check_line_structure = config_manager.get('coherence_check_line_structure', True)
-        self.check_untranslated = config_manager.get('coherence_check_untranslated', True)
-        self.check_ellipsis = config_manager.get('coherence_check_ellipsis', True)
-        self.check_percentages = config_manager.get('coherence_check_percentages', True)
-        self.check_quotations = config_manager.get('coherence_check_quotations', True)
-        self.check_parentheses = config_manager.get('coherence_check_parentheses', True)
-        self.check_syntax = config_manager.get('coherence_check_syntax', True)
-        self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)
-        self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)
-        self.check_length_difference = config_manager.get('coherence_check_length_difference', True)
+        
+        # === CONTRÔLES STRUCTURELS (critiques) ===
+        self.check_variables = config_manager.get('coherence_check_variables', True)              # Variables [] incohérentes
+        self.check_tags = config_manager.get('coherence_check_tags', True)                        # Balises {} incohérentes
+        self.check_tags_content = config_manager.get('coherence_check_tags_content', True)        # Contenu balises non traduit ({b}text{/b})
+        self.check_escape_sequences = config_manager.get('coherence_check_escape_sequences', True)  # Séquences d'échappement (\n, \t, \r, \\)
+        self.check_line_structure = config_manager.get('coherence_check_line_structure', True)    # Structure des lignes old/new
+        
+        # === CONTRÔLES DE TRADUCTION ===
+        self.check_untranslated = config_manager.get('coherence_check_untranslated', True)        # Lignes potentiellement non traduites
+        
+        # === CONTRÔLES DE FORMATAGE ===
+        self.check_ellipsis = config_manager.get('coherence_check_ellipsis', True)                # Ellipses (-- → ...)
+        self.check_percentages = config_manager.get('coherence_check_percentages', True)          # Variables de formatage (%s, %d, %%)
+        self.check_quotations = config_manager.get('coherence_check_quotations', True)            # Guillemets et échappements (" \")
+        self.check_parentheses = config_manager.get('coherence_check_parentheses', True)          # Parenthèses et crochets ()
+        self.check_syntax = config_manager.get('coherence_check_syntax', True)                    # Syntaxe Ren'Py et structure
+        
+        # === CONTRÔLES SPÉCIFIQUES ===
+        self.check_deepl_ellipsis = config_manager.get('coherence_check_deepl_ellipsis', True)    # Ellipses DeepL ([...] → ...)
+        self.check_isolated_percent = config_manager.get('coherence_check_isolated_percent', True)  # Pourcentages isolés (% → %%)
+        
+        # === AVERTISSEMENTS INDICATIFS ===
+        self.check_length_difference = config_manager.get('coherence_check_length_difference', True)  # Différence de longueur importante
         # ⭐ Placeholders TOUJOURS actifs (contrôle obligatoire, non configurable)
         
         # Exclusions de fichiers depuis la config
@@ -338,8 +349,8 @@ class UnifiedCoherenceChecker:
         """
         issues = []
         
-        # 🆕 Vérifier si cette ligne est exclue globalement (par old_content)
-        if self._is_excluded_by_content(old_text):
+        # 🆕 Vérifier si cette ligne est exclue (par projet + fichier + ligne + texte)
+        if self._is_excluded_line(file_path, new_line_num, old_text):
             return issues  # Ligne exclue, ignorer toutes les vérifications
         
         # 1. Vérifier les lignes non traduites (si activé) - PRIORITÉ MAXIMALE
@@ -358,6 +369,12 @@ class UnifiedCoherenceChecker:
             tag_issues = self._check_tags_coherence(old_text, new_text, old_line_num, new_line_num)
             if tag_issues:
                 return tag_issues  # Arrêt dès qu'on trouve une erreur de balise
+        
+        # 2bis. Vérifier la traduction du contenu entre balises (si activé)
+        if self.check_tags_content:
+            tag_content_issues = self._check_tags_content_translation(old_text, new_text, old_line_num, new_line_num)
+            if tag_content_issues:
+                return tag_content_issues  # Arrêt dès qu'on trouve du contenu non traduit
         
         # 3. Vérifier les variables [] (si activé) - PRIORITÉ HAUTE
         if self.check_variables:
@@ -426,57 +443,68 @@ class UnifiedCoherenceChecker:
         
         return issues  # Aucune erreur trouvée
     
-    def _is_excluded_by_content(self, old_text):
+    def _is_excluded_line(self, file_path, line_num, old_text):
         """
-        Vérifie si une ligne est exclue globalement par son contenu (old_content).
-        Utilisé pour les exclusions simples (ellipsis, percentages, quotations, etc.)
+        Vérifie si une ligne est exclue de manière PRÉCISE (projet + fichier + ligne + texte).
+        
+        Cette vérification GLOBALE est appelée AVANT tous les contrôles.
+        Les exclusions ajoutées depuis n'importe quel rapport (reconstruction OU maintenance)
+        sont prises en compte ici de manière unifiée.
+        
+        Args:
+            file_path: Chemin complet du fichier
+            line_num: Numéro de ligne
+            old_text: Texte original (OLD)
+        
+        Returns:
+            True si la ligne est exclue, False sinon
         """
         if not old_text or not old_text.strip():
             return False
         
         text = old_text.strip()
         
-        # 1. Vérifier les exclusions simples (liste de strings)
-        excluded_lines = config_manager.get('coherence_excluded_lines', [])
-        if text in excluded_lines:
-            return True
+        # Charger les exclusions pour ce projet
+        if not self.project_path:
+            return False
         
-        # 2. Vérifier les exclusions précises (liste d'objets avec file/line/text)
-        if self.project_path:
-            exclusions = config_manager.get_coherence_exclusions(self.project_path)
-            for excl in exclusions:
-                if excl.get('text', '').strip() == text:
-                    return True
+        exclusions = config_manager.get_coherence_exclusions(self.project_path)
+        if not exclusions:
+            return False
         
-        return False
+        # Extraire le nom relatif du fichier (normalisé)
+        file_relative = self._get_relative_file_path(file_path)
+        
+        # Vérifier si cette ligne exacte est exclue
+        for excl in exclusions:
+            excl_file = excl.get('file', '')
+            excl_line = excl.get('line', 0)
+            excl_text = excl.get('text', '').strip()
+            
+            # Vérification PRÉCISE : fichier + ligne + texte
+            if (excl_line == line_num and 
+                excl_text == text and 
+                file_relative.endswith(excl_file)):
+                log_message("DEBUG", f"Ligne exclue (globale) : {file_relative}:{line_num}", category="coherence")
+                return True  # Ligne exclue
+        
+        return False  # Pas exclue
     
     def _is_untranslated_line(self, old_text, new_text, file_path, line_num):
         """
         Vérifie si une ligne est probablement non traduite.
-        🆕 Version avec exclusions précises (projet+fichier+ligne).
+        
+        Note: Les exclusions précises (projet+fichier+ligne+texte) sont déjà vérifiées
+        dans _is_excluded_line() AVANT l'appel de cette fonction. Pas besoin de re-vérifier ici.
         """
         if old_text.strip() != new_text.strip():
             return False
         
         text = old_text.strip()
         
-        # Auto-exclusions (patterns techniques)
+        # Auto-exclusions (patterns techniques : ellipsis, variables, balises seules, etc.)
         if self._is_auto_excluded(text):
             return False
-        
-        # 🆕 Vérifier les exclusions précises (projet+fichier+ligne)
-        if self.project_path:
-            exclusions = config_manager.get_coherence_exclusions(self.project_path)
-            
-            # Extraire le nom relatif du fichier
-            file_relative = self._get_relative_file_path(file_path)
-            
-            for excl in exclusions:
-                # Vérifier si cette exclusion correspond
-                if (excl['line'] == line_num and 
-                    excl['text'] == text and 
-                    file_relative.endswith(excl['file'])):
-                    return False  # Exclu
         
         # Si le texte est court et contient peu de mots, probablement OK
         if len(text) <= 3 or len(text.split()) <= 1:
@@ -586,6 +614,82 @@ class UnifiedCoherenceChecker:
                 })
         
         except Exception:
+            pass
+        
+        return issues
+    
+    def _check_tags_content_translation(self, old_text, new_text, old_line_num, new_line_num):
+        """
+        Vérifie si le contenu entre les balises Ren'Py a bien été traduit.
+        
+        Exemple:
+        OLD: {b}you{/b} are welcome
+        NEW: {b}you{/b} êtes les bienvenus  ❌ "you" n'a pas été traduit
+        NEW: {b}vous{/b} êtes les bienvenus  ✅ "you" → "vous"
+        """
+        issues = []
+        
+        try:
+            # Pattern pour extraire les paires de balises avec leur contenu
+            # Format: {tag}contenu{/tag}
+            tag_pattern = r'\{([a-zA-Z_][a-zA-Z0-9_]*)[^}]*\}(.*?)\{/\1\}'
+            
+            old_contents = {}  # {tag: [contenus]}
+            new_contents = {}  # {tag: [contenus]}
+            
+            # Extraire tous les contenus entre balises dans OLD
+            for match in re.finditer(tag_pattern, old_text):
+                tag_name = match.group(1)
+                content = match.group(2).strip()
+                if content:  # Ignorer les contenus vides
+                    if tag_name not in old_contents:
+                        old_contents[tag_name] = []
+                    old_contents[tag_name].append(content)
+            
+            # Extraire tous les contenus entre balises dans NEW
+            for match in re.finditer(tag_pattern, new_text):
+                tag_name = match.group(1)
+                content = match.group(2).strip()
+                if content:  # Ignorer les contenus vides
+                    if tag_name not in new_contents:
+                        new_contents[tag_name] = []
+                    new_contents[tag_name].append(content)
+            
+            # Comparer les contenus pour chaque type de balise
+            for tag_name in old_contents:
+                if tag_name not in new_contents:
+                    continue  # Balise absente, sera détecté par _check_tags_coherence
+                
+                old_tag_contents = old_contents[tag_name]
+                new_tag_contents = new_contents[tag_name]
+                
+                # Comparer chaque occurrence
+                for i, old_content in enumerate(old_tag_contents):
+                    if i >= len(new_tag_contents):
+                        break  # Plus de contenus correspondants dans NEW
+                    
+                    new_content = new_tag_contents[i]
+                    
+                    # Vérifier si le contenu est identique (pas traduit)
+                    # Ignorer la casse et les espaces pour la comparaison
+                    if old_content.lower().strip() == new_content.lower().strip():
+                        # Vérifier que ce n'est pas un mot identique en anglais/français
+                        # (ex: "ok", "menu", "stop", etc.)
+                        common_words = {'ok', 'menu', 'stop', 'start', 'pause', 'no', 'yes', 
+                                      'save', 'load', 'auto', 'skip', 'quit', 'back', 'roll'}
+                        
+                        if old_content.lower().strip() not in common_words:
+                            issues.append({
+                                'line': new_line_num,
+                                'type': 'TAG_CONTENT_UNTRANSLATED',
+                                'description': f"Contenu de balise non traduit => {{{tag_name}}} : \"{old_content}\" → \"{new_content}\"",
+                                'old_content': old_text,
+                                'new_content': new_text
+                            })
+            
+        except Exception as e:
+            # Ne pas faire échouer l'analyse entière pour cette vérification
+            log_message("DEBUG", f"Erreur vérification contenu balises ligne {new_line_num}: {e}", category="coherence")
             pass
         
         return issues
@@ -723,45 +827,57 @@ class UnifiedCoherenceChecker:
         return issues
     
     def _check_quotations_coherence(self, old_text, new_text, old_line_num, new_line_num):
-        """Vérifie la cohérence du NOMBRE de guillemets (tous types confondus)"""
+        """
+        Vérifie la cohérence du NOMBRE TOTAL de guillemets (tous types confondus).
+        
+        Types de guillemets comptés :
+        - Guillemets droits : " (échappés \" et non échappés)
+        - Guillemets simples : ' (sauf élisions françaises : l', d', c', etc.)
+        - Guillemets français : « »
+        - Guillemets typographiques anglais : " " (curly quotes)
+        - Apostrophes typographiques : ' (curly apostrophe)
+        - Chevrons ASCII : << >>
+        
+        Accepte les substitutions de style (ex: 'simple' → \"échappé\" ou → « français »).
+        """
         issues = []
         
         try:
             # Compter TOUS les types de guillemets dans OLD
             old_total = 0
             old_total += old_text.count('\\"')  # Guillemets échappés \"
-            old_total += len(re.findall(r'(?<!\\)"', old_text))  # Guillemets non échappés "
+            old_total += len(re.findall(r'(?<!\\)"', old_text))  # Guillemets droits non échappés "
             # Guillemets simples ' : TOUS sauf élisions françaises (lettre'lettre comme c'est, l'eau)
             # Compte 'texte' mais ignore c'est, l'eau, d'accord
             old_single_quotes = old_text.count("'")
             # Soustraire les élisions (lettre ' lettre)
             old_elisions = len(re.findall(r"[a-zA-ZÀ-ÿ]'[a-zA-ZÀ-ÿ]", old_text))
             old_total += (old_single_quotes - old_elisions)
-            old_total += old_text.count('«')  # Guillemets français ouvrants
-            old_total += old_text.count('»')  # Guillemets français fermants
-            old_total += old_text.count('"')  # Guillemets courbes ouvrants
-            old_total += old_text.count('"')  # Guillemets courbes fermants
-            old_total += old_text.count(''')  # Apostrophes typographiques (si en début de mot)
-            old_total += len(re.findall(r'(?<![<>])<<(?![<>])', old_text))  # Chevrons ouvrants <<
-            old_total += len(re.findall(r'(?<![<>])>>(?![<>])', old_text))  # Chevrons fermants >>
+            old_total += old_text.count('«')  # Guillemets français (chevrons) ouvrants «
+            old_total += old_text.count('»')  # Guillemets français (chevrons) fermants »
+            old_total += old_text.count('"')  # Guillemets typographiques anglais ouvrants " (curly quotes)
+            old_total += old_text.count('"')  # Guillemets typographiques anglais fermants " (curly quotes)
+            old_total += old_text.count(''')  # Apostrophes typographiques ' (curly apostrophe)
+            old_total += len(re.findall(r'(?<![<>])<<(?![<>])', old_text))  # Chevrons ASCII ouvrants <<
+            old_total += len(re.findall(r'(?<![<>])>>(?![<>])', old_text))  # Chevrons ASCII fermants >>
             
             # Compter TOUS les types de guillemets dans NEW
             new_total = 0
             new_total += new_text.count('\\"')  # Guillemets échappés \"
-            new_total += len(re.findall(r'(?<!\\)"', new_text))  # Guillemets non échappés "
+            new_total += len(re.findall(r'(?<!\\)"', new_text))  # Guillemets droits non échappés "
             # Guillemets simples ' : TOUS sauf élisions françaises (lettre'lettre comme c'est, l'eau)
             # Compte 'texte' mais ignore c'est, l'eau, d'accord
             new_single_quotes = new_text.count("'")
             # Soustraire les élisions (lettre ' lettre)
             new_elisions = len(re.findall(r"[a-zA-ZÀ-ÿ]'[a-zA-ZÀ-ÿ]", new_text))
             new_total += (new_single_quotes - new_elisions)
-            new_total += new_text.count('«')  # Guillemets français ouvrants
-            new_total += new_text.count('»')  # Guillemets français fermants
-            new_total += new_text.count('"')  # Guillemets courbes ouvrants
-            new_total += new_text.count('"')  # Guillemets courbes fermants
-            new_total += new_text.count(''')  # Apostrophes typographiques (si en début de mot)
-            new_total += len(re.findall(r'(?<![<>])<<(?![<>])', new_text))  # Chevrons ouvrants <<
-            new_total += len(re.findall(r'(?<![<>])>>(?![<>])', new_text))  # Chevrons fermants >>
+            new_total += new_text.count('«')  # Guillemets français (chevrons) ouvrants «
+            new_total += new_text.count('»')  # Guillemets français (chevrons) fermants »
+            new_total += new_text.count('"')  # Guillemets typographiques anglais ouvrants " (curly quotes)
+            new_total += new_text.count('"')  # Guillemets typographiques anglais fermants " (curly quotes)
+            new_total += new_text.count(''')  # Apostrophes typographiques ' (curly apostrophe)
+            new_total += len(re.findall(r'(?<![<>])<<(?![<>])', new_text))  # Chevrons ASCII ouvrants <<
+            new_total += len(re.findall(r'(?<![<>])>>(?![<>])', new_text))  # Chevrons ASCII fermants >>
             
             # Vérifier que le nombre TOTAL de guillemets est cohérent
             if old_total != new_total:
@@ -825,20 +941,6 @@ class UnifiedCoherenceChecker:
         issues = []
         
         try:
-            # Équilibre des guillemets
-            old_quotes = old_text.count('"')
-            new_quotes = new_text.count('"')
-            
-            # Ne signaler que si les deux lignes ont un nombre impair différent
-            if (old_quotes % 2 != 0) != (new_quotes % 2 != 0):
-                issues.append({
-                    'line': new_line_num,
-                    'type': 'QUOTE_BALANCE_ERROR',
-                    'description': f"Guillemets non équilibrés => ANCIEN: {old_quotes}, NOUVEAU: {new_quotes}",
-                    'old_content': old_text,
-                    'new_content': new_text
-                })
-            
             # Séquences d'échappement malformées
             malformed_escapes = re.findall(r'\\(?![ntr\\"])', new_text)
             if malformed_escapes:
@@ -1225,6 +1327,7 @@ class UnifiedCoherenceChecker:
         type_names = {
             "VARIABLE_MISMATCH": "Variables [] incohérentes",
             "TAG_MISMATCH": "Balises {} incohérentes",
+            "TAG_CONTENT_UNTRANSLATED": "Contenu de balise non traduit",
             "PLACEHOLDER_MISMATCH": "Placeholders () incohérents",
             "UNRESTORED_PLACEHOLDER": "Placeholders non restaurés",
             "MALFORMED_PLACEHOLDER": "Placeholder malformé",
