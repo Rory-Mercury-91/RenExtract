@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: 'Tag de la release (ex: v1.2.7)'
+        description: 'Tag de la release (ex: v1.2.10)'
         required: true
-        default: 'v1.2.7'
+        default: 'v1.2.10'
 
 jobs:
   notify-discord:

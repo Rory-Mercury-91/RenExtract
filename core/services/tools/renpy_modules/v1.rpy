@@ -1,6 +1,6 @@
 # Module de surveillance RenExtract pour édition temps réel - VERSION 1
 # Langue cible: {language}
-# Compatibilité: Ren'Py 8.1.2, 8.2.1 et 8.3.7 (testés et validés)
+# Compatibilité: Ren'Py 8.1.1, 8.1.2, 8.2.1, 8.3.2 et 8.3.7 (testés et validés)
 # Note: Testé sur Ren'Py 8.1.2 (Nudist Olivia), 8.2.1 (FamilyIsland) et 8.3.7
 # Pour d'autres versions, utilisez le module adapté correspondant
 init python:

@@ -744,6 +744,15 @@ init python early hide:
             if status_callback:
                 status_callback("Génération des traductions...")
             
+            # ✅ NOUVEAU : Supprimer traceback.txt s'il existe
+            traceback_path = os.path.join(project_path, "traceback.txt")
+            if os.path.exists(traceback_path):
+                try:
+                    os.remove(traceback_path)
+                    log_message("INFO", "traceback.txt supprimé avant génération", category="renpy_generator_tl")
+                except Exception as e:
+                    log_message("ATTENTION", f"Impossible de supprimer traceback.txt : {e}", category="renpy_generator_tl")
+            
             # === GÉNÉRATION TRADUCTIONS REN'PY ===
             process = subprocess.Popen(
                 cmd,
@@ -757,12 +766,48 @@ init python early hide:
                 env=env
             )
             
+            # ✅ NOUVEAU : Surveillance traceback.txt en temps réel
+            traceback_detected = False
+            
+            def monitor_traceback():
+                nonlocal traceback_detected
+                while process.poll() is None:
+                    if os.path.exists(traceback_path):
+                        traceback_detected = True
+                        log_message("ERREUR", f"traceback.txt détecté pendant la génération Ren'Py", category="renpy_generator_tl")
+                        # Arrêter le processus si traceback détecté
+                        try:
+                            process.terminate()
+                        except Exception:
+                            pass
+                        break
+                    time.sleep(0.5)  # Vérifier toutes les 500ms
+            
+            # Démarrer la surveillance
+            monitor_thread = threading.Thread(target=monitor_traceback, daemon=True)
+            monitor_thread.start()
+            
             # Monitoring en temps réel
             tl_folder = os.path.join(game_dir, "tl", language)
             generation_start_time = time.time()
             timeout_seconds = 120  # 2 minutes
             
             while process.poll() is None:
+                # Vérifier si traceback a été détecté
+                if traceback_detected:
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+                    
+                    result['errors'].append(
+                        "Erreur Ren'Py détectée (traceback.txt généré). "
+                        "Le problème vient du jeu, pas de RenExtract. "
+                        "Consultez traceback.txt dans le dossier du projet pour plus de détails."
+                    )
+                    log_message("ERREUR", "Génération annulée - traceback.txt détecté lors de la génération", category="renpy_generator_tl")
+                    return result
                 elapsed_time = time.time() - generation_start_time
                 
                 if elapsed_time > timeout_seconds:
@@ -798,6 +843,16 @@ init python early hide:
                 time.sleep(0.5)
             
             stdout, stderr = process.communicate()
+            
+            # ✅ Vérifier si traceback.txt a été généré pendant l'exécution
+            if traceback_detected or os.path.exists(traceback_path):
+                result['errors'].append(
+                    "Erreur Ren'Py détectée (traceback.txt généré). "
+                    "Le problème vient du jeu, pas de RenExtract. "
+                    "Consultez traceback.txt dans le dossier du projet pour plus de détails."
+                )
+                log_message("ERREUR", f"traceback.txt détecté - Erreur Ren'Py lors de la génération", category="renpy_generator_tl")
+                return result
             
             # === VÉRIFICATION RÉSULTATS GÉNÉRATION ===
             if os.path.isdir(tl_folder):
@@ -1143,6 +1198,15 @@ init python early hide:
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 startupinfo.wShowWindow = subprocess.SW_HIDE
             
+            # ✅ NOUVEAU : Supprimer traceback.txt s'il existe
+            traceback_path = os.path.join(project_path, "traceback.txt")
+            if os.path.exists(traceback_path):
+                try:
+                    os.remove(traceback_path)
+                    log_message("INFO", "traceback.txt supprimé avant génération SDK", category="renpy_generator_tl")
+                except Exception as e:
+                    log_message("ATTENTION", f"Impossible de supprimer traceback.txt : {e}", category="renpy_generator_tl")
+            
             # Lancer le processus avec monitoring
             process = subprocess.Popen(
                 cmd,
@@ -1155,12 +1219,48 @@ init python early hide:
                 env=env
             )
             
+            # ✅ NOUVEAU : Surveillance traceback.txt en temps réel
+            traceback_detected = False
+            
+            def monitor_traceback():
+                nonlocal traceback_detected
+                while process.poll() is None:
+                    if os.path.exists(traceback_path):
+                        traceback_detected = True
+                        log_message("ERREUR", f"traceback.txt détecté pendant la génération SDK Ren'Py", category="renpy_generator_tl")
+                        # Arrêter le processus si traceback détecté
+                        try:
+                            process.terminate()
+                        except Exception:
+                            pass
+                        break
+                    time.sleep(0.5)  # Vérifier toutes les 500ms
+            
+            # Démarrer la surveillance
+            monitor_thread = threading.Thread(target=monitor_traceback, daemon=True)
+            monitor_thread.start()
+            
             # Monitoring avec timeout
             tl_folder = os.path.join(game_dir, "tl", language)
             generation_start_time = time.time()
             timeout_seconds = 180  # 3 minutes pour SDK
             
             while process.poll() is None:
+                # Vérifier si traceback a été détecté
+                if traceback_detected:
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+                    
+                    result['errors'].append(
+                        "Erreur Ren'Py détectée (traceback.txt généré). "
+                        "Le problème vient du jeu, pas de RenExtract. "
+                        "Consultez traceback.txt dans le dossier du projet pour plus de détails."
+                    )
+                    log_message("ERREUR", "Génération SDK annulée - traceback.txt détecté", category="renpy_generator_tl")
+                    return result
                 elapsed_time = time.time() - generation_start_time
                 
                 if elapsed_time > timeout_seconds:
@@ -1191,6 +1291,16 @@ init python early hide:
             
             # Récupérer la sortie
             stdout, stderr = process.communicate()
+            
+            # ✅ Vérifier si traceback.txt a été généré pendant l'exécution
+            if traceback_detected or os.path.exists(traceback_path):
+                result['errors'].append(
+                    "Erreur Ren'Py détectée (traceback.txt généré). "
+                    "Le problème vient du jeu, pas de RenExtract. "
+                    "Consultez traceback.txt dans le dossier du projet pour plus de détails."
+                )
+                log_message("ERREUR", f"traceback.txt détecté - Erreur Ren'Py lors de la génération SDK", category="renpy_generator_tl")
+                return result
             
             if progress_callback:
                 progress_callback(80, "Vérification des résultats SDK...")

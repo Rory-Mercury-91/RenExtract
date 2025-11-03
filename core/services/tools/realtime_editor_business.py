@@ -28,12 +28,14 @@ class RealTimeEditorBusiness:
     
     # Dictionnaire de compatibilité Ren'Py → Module
     MODULE_COMPATIBILITY = {
+        (8, 1, 1): "v1",  # Compatible avec le module v1
         (8, 1, 2): "v1",  # Testé sur Nudist Olivia
         (8, 2, 1): "v1",  # Testé sur FamilyIsland
+        (8, 3, 2): "v1",  # Compatible avec le module v1
         (8, 3, 7): "v1",  # Compatible avec le module v1
         (7, 3, 5): "v2",  # Compatible avec le module v2 (Ren'Py 7)
+        (7, 6, 3): "v2",  # En attente de traitement, utilise le module v2
         # Ajoutez ici les futures versions et modules
-        # (7, 5, 3): "v2",  # Exemple futur
     }
     
     def __init__(self):

@@ -1,7 +1,7 @@
 # Module de surveillance RenExtract pour édition temps réel - VERSION 2
 # Langue cible: {language}
-# Compatibilité: Ren'Py 7.3.5 et versions antérieures (testés et validés)
-# Note: Compatible avec Ren'Py 7.3.5.606 (NoMoreMoney) et versions antérieures
+# Compatibilité: Ren'Py 7.3.5, 7.6.3 et versions antérieures
+# Note: Compatible avec Ren'Py 7.3.5.606 (NoMoreMoney). Version 7.6.3 en attente de traitement complet
 # Pour les versions Ren'Py 8+, utilisez le module v1 correspondant
 
 init python:

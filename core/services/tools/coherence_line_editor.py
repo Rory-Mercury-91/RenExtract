@@ -186,14 +186,18 @@ def edit_coherence_line(project_path: str, file_path: str, line_number: int,
         # - personnage "contenu"        (dialogues avec nom)
         # - i "contenu"                 (dialogues avec préfixe court)
         # - "contenu"                   (dialogues narrateur)
+        # - ALE "\"contenu\""           (avec guillemets échappés)
         # 
-        # Pattern: ^(\s*)([^"]*")(.*)(")\s*$
+        # ✅ CORRIGÉ : Pattern pour gérer les guillemets échappés \"
+        # Pattern: ^(\s*)([^"]*")((?:\\.|[^\"])*)(")(.*)$
         # Groupe 1: espaces initiaux
         # Groupe 2: tout avant le premier guillemet + guillemet ouvrant
-        # Groupe 3: contenu entre guillemets
+        # Groupe 3: contenu entre guillemets (gère les échappements \")
         # Groupe 4: guillemet fermant
+        # Groupe 5: texte après le guillemet fermant (optionnel, ex: "with speechfade.")
+        # (?:\\.|[^\"])* = séquence échappée (backslash + char) OU tout sauf guillemet non échappé
         
-        dialogue_pattern = r'^(\s*)([^"]*")(.*)(")\s*$'
+        dialogue_pattern = r'^(\s*)([^"]*")((?:\\.|[^\"])*)(")(.*)$'
         
         match = re.search(dialogue_pattern, original_line)
         if not match:
@@ -205,11 +209,17 @@ def edit_coherence_line(project_path: str, file_path: str, line_number: int,
         # Remplacer uniquement le contenu entre guillemets
         indent = match.group(1)      # Espaces initiaux
         prefix = match.group(2)      # Tout avant le premier " + "
-        # old_content = match.group(3) # Ancien contenu (non utilisé)
+        old_content = match.group(3) # Ancien contenu (peut contenir des \")
         suffix = match.group(4)      # " fermant
+        after_quote = match.group(5) if len(match.groups()) > 4 else ""  # Texte après " (ex: "with speechfade.")
         
-        # Conserver l'indentation et le retour à la ligne
-        modified_line = f"{indent}{prefix}{new_content}{suffix}\n"
+        # ✅ CORRIGÉ : Échapper les guillemets dans le nouveau contenu si nécessaire
+        # Si l'ancien contenu avait des guillemets échappés, on doit aussi échapper ceux du nouveau
+        # Échapper tous les guillemets qui ne sont pas déjà échappés
+        escaped_new_content = re.sub(r'(?<!\\)"', r'\\"', new_content)
+        
+        # Conserver l'indentation, le texte après guillemets et le retour à la ligne
+        modified_line = f"{indent}{prefix}{escaped_new_content}{suffix}{after_quote}\n"
         
         # Appliquer la modification
         lines[line_index] = modified_line

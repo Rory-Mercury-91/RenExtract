@@ -2,6 +2,30 @@
 
 ---
 
+## 2025-11-03 (v1.2.10)
+
+### 🛡️ Surveillance traceback.txt étendue
+- **Détection erreurs Ren'Py** : Surveillance automatique de `traceback.txt` lors de la génération des traductions
+- **Génération embedded** : Surveillance en temps réel (vérification toutes les 500ms) avec arrêt immédiat si erreur détectée
+- **Génération SDK** : Même protection pour les générations via SDK Ren'Py
+- **Messages clairs** : Erreurs Ren'Py clairement identifiées comme provenant du jeu, pas de RenExtract
+- **Prévention** : Suppression automatique de `traceback.txt` existant avant génération pour éviter les faux positifs
+- **Plus d'échecs silencieux** : Les erreurs Ren'Py sont maintenant détectées et signalées immédiatement
+
+### 🐛 Correction sauvegarde rapport cohérence
+- **Guillemets échappés** : Correction du pattern regex pour gérer les guillemets échappés `\"` dans les dialogues
+- **Texte après guillemets** : Support du texte après le guillemet fermant (ex: `"dialogue" with speechfade.`)
+- **Échappement automatique** : Les guillemets dans le nouveau contenu sont automatiquement échappés lors de la sauvegarde
+- **Pattern robuste** : Utilisation de `(?:\\.|[^\"])*` pour capturer correctement le contenu entre guillemets même avec échappements
+
+### 📊 Impact
+- **Détection proactive** : Erreurs Ren'Py identifiées avant la fin de la génération
+- **Diagnostic amélioré** : Messages d'erreur explicites pointant vers `traceback.txt` pour le diagnostic
+- **Protection utilisateur** : Plus de confusion entre erreurs RenExtract et erreurs Ren'Py
+- **Sauvegarde fiable** : Les modifications dans le rapport de cohérence fonctionnent désormais avec tous les formats de dialogues Ren'Py
+
+---
+
 ## 2025-10-29 (v1.2.9)
 
 ### 🐛 Correctifs critiques rapport HTML
