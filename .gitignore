@@ -30,6 +30,7 @@ build/
 dist/
 *.spec
 build_number.txt
+VERSION.txt
 
 # ============================================
 # EXÉCUTABLES ET INSTALLATEURS

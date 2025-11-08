@@ -349,9 +349,14 @@ class HtmlCoherenceReportGenerator:
         # Obtenir l'hôte et le port du serveur depuis la config
         from infrastructure.config.config import config_manager
         from infrastructure.logging.logging import log_message
-        server_host = config_manager.get('editor_server_host', '127.0.0.1')
-        server_port = config_manager.get('editor_server_port', 8765)
-        server_url = f"http://{server_host}:{server_port}"
+        server_host_config = config_manager.get('editor_server_host', '127.0.0.1') or '127.0.0.1'
+        try:
+            server_port_config = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            server_port_config = 8765
+        
+        server_host_client = '127.0.0.1' if server_host_config in ('0.0.0.0', '::') else server_host_config
+        server_url = f"http://{server_host_client}:{server_port_config}"
         log_message("DEBUG", f"🎯 Génération JavaScript rapport : server_url={server_url}", category="report")
         
         return f"""
@@ -674,54 +679,61 @@ class HtmlCoherenceReportGenerator:
 
             // ===== NOUVEAU : Gestion du collage depuis le presse-papier =====
             async function pasteText(editFieldId) {{
-                try {{
-                    const editField = document.getElementById(editFieldId);
-                    if (!editField) return;
+                const editField = document.getElementById(editFieldId);
+                if (!editField) return;
+                
+                const pasteBtn = document.querySelector(`.paste-btn[data-edit-field="${{editFieldId}}"]`);
+                
+                // Fallback manuel si le contexte n'est pas sécurisé ou si l'API clipboard est indisponible
+                const canUseClipboardApi = window.isSecureContext && navigator.clipboard && navigator.clipboard.readText;
+                if (!canUseClipboardApi) {{
+                    const manualText = prompt(
+                        "Collage manuel requis\\n\\nVotre navigateur bloque l'accès direct au presse-papier dans ce contexte.\\nCollez votre texte ici (Ctrl+V), puis validez pour l'insérer dans le champ :",
+                        ""
+                    );
                     
-                    // Afficher un indicateur de chargement sur le bouton
-                    const pasteBtn = document.querySelector(`.paste-btn[data-edit-field="${{editFieldId}}"]`);
+                    if (manualText !== null) {{
+                        editField.value = manualText;
+                        showGlobalMessage('✅ Texte inséré via le mode manuel', 'success', 2500);
+                        console.log('✅ Texte collé via le mode manuel (prompt)');
+                    }} else {{
+                        showGlobalMessage('ℹ️ Collage annulé', 'info', 2000);
+                    }}
+                    
+                    if (pasteBtn) {{
+                        pasteBtn.disabled = false;
+                        pasteBtn.textContent = '📋 Coller';
+                    }}
+                    return;
+                }}
+                
+                try {{
                     if (pasteBtn) {{
                         pasteBtn.disabled = true;
                         pasteBtn.textContent = '⏳ Collage...';
                     }}
                     
-                    // Lire le contenu du presse-papier
                     const clipboardText = await navigator.clipboard.readText();
                     
                     if (!clipboardText) {{
                         showGlobalMessage('⚠️ Le presse-papier est vide', 'warning', 3000);
-                        if (pasteBtn) {{
-                            pasteBtn.disabled = false;
-                            pasteBtn.textContent = '📋 Coller';
-                        }}
                         return;
                     }}
                     
-                    // Remplacer TOUT le contenu du textarea
                     editField.value = clipboardText;
-                    
-                    // Message de confirmation
                     showGlobalMessage('✅ Texte collé avec succès', 'success', 2000);
-                    console.log('✅ Texte collé depuis le presse-papier');
-                    
-                    // Restaurer le bouton
-                    if (pasteBtn) {{
-                        pasteBtn.disabled = false;
-                        pasteBtn.textContent = '📋 Coller';
-                    }}
-                    
+                    console.log('✅ Texte collé depuis le presse-papier (API)');
                 }} catch (error) {{
                     console.error('❌ Erreur collage:', error);
                     
-                    // Message d'erreur adapté
                     if (error.name === 'NotAllowedError') {{
                         showGlobalMessage("⚠️ Permission refusée - Autorisez l\'accès au presse-papier", 'error', 4000);
+                    }} else if (error.name === 'NotFoundError') {{
+                        showGlobalMessage("⚠️ Aucun contenu détecté dans le presse-papier", 'warning', 3000);
                     }} else {{
                         showGlobalMessage('❌ Erreur lors du collage depuis le presse-papier', 'error', 4000);
                     }}
-                    
-                    // Restaurer le bouton
-                    const pasteBtn = document.querySelector(`.paste-btn[data-edit-field="${{editFieldId}}"]`);
+                }} finally {{
                     if (pasteBtn) {{
                         pasteBtn.disabled = false;
                         pasteBtn.textContent = '📋 Coller';

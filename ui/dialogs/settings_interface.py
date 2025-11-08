@@ -540,6 +540,9 @@ class UnifiedSettingsInterface:
     def _show_about(self):
         """Affiche la fenêtre À propos"""
         try:
+            from datetime import datetime
+            current_year = datetime.now().year
+            
             about_text = f"""
 RenExtract - Générateur de Traductions Ren'Py
 
@@ -553,7 +556,7 @@ Fonctionnalités:
 • Outils de maintenance
 • Interface moderne et intuitive
 
-© 2024 RenExtract Project
+© 2024-{current_year} RenExtract Project
             """
             
             show_custom_messagebox(

@@ -963,23 +963,15 @@ class AppController:
             # ✅ VALIDATION avec le chemin corrigé
             file_base = get_file_base_name(self.original_path)
             
-            # ✅ PASSER LE BON CHEMIN à validate_before_reconstruction
-            # Si la fonction attend un chemin, construire le bon
-            game_name = extract_game_name(self.original_path)
-            expected_output_path = os.path.join(
-                FOLDERS["temporaires"], 
-                game_name, 
-                file_base,
-                "fichiers_a_traduire"
-            )
-            
             # ✅ VALIDATION - Plus claire et fiable
             # Utiliser combined_asterix_count car le fichier asterix.txt contient astérisques + tildes
+            # ✅ CORRIGÉ : Passer original_path pour utiliser le bon game_name
             validation_result = validate_before_reconstruction(
                 file_base, 
                 extracted_count, 
                 combined_asterix_count,  # Utiliser le compteur combiné
                 empty_count,
+                original_path=self.original_path  # ✅ NOUVEAU : Passer le chemin original
             )
             
             if not validation_result['overall_valid']:

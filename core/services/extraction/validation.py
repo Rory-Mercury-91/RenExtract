@@ -936,7 +936,7 @@ class ValidationSystem:
                 log_message("ERREUR", f"   - {error}", category="validation")
 
 
-def validate_before_reconstruction(file_base: str, extracted_count: int, asterix_count: int = 0, empty_count: int = 0) -> dict:
+def validate_before_reconstruction(file_base: str, extracted_count: int, asterix_count: int = 0, empty_count: int = 0, original_path: str = None) -> dict:
     """
     Fonction de validation avant reconstruction - Version refaite
     
@@ -945,26 +945,35 @@ def validate_before_reconstruction(file_base: str, extracted_count: int, asterix
         extracted_count: Nombre de dialogues extraits
         asterix_count: Nombre d'astérisques extraits  
         empty_count: Nombre de lignes vides extraites (ignoré dans la validation)
+        original_path: Chemin du fichier original (utilisé pour déterminer le game_name correct)
         
     Returns:
         dict: Résultats de la validation
     """
     # Log simplifié : suppression du log de démarrage
     
-    # Trouver le dossier du jeu
-    game_name = find_actual_game_folder(file_base)
-    if not game_name:
-        log_message("ERREUR", f"Impossible de trouver le dossier pour {file_base}", category="validation")
-        return {
-            'overall_valid': False,
-            'summary': {
-                'total_expected': extracted_count + asterix_count,
-                'total_found': 0,
-                'files_checked': 0,
-                'errors': [f"Dossier non trouvé pour {file_base}"],
-                'warnings': []
+    # ✅ CORRIGÉ : Utiliser original_path pour déterminer le game_name correct
+    # Au lieu de chercher dans tous les dossiers (qui peut trouver le mauvais)
+    if original_path:
+        from infrastructure.helpers.unified_functions import extract_game_name
+        game_name = extract_game_name(original_path)
+        log_message("DEBUG", f"Game name déterminé depuis original_path: {game_name}", category="validation")
+    else:
+        # Fallback : chercher dans tous les dossiers (ancien comportement)
+        game_name = find_actual_game_folder(file_base)
+        if not game_name:
+            log_message("ERREUR", f"Impossible de trouver le dossier pour {file_base}", category="validation")
+            return {
+                'overall_valid': False,
+                'summary': {
+                    'total_expected': extracted_count + asterix_count,
+                    'total_found': 0,
+                    'files_checked': 0,
+                    'errors': [f"Dossier non trouvé pour {file_base}"],
+                    'warnings': []
+                }
             }
-        }
+        log_message("ATTENTION", f"Game name trouvé par recherche (fallback): {game_name}", category="validation")
     
     log_message("INFO", f"Dossier trouvé: {game_name}", category="validation")
     

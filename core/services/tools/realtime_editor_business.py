@@ -1350,17 +1350,9 @@ class RealTimeEditorBusiness:
         # Charger le template
         template = self._load_module_template(module_version)
         
-        # Échapper les accolades dans les chaînes de formatage Python pour éviter les conflits
-        # On remplace {0} par {{0}}, {1} par {{1}}, etc. sauf pour {language}
-        import re
-        
-        # Échapper tous les placeholders numériques {0}, {1}, {2}, etc.
-        # Mais PAS les accolades déjà échappées {{0}} ou les accolades vides {}
-        # On cherche les patterns {chiffre} qui ne sont PAS déjà échappés
-        template = re.sub(r'(?<!\{)\{(\d+)\}(?!\})', r'{{\1}}', template)
-        
-        # Remplacer {language} par la langue cible
-        return template.format(language=language)
+        # Remplacer uniquement le placeholder {language} pour éviter les conflits
+        # avec les chaînes .format présentes dans le template.
+        return template.replace("{language}", language)
 
     def start_monitoring(self, project_path: str, language: str) -> Dict[str, Any]:
         """

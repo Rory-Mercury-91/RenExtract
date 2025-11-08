@@ -2,6 +2,59 @@
 
 ---
 
+## 2025-11-08 (v1.2.11)
+
+### 🐛 Corrections et améliorations
+
+#### 🔍 Détection des langues dans l'onglet cohérence
+- **Problème résolu** : L'onglet de cohérence ne détectait pas tous les dossiers de langue comme les autres fenêtres
+- **Solution** : Ajout du paramètre `force_refresh=True` lors de l'initialisation et lors des changements de projet
+- **Impact** : Toutes les langues disponibles sont maintenant correctement détectées dans l'onglet de cohérence
+- **Fichiers modifiés** : 
+  - `ui/shared/project_widgets.py` : Ajout paramètre `force_refresh` à `_validate_and_set_project()` et méthode `refresh_languages()`
+  - `ui/tab_tools/coherence_tab.py` : Utilisation de `force_refresh=True` lors de l'initialisation
+  - `ui/dialogs/maintenance_tools_interface.py` : Utilisation de `force_refresh=True` lors des changements de projet
+
+#### ⏱️ Timeout adaptatif pour la génération de traductions
+- **Problème résolu** : Le système arrêtait la génération après 2 minutes même si elle progressait encore
+- **Solution** : Implémentation d'un système de timeout adaptatif basé sur l'activité réelle
+- **Fonctionnement** :
+  - **Timeout initial** : 1 minute avant le premier fichier généré (détection problème de démarrage)
+  - **Timeout d'inactivité** : 2 minutes sans nouveau fichier une fois qu'au moins un fichier a été généré
+  - **Détection de progression** : Réinitialisation automatique du timer à chaque nouveau fichier détecté
+- **Impact** : Les projets volumineux peuvent maintenant prendre 5-10 minutes sans être interrompus, tant que des fichiers continuent d'être générés régulièrement
+- **Fichier modifié** : `core/services/translation/translation_generation_business.py`
+
+#### 🌐 Rapport de cohérence servi en HTTPS local
+- **Problème résolu** : Le bouton “Coller” du rapport HTML n'avait pas accès au presse-papiers quand le rapport était ouvert en `file://`
+- **Solution** : Ajout d'un endpoint `http://localhost:8765/coherence/report` pour servir le rapport via le serveur intégré
+- **Impact** :
+  - Accès au presse-papiers autorisé dans Firefox/Chrome
+  - Le bouton `📋 Coller` fonctionne sans mode manuel
+  - Compatibilité WSL assurée (serveur binding `0.0.0.0`)
+- **Fichiers modifiés** :
+  - `ui/shared/editor_manager_server.py` : nouvelle route HTTP et sécurisation lecture fichier
+  - `core/services/tools/coherence_checker_business.py` : ouverture auto via l'URL locale avec fallback
+  - `core/services/reporting/coherence_html_report_generator.py` : normalisation host côté client
+
+#### 🔧 Correction syntaxe Ren'Py
+- **Correction** : Erreur de syntaxe dans l'appel à `scr_prf_btn()` pour la sélection de langue
+- **Changement** : `use scr_prf_btn('English', action Language(None))` → `use scr_prf_btn('normal', 'English', Language(None))`
+- **Fichier modifié** : `Z_Ne_Pas_supprimer/essai.rpy`
+
+#### 🧩 Module de surveillance Ren'Py v2 fiable
+- **Problème résolu** : L'installation du module v2 échouait avec l'erreur `Replacement index 0 out of range for positional args tuple`
+- **Cause** : Le template `v2.rpy` contient des `.format()` internes qui entraient en conflit avec la génération dynamique
+- **Solution** : Remplacement direct du placeholder `{language}` sans utiliser `str.format`
+- **Fichier modifié** : `core/services/tools/realtime_editor_business.py`
+
+### 📊 Impact
+- **Détection langues** : Cohérence entre tous les onglets de l'application
+- **Génération fiable** : Plus d'interruptions prématurées pour les projets volumineux
+- **Code propre** : Syntaxe Ren'Py correcte et maintenable
+
+---
+
 ## 2025-11-03 (v1.2.10)
 
 ### 🛡️ Surveillance traceback.txt étendue

@@ -15,6 +15,8 @@ import os
 import re
 import glob
 import time
+import webbrowser
+from urllib.parse import quote
 from datetime import datetime
 from infrastructure.logging.logging import log_message
 from infrastructure.config.config import config_manager
@@ -1359,13 +1361,37 @@ class UnifiedCoherenceChecker:
             import subprocess
             import platform
             
+            # Essayer d'abord via le serveur local sur localhost
+            server_host = config_manager.get('editor_server_host', '127.0.0.1') or '127.0.0.1'
+            try:
+                server_port = int(config_manager.get('editor_server_port', 8765))
+            except Exception:
+                server_port = 8765
+            
+            browser_host = '127.0.0.1' if server_host in ('0.0.0.0', '::') else server_host
+            report_param = quote(os.path.abspath(rapport_path), safe='')
+            report_url = f"http://{browser_host}:{server_port}/coherence/report?path={report_param}"
+            
+            log_message("DEBUG", f"Ouverture rapport via serveur local: {report_url}", category="report_autoopen")
+            opened_via_server = False
+            try:
+                opened_via_server = webbrowser.open(report_url)
+            except Exception as e:
+                log_message("ATTENTION", f"Ouverture via serveur local impossible: {e}", category="report_autoopen")
+                opened_via_server = False
+            
+            if opened_via_server:
+                return
+            
+            # Fallback: ouverture directe du fichier
+            log_message("ATTENTION", "Fallback ouverture rapport via fichier local", category="report_autoopen")
             if platform.system() == "Windows":
                 os.startfile(rapport_path)
             elif platform.system() == "Darwin":  # macOS
-                subprocess.run(["open", rapport_path])
+                subprocess.run(["open", rapport_path], check=False)
             else:  # Linux
-                subprocess.run(["xdg-open", rapport_path])
-                
+                subprocess.run(["xdg-open", rapport_path], check=False)
+            
         
         except Exception as e:
             log_message("ATTENTION", f"Impossible d'ouvrir automatiquement le rapport : {e}", category="report_autoopen")

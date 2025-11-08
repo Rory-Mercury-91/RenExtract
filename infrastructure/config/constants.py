@@ -17,62 +17,69 @@ def get_executable_dir():
 
 def get_version():
     """
-    Retourne la version avec build number auto-incrémenté
-    Format: RenExtract_2025.09.21.v1
+    Retourne la version depuis le tag Git ou un fichier VERSION.txt
+    Format: v1.2.11 ou dev-YYYYMMDD si pas de tag
     """
+    import subprocess
+    
     base_dir = get_executable_dir()
-    version_file = os.path.join(base_dir, "build_number.txt")
     
-    # Date du jour
-    now = datetime.datetime.now()
-    date_part = f"RenExtract {now.year}.{now.month:02d}.{now.day:02d}"
-    
-    # Lecture du build number
-    build_number = 1
+    # PRIORITÉ 1 : Lire depuis VERSION.txt (créé lors du build GitHub Actions)
+    version_file = os.path.join(base_dir, "VERSION.txt")
     if os.path.exists(version_file):
         try:
             with open(version_file, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                if content.isdigit():
-                    build_number = int(content)
+                version = f.read().strip()
+                if version:
+                    return version
         except Exception:
             pass
     
-    return f"{date_part}.v{build_number}"
+    # PRIORITÉ 2 : Essayer de lire depuis Git (si disponible en développement)
+    try:
+        # Essayer de récupérer le dernier tag Git
+        result = subprocess.run(
+            ["git", "describe", "--tags", "--abbrev=0"],
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            tag = result.stdout.strip()
+            # Enlever le 'v' si présent pour uniformiser
+            if tag.startswith('v'):
+                return tag
+            return f"v{tag}"
+    except Exception:
+        pass
+    
+    # PRIORITÉ 3 : Essayer de lire depuis Git sans tag (commit hash)
+    try:
+        result = subprocess.run(
+            ["git", "describe", "--always", "--dirty"],
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return f"dev-{result.stdout.strip()}"
+    except Exception:
+        pass
+    
+    # FALLBACK : Utiliser la date si rien d'autre n'est disponible
+    now = datetime.datetime.now()
+    return f"dev-{now.year}{now.month:02d}{now.day:02d}"
 
 def increment_build_number():
     """
-    Incrémente le build number et retourne la nouvelle version
-    À appeler UNIQUEMENT lors de la compilation
+    Fonction obsolète - conservée pour compatibilité
+    Retourne simplement la version actuelle depuis Git/VERSION.txt
     """
-    base_dir = get_executable_dir()
-    version_file = os.path.join(base_dir, "build_number.txt")
-    
-    # Lit le build number actuel
-    build_number = 1
-    if os.path.exists(version_file):
-        try:
-            with open(version_file, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-                if content.isdigit():
-                    build_number = int(content)
-        except Exception:
-            pass
-    
-    # Incrémente
-    new_build_number = build_number + 1
-    
-    # Sauvegarde
-    try:
-        with open(version_file, "w", encoding="utf-8") as f:
-            f.write(str(new_build_number))
-    except Exception as e:
-        pass  # Ignorer les erreurs de sauvegarde
-    
-    # Retourne la nouvelle version
-    now = datetime.datetime.now()
-    date_part = f"RenExtract_{now.year}.{now.month:02d}.{now.day:02d}"
-    return f"{date_part}.v{new_build_number}"
+    return get_version()
 
 # Version actuelle (lecture seule)
 VERSION = get_version()

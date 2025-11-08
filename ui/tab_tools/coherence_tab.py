@@ -87,7 +87,11 @@ def _create_coherence_content(parent, main_interface):
     # S'assurer que le widget pointe bien sur le projet du header
     try:
         if main_interface.current_project_path:
-            main_interface.coherence_project_selector._validate_and_set_project(main_interface.current_project_path)
+            # Forcer le refresh pour détecter toutes les langues disponibles
+            main_interface.coherence_project_selector._validate_and_set_project(
+                main_interface.current_project_path,
+                force_refresh=True
+            )
     except Exception:
         pass
     

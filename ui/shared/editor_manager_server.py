@@ -12,7 +12,7 @@ et ouvrir un fichier à une ligne donnée dans l'éditeur choisi.
 """
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 import threading
 import sys
 import os
@@ -96,6 +96,40 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         # Log supprimé : redondant avec le log d'ouverture simplifié
+
+        # ===== Nouveau endpoint: /coherence/report (serveur HTML rapport) =====
+        if parsed.path == "/coherence/report":
+            qs = parse_qs(parsed.query)
+            raw_path = (qs.get("path", [""])[0] or "").strip()
+            
+            if not raw_path:
+                self._send_html_response("<h1>Chemin de rapport manquant</h1>", status_code=400)
+                return
+            
+            # Normaliser le chemin et s'assurer qu'il pointe vers un fichier HTML existant
+            report_path = os.path.abspath(unquote(raw_path))
+            
+            if not os.path.isfile(report_path) or not report_path.lower().endswith(".html"):
+                self._send_html_response("<h1>Rapport introuvable</h1>", status_code=404)
+                return
+            
+            try:
+                with open(report_path, "r", encoding="utf-8") as report_file:
+                    payload = report_file.read().encode("utf-8")
+            except Exception as exc:
+                log_message("ERREUR", f"Erreur lecture rapport HTML: {exc}", category="coherence_report_server")
+                self._send_html_response("<h1>Erreur lors du chargement du rapport</h1>", status_code=500)
+                return
+            
+            self.send_response(200)
+            self._cors()
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+            return
+        # ======================================================
 
         # ===== Nouvel endpoint: /focus (F8 depuis Ren'Py) =====
         if parsed.path == "/focus":
@@ -364,6 +398,18 @@ class _Handler(BaseHTTPRequestHandler):
     # Silence default logging
     def log_message(self, format, *args):
         pass
+
+    def _send_html_response(self, content, status_code=200):
+        """Réponse HTML simple (utilisé pour les erreurs du serveur de rapport)."""
+        if not isinstance(content, bytes):
+            content = content.encode("utf-8")
+
+        self.send_response(status_code)
+        self._cors()
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
 
 def is_server_running():
     return _SERVER_RUNNING

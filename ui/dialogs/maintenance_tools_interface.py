@@ -361,7 +361,11 @@ class MaintenanceToolsInterface:
             # 1) Cohérence : valide + auto-scan (scan langues + fichiers via le widget)
             if hasattr(self, 'coherence_project_selector') and self.coherence_project_selector:
                 try:
-                    self.coherence_project_selector._validate_and_set_project(self.current_project_path)
+                    # Forcer le refresh pour détecter toutes les langues disponibles
+                    self.coherence_project_selector._validate_and_set_project(
+                        self.current_project_path,
+                        force_refresh=True
+                    )
                 except Exception as e:
                     log_message("DEBUG", f"Erreur mise à jour sélecteur cohérence : {e}", category="maintenance_tools")
 

@@ -532,7 +532,7 @@ class ProjectLanguageSelector:
                     self._switch_to_project_mode()
                 self._validate_and_set_project(path)
     
-    def _validate_and_set_project(self, project_path):
+    def _validate_and_set_project(self, project_path, force_refresh=False):
         """Valide et définit le projet actuel avec remontée intelligente"""
         try:
             if hasattr(self, '_updating_project') and self._updating_project:
@@ -584,7 +584,7 @@ class ProjectLanguageSelector:
                     except Exception:
                         pass
 
-                self._scan_languages()
+                self._scan_languages(force_refresh=force_refresh)
                 self._scan_files()
 
                 log_message("INFO", f"Projet défini: {os.path.basename(actual_project_path)}", category="project_widgets")
@@ -873,9 +873,17 @@ class ProjectLanguageSelector:
             
         self.exclusions = parse_exclusions_string(exclusions_str)
         
-        
         # Re-scanner les fichiers si une langue est sélectionnée
         if self.selected_language_var.get():
+            self._scan_files()
+    
+    def refresh_languages(self, force_refresh=True):
+        """Rafraîchit la liste des langues disponibles (mode projet uniquement)"""
+        if self.current_mode == "single_file":
+            return  # Pas de refresh en mode fichier unique
+        
+        if self.current_project_path:
+            self._scan_languages(force_refresh=force_refresh)
             self._scan_files()
     
     def get_selection_summary(self) -> str:

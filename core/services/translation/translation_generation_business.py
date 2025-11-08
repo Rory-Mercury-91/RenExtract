@@ -787,10 +787,14 @@ init python early hide:
             monitor_thread = threading.Thread(target=monitor_traceback, daemon=True)
             monitor_thread.start()
             
-            # Monitoring en temps réel
+            # Monitoring en temps réel avec timeout adaptatif
             tl_folder = os.path.join(game_dir, "tl", language)
             generation_start_time = time.time()
-            timeout_seconds = 120  # 2 minutes
+            timeout_seconds = 120  # 2 minutes d'inactivité (pas de nouveaux fichiers)
+            initial_timeout = 60  # 1 minute avant le premier fichier
+            last_file_count = 0
+            last_activity_time = time.time()  # Dernière fois qu'un nouveau fichier a été détecté
+            first_file_detected = False  # Indique si au moins un fichier a été généré
             
             while process.poll() is None:
                 # Vérifier si traceback a été détecté
@@ -808,23 +812,61 @@ init python early hide:
                     )
                     log_message("ERREUR", "Génération annulée - traceback.txt détecté lors de la génération", category="renpy_generator_tl")
                     return result
-                elapsed_time = time.time() - generation_start_time
                 
-                if elapsed_time > timeout_seconds:
-                    process.terminate()
-                    try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.wait()
-                    
-                    result['errors'].append(f"La génération a dépassé le temps limite (2 minutes).")
-                    return result
+                elapsed_time = time.time() - generation_start_time
                 
                 # Progression basée sur les fichiers générés
                 current_files = 0
                 if os.path.isdir(tl_folder):
                     current_files = len([f for f in os.listdir(tl_folder) if f.endswith('.rpy')])
+                
+                # ✅ NOUVEAU : Détecter si de nouveaux fichiers sont générés
+                if current_files > last_file_count:
+                    # Nouveaux fichiers détectés - réinitialiser le timer d'inactivité
+                    last_activity_time = time.time()
+                    last_file_count = current_files
+                    if not first_file_detected:
+                        first_file_detected = True
+                        log_message("INFO", f"Premier fichier généré après {int(elapsed_time)}s", category="renpy_generator_tl")
+                    else:
+                        log_message("DEBUG", f"Progression détectée : {current_files} fichiers générés", category="renpy_generator_tl")
+                
+                # ✅ NOUVEAU : Timeout adaptatif basé sur l'inactivité
+                if first_file_detected:
+                    # Une fois qu'au moins un fichier a été généré, utiliser le timeout d'inactivité
+                    inactivity_time = time.time() - last_activity_time
+                    if inactivity_time > timeout_seconds:
+                        # Aucun nouveau fichier depuis 2 minutes - probablement bloqué
+                        log_message("ATTENTION", f"Timeout adaptatif : Aucun nouveau fichier depuis {int(inactivity_time)}s ({current_files} fichiers au total)", category="renpy_generator_tl")
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait()
+                        
+                        result['errors'].append(
+                            f"La génération semble bloquée (aucun nouveau fichier depuis {int(inactivity_time)}s). "
+                            f"{current_files} fichier(s) généré(s) avant l'arrêt. "
+                            "Le projet pourrait être trop volumineux ou il y a un problème avec Ren'Py."
+                        )
+                        return result
+                else:
+                    # Aucun fichier généré encore - utiliser le timeout initial
+                    if elapsed_time > initial_timeout:
+                        log_message("ATTENTION", f"Timeout initial : Aucun fichier généré après {int(elapsed_time)}s", category="renpy_generator_tl")
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait()
+                        
+                        result['errors'].append(
+                            f"La génération n'a pas démarré correctement (aucun fichier généré après {int(elapsed_time)}s). "
+                            "Vérifiez que Ren'Py fonctionne correctement avec ce projet."
+                        )
+                        return result
                 
                 estimated_progress = min(30, (current_files * 30) // max(20, 1))
                 total_progress = 40 + estimated_progress
