@@ -18,7 +18,7 @@ def get_executable_dir():
 def get_version():
     """
     Retourne la version depuis le tag Git ou un fichier VERSION.txt
-    Format: v1.2.11 ou dev-YYYYMMDD si pas de tag
+    Format: v1.2.11 ou valeur par défaut si pas de tag
     """
     import subprocess
     
@@ -71,8 +71,7 @@ def get_version():
         pass
     
     # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    now = datetime.datetime.now()
-    return f"dev-{now.year}{now.month:02d}{now.day:02d}"
+    return "v1.2.12"
 
 def increment_build_number():
     """

@@ -1,6 +1,17 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-10 (v1.2.12)
+
+### 🐛 Corrections et améliorations
+
+#### 📂 Gestionnaire d'exclusions cohérent
+- **Problème résolu** : Le gestionnaire d'exclusions affichait le dossier parent (`capis`) au lieu du vrai projet (`AHA-pc`)
+- **Solution** : Normalisation des chemins pour remonter jusqu'à la racine Ren'Py (segment `game`) et afficher le nom du projet
+- **Impact** : L'interface reflète correctement le projet, quel que soit l'outil ayant créé l'exclusion
+- **Fichier modifié** : `ui/dialogs/exclusions_manager_dialog.py`
+
+---
 
 ## 2025-11-08 (v1.2.11)
 
@@ -46,7 +57,10 @@
 - **Problème résolu** : L'installation du module v2 échouait avec l'erreur `Replacement index 0 out of range for positional args tuple`
 - **Cause** : Le template `v2.rpy` contient des `.format()` internes qui entraient en conflit avec la génération dynamique
 - **Solution** : Remplacement direct du placeholder `{language}` sans utiliser `str.format`
-- **Fichier modifié** : `core/services/tools/realtime_editor_business.py`
+- **Validation** : Testé et validé sur Ren'Py 7.3.5 (dialogues et menus sans récursion)
+- **Fichiers modifiés** :
+  - `core/services/tools/realtime_editor_business.py`
+  - `core/services/tools/renpy_modules/v2.rpy`
 
 ### 📊 Impact
 - **Détection langues** : Cohérence entre tous les onglets de l'application

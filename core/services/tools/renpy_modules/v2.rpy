@@ -1,7 +1,7 @@
 # Module de surveillance RenExtract pour édition temps réel - VERSION 2
 # Langue cible: {language}
 # Compatibilité: Ren'Py 7.3.5, 7.6.3 et versions antérieures
-# Note: Compatible avec Ren'Py 7.3.5.606 (NoMoreMoney). Version 7.6.3 en attente de traitement complet
+# Note: Ren'Py 7.3.5 (incl. 7.3.5.606) validé – dialogues & choix OK. Ren'Py 7.6.3 toujours en validation
 # Pour les versions Ren'Py 8+, utilisez le module v1 correspondant
 
 init python:
@@ -138,7 +138,7 @@ init -999 python:
         if _renextract_os.path.exists(RENEXTRACT_LOG_FILE):
             with codecs.open(RENEXTRACT_LOG_FILE, "w", encoding="utf-8") as f: f.write(u"")
     except Exception as e:
-        print(u"Erreur réinitialisation log : {{0}}".format(e))
+        print(u"Erreur réinitialisation log : {0}".format(e))
 
     def get_translated_dialogue(file_path, line_number, original_text=None):
         try:
@@ -188,10 +188,10 @@ init -999 python:
                             f.write(u"MENU_START\n")
                             for choice in menu_choices:
                                 # Nouveau format de log : juste CHOICE|texte_original
-                                f.write(u"CHOICE|{{0}}\n".format(choice))
+                                f.write(u"CHOICE|{0}\n".format(choice))
                             f.write(u"MENU_END\n")
                 except Exception as e:
-                    print(u"Erreur dans patched_menu : {{0}}".format(e))
+                    print(u"Erreur dans patched_menu : {0}".format(e))
                 return original(items, *args, **kwargs)
             return patched_menu
         
@@ -211,10 +211,10 @@ init -999 python:
                         translated_dialogue, tl_file, tl_line = get_translated_dialogue(current_file, line_number, what)
                         display_text = translated_dialogue if translated_dialogue is not None else what
                         with codecs.open(RENEXTRACT_LOG_FILE, "a", encoding="utf-8") as f:
-                            f.write(u"{{0}}|{{1}}|{{2}}|{{3}}|{{4}}\n".format(display_text, current_file, line_number, tl_file, tl_line))
+                            f.write(u"{0}|{1}|{2}|{3}|{4}\n".format(display_text, current_file, line_number, tl_file, tl_line))
                     return original(who, what, *args, **kwargs)
                 except Exception as e:
-                    print(u"Erreur dans patched_say : {{0}}".format(e))
+                    print(u"Erreur dans patched_say : {0}".format(e))
                     raise
             return patched_say
         

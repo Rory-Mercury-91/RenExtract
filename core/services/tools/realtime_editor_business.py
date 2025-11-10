@@ -33,7 +33,7 @@ class RealTimeEditorBusiness:
         (8, 2, 1): "v1",  # Testé sur FamilyIsland
         (8, 3, 2): "v1",  # Compatible avec le module v1
         (8, 3, 7): "v1",  # Compatible avec le module v1
-        (7, 3, 5): "v2",  # Compatible avec le module v2 (Ren'Py 7)
+        (7, 3, 5): "v2",  # ✅ Ren'Py 7.3.5 validé (dialogues + choix)
         (7, 6, 3): "v2",  # En attente de traitement, utilise le module v2
         # Ajoutez ici les futures versions et modules
     }

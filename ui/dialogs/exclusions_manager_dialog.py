@@ -44,10 +44,12 @@ class ExclusionsManagerDialog:
         self._center_window()
         
         # Variables
-        self.current_project_filter = tk.StringVar(value="all")
-        self.current_file_filter = tk.StringVar(value="all")  # Nouveau filtre par fichier
+        self.current_project_filter = tk.StringVar(value="Tous les projets")
+        self.current_file_filter = tk.StringVar(value="Tous les fichiers")  # Nouveau filtre par fichier
         self.exclusions_data = {}  # {project_path: [exclusions]}
         self.tree_items = {}  # {item_id: (project, index)}
+        self.project_filter_map = {}  # {display_name: set(project_paths)}
+        self.file_filter_map = {}  # {display_name: set(file_paths)}
         
         # Système de sélection multiple par checkbox
         self.selected_items = {}  # {item_id: True/False}
@@ -72,6 +74,47 @@ class ExclusionsManagerDialog:
         x = (self.window.winfo_screenwidth() // 2) - (width // 2)
         y = (self.window.winfo_screenheight() // 2) - (height // 2)
         self.window.geometry(f"+{x}+{y}")
+    
+    def _normalize_path(self, path):
+        """Normalise un chemin (séparateurs)."""
+        if not isinstance(path, str):
+            return ""
+        return path.replace('\\', '/').strip()
+    
+    def _get_project_display_name(self, project_path):
+        """Retourne le nom du projet à afficher, quelle que soit la source."""
+        normalized = self._normalize_path(project_path)
+        if not normalized:
+            return "Projet inconnu"
+        
+        # Si la clé correspond à un fichier (contient une extension .rpy)
+        if normalized.endswith('.rpy'):
+            # Rechercher un segment 'game' pour identifier la racine Ren'Py
+            segments = normalized.split('/')
+            try:
+                game_index = next(i for i, seg in enumerate(segments) if seg.lower() == 'game')
+                if game_index > 0:
+                    return segments[game_index - 1]
+            except StopIteration:
+                pass
+            # Fallback : prendre le deuxième élément (game_name/file.rpy)
+            if len(segments) >= 2:
+                return segments[-2]
+            return segments[-1].replace('.rpy', '') or "Projet inconnu"
+        
+        # Cas où la clé est un dossier complet
+        base_name = os.path.basename(normalized.rstrip('/'))
+        if base_name.lower() in ('game', 'tl'):
+            parent = os.path.basename(os.path.dirname(normalized))
+            return parent or base_name
+        return base_name or "Projet inconnu"
+    
+    def _get_file_display_name(self, file_path):
+        """Retourne un nom de fichier simplifié à afficher."""
+        normalized = self._normalize_path(file_path)
+        if not normalized:
+            return "N/A"
+        return os.path.basename(normalized)
     
     def _create_ui(self):
         """Crée l'interface de la fenêtre"""
@@ -291,15 +334,26 @@ class ExclusionsManagerDialog:
         """Met à jour la liste des projets dans le filtre"""
         try:
             projects = list(self.exclusions_data.keys())
+            self.project_filter_map = {}
+            
+            for project_key in projects:
+                display_name = self._get_project_display_name(project_key)
+                if display_name not in self.project_filter_map:
+                    self.project_filter_map[display_name] = set()
+                self.project_filter_map[display_name].add(project_key)
             
             # Ajouter "Tous les projets" en premier
-            values = ["Tous les projets"] + [os.path.basename(p) for p in projects]
+            project_values = ["Tous les projets"] + sorted(self.project_filter_map.keys(), key=str.lower)
             
-            self.project_filter_combo['values'] = values
+            self.project_filter_combo['values'] = project_values
             
             # Sélectionner "Tous les projets" par défaut
-            if self.current_project_filter.get() == "all" or not self.current_project_filter.get():
+            current_value = self.current_project_filter.get()
+            if not current_value or current_value not in project_values:
+                self.current_project_filter.set("Tous les projets")
                 self.project_filter_combo.current(0)
+            else:
+                self.project_filter_combo.current(project_values.index(current_value))
             
             # Mettre à jour le filtre de fichiers
             self._update_file_filter()
@@ -313,33 +367,35 @@ class ExclusionsManagerDialog:
             selected_project = self.current_project_filter.get()
             
             # Récupérer les fichiers selon le projet sélectionné
-            files = set()
+            self.file_filter_map = {}
             
             if selected_project == "Tous les projets":
-                # Tous les fichiers de tous les projets
-                for project_path, exclusions in self.exclusions_data.items():
-                    for exclusion in exclusions:
-                        files.add(exclusion.get('file', ''))
+                project_keys = self.exclusions_data.keys()
             else:
-                # Fichiers du projet sélectionné uniquement
-                for project_path, exclusions in self.exclusions_data.items():
-                    if os.path.basename(project_path) == selected_project:
-                        for exclusion in exclusions:
-                            files.add(exclusion.get('file', ''))
-                        break
+                project_keys = self.project_filter_map.get(selected_project, set())
             
-            # Supprimer les fichiers vides
-            files.discard('')
+            for project_path in project_keys:
+                exclusions = self.exclusions_data.get(project_path, [])
+                for exclusion in exclusions:
+                    file_path = exclusion.get('file', '')
+                    if not file_path:
+                        continue
+                    display_name = self._get_file_display_name(file_path)
+                    if display_name not in self.file_filter_map:
+                        self.file_filter_map[display_name] = set()
+                    self.file_filter_map[display_name].add(file_path)
             
-            # Créer la liste avec "Tous les fichiers" en premier
-            values = ["Tous les fichiers"] + sorted(list(files))
+            file_values = ["Tous les fichiers"] + sorted(self.file_filter_map.keys(), key=str.lower)
             
-            self.file_filter_combo['values'] = values
+            self.file_filter_combo['values'] = file_values
             
             # Réinitialiser à "Tous les fichiers" quand on change de projet
-            if not hasattr(self, '_file_filter_initialized') or not self._file_filter_initialized:
+            current_file_value = self.current_file_filter.get()
+            if current_file_value not in file_values:
+                self.current_file_filter.set("Tous les fichiers")
                 self.file_filter_combo.current(0)
-                self._file_filter_initialized = True
+            else:
+                self.file_filter_combo.current(file_values.index(current_file_value))
             
         except Exception as e:
             log_message("ERREUR", f"Erreur mise à jour filtre fichiers: {e}", category="exclusions_manager")
@@ -351,7 +407,7 @@ class ExclusionsManagerDialog:
             self._update_file_filter()
             
             # Réinitialiser le filtre de fichiers à "Tous les fichiers"
-            self.current_file_filter.set("all")
+            self.current_file_filter.set("Tous les fichiers")
             self.file_filter_combo.current(0)
             
             # Appliquer les filtres
@@ -382,7 +438,7 @@ class ExclusionsManagerDialog:
             visible_exclusions = 0
             
             for project_path, exclusions in self.exclusions_data.items():
-                project_name = os.path.basename(project_path)
+                project_name = self._get_project_display_name(project_path)
                 
                 # Vérifier le filtre par projet
                 if selected_project_filter != "Tous les projets" and project_name != selected_project_filter:
@@ -393,12 +449,13 @@ class ExclusionsManagerDialog:
                     
                     # Extraire les données
                     file_path = exclusion.get('file', 'N/A')
+                    file_display_name = self._get_file_display_name(file_path)
                     line = exclusion.get('line', 0)
                     text = exclusion.get('text', '')
                     date = exclusion.get('added_date', 'N/A')
                     
                     # Vérifier le filtre par fichier
-                    if selected_file_filter != "Tous les fichiers" and file_path != selected_file_filter:
+                    if selected_file_filter != "Tous les fichiers" and file_display_name != selected_file_filter:
                         continue
                     
                     visible_exclusions += 1
@@ -417,7 +474,7 @@ class ExclusionsManagerDialog:
                     item_id = self.tree.insert(
                         '',
                         'end',
-                        values=("☐", project_name, file_path, line, text, date),
+                        values=("☐", project_name, file_display_name, line, text, date),
                         tags=(item_unique_id,)
                     )
                     
