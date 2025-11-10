@@ -1,6 +1,23 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-10 (v1.2.13)
+
+### ✨ Améliorations
+
+#### ⚙️ Fenêtre Paramètres de cohérence
+- **Nouveauté** : Ajout de l'option `🔖 Contenu balises non traduit ({b}text{/b})` dans la fenêtre de configuration des vérifications
+- **Impact** : Cohérence totale entre l’onglet principal et la fenêtre de paramètres, l’option reste configurable quelle que soit l’interface utilisée
+- **Fichier modifié** : `ui/dialogs/settings_interface.py`
+
+#### 🧵 Extraction des lignes narrateur vides
+- **Problème résolu** : Les lignes reconstruites utilisant `RENPY_EMPTY_NARRATOR` perdaient le texte après reconstruction
+- **Solution** : Harmonisation de l’extraction pour traiter `RENPY_NARRATOR` et `RENPY_EMPTY_NARRATOR` de la même manière
+- **Impact** : Les narrations reconstruites conservent correctement leur contenu même lorsqu’elles étaient vides lors de l’extraction
+- **Fichier modifié** : `core/services/extraction/extraction.py`
+
+---
+
 ## 2025-11-10 (v1.2.12)
 
 ### 🐛 Corrections et améliorations

@@ -494,8 +494,19 @@ class ConfigManager:
             self.config['coherence_custom_exclusions'] = exclusions
             self.save_config()
         
+        # Normaliser la structure pour garantir des clés cohérentes (racine projet)
+        normalized_exclusions, changed = self._normalize_coherence_exclusions_structure(exclusions)
+
+        if changed:
+            self.config['coherence_custom_exclusions'] = normalized_exclusions
+            self.save_config()
+            exclusions = normalized_exclusions
+        else:
+            exclusions = normalized_exclusions
+        
         if project_path:
-            return exclusions.get(project_path, [])
+            project_key = self._normalize_project_key(project_path)
+            return exclusions.get(project_key, [])
         return exclusions
     
     def add_coherence_exclusion(self, project_path, file_path, line, text):
@@ -514,32 +525,35 @@ class ConfigManager:
         from datetime import datetime
         
         exclusions = self.get_coherence_exclusions()
+        project_key = self._normalize_project_key(project_path)
         
-        if project_path not in exclusions:
-            exclusions[project_path] = []
+        if project_key not in exclusions:
+            exclusions[project_key] = []
         
         # Normaliser le chemin du fichier (remplacer les backslashes par des slashes)
         file_path_normalized = file_path.replace('\\', '/')
         
         # Vérifier si déjà présent
-        for excl in exclusions[project_path]:
+        normalized_text = text.strip() if isinstance(text, str) else ""
+        for excl in exclusions[project_key]:
             if (excl['file'] == file_path_normalized and 
                 excl['line'] == line and 
-                excl['text'] == text):
+                excl['text'] == normalized_text):
                 return False  # Déjà présent
         
         # Ajouter
-        exclusions[project_path].append({
+        new_entry = {
             'file': file_path_normalized,
             'line': line,
-            'text': text,
+            'text': normalized_text,
             'added_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
+        }
+        exclusions[project_key].append(new_entry)
         
         self.config['coherence_custom_exclusions'] = exclusions
         self.save_config()
         
-        log_message("INFO", f"Exclusion ajoutée: {file_path_normalized}:{line} - {text[:50]}", category="coherence_exclusion")
+        log_message("INFO", f"Exclusion ajoutée: {file_path_normalized}:{line} - {normalized_text[:50]}", category="coherence_exclusion")
         return True
     
     def remove_coherence_exclusion(self, project_path, file_path, line, text):
@@ -550,23 +564,25 @@ class ConfigManager:
             True si supprimé, False si non trouvé
         """
         exclusions = self.get_coherence_exclusions()
+        project_key = self._normalize_project_key(project_path)
         
-        if project_path not in exclusions:
+        if project_key not in exclusions:
             return False
         
         # Normaliser le chemin
         file_path_normalized = file_path.replace('\\', '/')
+        normalized_text = text.strip() if isinstance(text, str) else ""
         
         # Trouver et supprimer
-        for i, excl in enumerate(exclusions[project_path]):
+        for i, excl in enumerate(exclusions[project_key]):
             if (excl['file'] == file_path_normalized and 
                 excl['line'] == line and 
-                excl['text'] == text):
-                exclusions[project_path].pop(i)
+                excl['text'] == normalized_text):
+                exclusions[project_key].pop(i)
                 
                 # Supprimer le projet si plus d'exclusions
-                if not exclusions[project_path]:
-                    del exclusions[project_path]
+                if not exclusions[project_key]:
+                    del exclusions[project_key]
                 
                 self.config['coherence_custom_exclusions'] = exclusions
                 self.save_config()
@@ -584,17 +600,18 @@ class ConfigManager:
             Nombre d'exclusions supprimées
         """
         exclusions = self.get_coherence_exclusions()
+        project_key = self._normalize_project_key(project_path)
         
-        if project_path not in exclusions:
+        if project_key not in exclusions:
             return 0
         
-        count = len(exclusions[project_path])
-        del exclusions[project_path]
+        count = len(exclusions[project_key])
+        del exclusions[project_key]
         
         self.config['coherence_custom_exclusions'] = exclusions
         self.save_config()
         
-        log_message("INFO", f"Toutes les exclusions supprimées pour le projet: {project_path} ({count} exclusions)", category="coherence_exclusion")
+        log_message("INFO", f"Toutes les exclusions supprimées pour le projet: {project_key} ({count} exclusions)", category="coherence_exclusion")
         return count
     
     def get_exclusion_count(self, project_path=None):
@@ -607,6 +624,133 @@ class ConfigManager:
         else:
             exclusions = self.get_coherence_exclusions()
             return sum(len(excl_list) for excl_list in exclusions.values())
+
+    # --- Helpers internes pour les exclusions de cohérence ---
+    def _normalize_project_key(self, project_path):
+        """Normalise le chemin d'un projet pour unifier les clés d'exclusions."""
+        try:
+            if not isinstance(project_path, str):
+                return ""
+            normalized = project_path.strip().replace('\\', '/')
+            if not normalized:
+                return ""
+
+            # Retirer un éventuel fichier final (.rpy, .json, etc.)
+            if '.' in normalized.split('/')[-1]:
+                normalized = '/'.join(normalized.split('/')[:-1]) or normalized
+
+            segments = [seg for seg in normalized.split('/') if seg]
+            lowered = [seg.lower() for seg in segments]
+
+            # Couper à la racine du projet (avant 'game' ou 'tl')
+            for marker in ('game', 'tl'):
+                if marker in lowered:
+                    idx = lowered.index(marker)
+                    segments = segments[:idx]
+                    lowered = lowered[:idx]
+                    break
+
+            if not segments:
+                # Si on a tout supprimé (cas rare), revenir à la version nettoyée initiale
+                return normalized.rstrip('/')
+
+            root = '/'.join(segments)
+
+            # Préserver le préfixe absolu si présent (ex: "E:" ou chemin UNC)
+            if normalized.startswith('//'):
+                root = '//' + root
+            elif normalized.startswith('/') and not root.startswith('/'):
+                root = '/' + root
+            elif len(normalized) >= 2 and normalized[1] == ':' and not root.endswith(':'):
+                # Chemins Windows (E:/...)
+                drive = normalized[:2]
+                if not root.lower().startswith(drive.lower()):
+                    root = f"{drive}/{root}"
+
+            return root.rstrip('/')
+        except Exception as e:
+            log_message("ATTENTION", f"Normalisation chemin projet échouée ({project_path}): {e}", category="config")
+            return project_path
+
+    def _normalize_coherence_exclusions_structure(self, exclusions_dict):
+        """
+        Normalise la structure des exclusions:
+        - Clés = racine de projet
+        - Chemins fichiers avec /
+        - Textes trimés
+        Retourne (dict_normalisé, bool_modifié)
+        """
+        normalized = {}
+        modified = False
+
+        if not isinstance(exclusions_dict, dict):
+            return {}, True
+
+        for raw_project, entries in exclusions_dict.items():
+            project_key = self._normalize_project_key(raw_project)
+            if not project_key:
+                project_key = raw_project.strip() if isinstance(raw_project, str) else ""
+            if not project_key:
+                # Impossible d'associer cette entrée => ignorer
+                modified = True
+                continue
+
+            if not isinstance(entries, list):
+                modified = True
+                continue
+
+            target_list = normalized.setdefault(project_key, [])
+            existing_signature = {(e.get('file'), e.get('line'), e.get('text')) for e in target_list if isinstance(e, dict)}
+
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    modified = True
+                    continue
+
+                file_path = entry.get('file', '')
+                text_value = entry.get('text', '')
+                line_value = entry.get('line', 0)
+
+                if not isinstance(file_path, str) or not isinstance(text_value, str):
+                    modified = True
+                    continue
+
+                file_normalized = file_path.replace('\\', '/').strip()
+                text_normalized = text_value.strip()
+
+                try:
+                    line_int = int(line_value)
+                except Exception:
+                    line_int = 0
+
+                if not file_normalized or not text_normalized or line_int <= 0:
+                    modified = True
+                    continue
+
+                signature = (file_normalized, line_int, text_normalized)
+                if signature in existing_signature:
+                    continue
+
+                normalized_entry = {
+                    'file': file_normalized,
+                    'line': line_int,
+                    'text': text_normalized
+                }
+                if 'added_date' in entry:
+                    normalized_entry['added_date'] = entry['added_date']
+
+                target_list.append(normalized_entry)
+                existing_signature.add(signature)
+
+                if (file_normalized != file_path or
+                        text_normalized != text_value or
+                        line_int != line_value):
+                    modified = True
+
+            if project_key != raw_project:
+                modified = True
+
+        return normalized, modified
 
 
 # Instance globale

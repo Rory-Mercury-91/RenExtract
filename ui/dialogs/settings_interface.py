@@ -1556,6 +1556,7 @@ Configuration :
             # Retirées : coherence_check_variables, coherence_check_tags, coherence_check_escape_sequences, coherence_check_line_structure
             verification_options = [
                 ("📝 Lignes non traduites", "coherence_check_untranslated"),
+                ("🔖 Contenu balises non traduit ({b}text{/b})", "coherence_check_tags_content"),
                 ("… Points de suspension", "coherence_check_ellipsis"),
                 ("% Variables %", "coherence_check_percentages"),
                 ("💬 Guillemets", "coherence_check_quotations"),

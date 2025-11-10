@@ -984,11 +984,13 @@ class TextExtractor:
         raw_contents = []
 
         # Extraction des contenus (logique mise à jour pour gérer les paramètres)
-        if "RENPY_NARRATOR" in line:
-            match = re.search(r'RENPY_NARRATOR(.*)"(.*)', line)
-            if match:
-                raw_contents.append(match.group(1))
-                line_suffix = match.group(2)
+        narrator_placeholder = f"{self.empty_prefix}_NARRATOR"
+        narrator_pattern = rf'(?:RENPY_NARRATOR|{re.escape(narrator_placeholder)})'
+        narrator_match = re.search(rf'{narrator_pattern}(.*)"(.*)', line)
+        
+        if narrator_match:
+            raw_contents.append(narrator_match.group(1))
+            line_suffix = narrator_match.group(2)
         elif "RENPY_EMPTY03" in line:
             match = re.search(r'"(.*)RENPY_EMPTY03(.*)"(.*)', line)
             if match:
