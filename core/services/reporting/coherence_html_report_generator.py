@@ -1081,12 +1081,20 @@ class HtmlCoherenceReportGenerator:
                             fileItems.forEach(fileItem => {{
                                 const fileName = fileItem.getAttribute('data-file');
                                 const fileMatches = selectedFile === 'all' || fileName === selectedFile;
+                                const issues = Array.from(fileItem.querySelectorAll('.issue-item'));
                                 
                                 if (fileMatches) {{
                                     fileItem.style.display = 'block';
                                     visibleFilesInSection++;
-                                    // Compter les issues dans ce fichier
-                                    const issues = fileItem.querySelectorAll('.issue-item');
+                                    
+                                    issues.forEach(issue => {{
+                                        issue.style.display = 'block';
+                                        const editInterface = issue.querySelector('.edit-interface');
+                                        if (editInterface) {{
+                                            editInterface.style.display = 'block';
+                                        }}
+                                    }});
+                                    
                                     issuesInSection += issues.length;
                                 }} else {{
                                     fileItem.style.display = 'none';

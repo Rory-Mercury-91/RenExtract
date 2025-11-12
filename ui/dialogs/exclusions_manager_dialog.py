@@ -9,6 +9,7 @@ Permet de voir, filtrer et supprimer les exclusions ajoutées via le rapport HTM
 import tkinter as tk
 from tkinter import ttk
 import os
+from pathlib import Path
 
 from ui.themes import theme_manager
 from infrastructure.config.config import config_manager
@@ -87,6 +88,60 @@ class ExclusionsManagerDialog:
         if not normalized:
             return "Projet inconnu"
         
+        normalized = normalized.rstrip('/')
+        normalized_lower = normalized.lower()
+
+        # Cas direct : le chemin existe et contient un dossier game → racine de projet probable
+        try:
+            path_obj = Path(normalized)
+            if path_obj.exists() and (path_obj / "game").exists():
+                direct_name = path_obj.name
+                if direct_name:
+                    return direct_name
+        except Exception:
+            pass
+
+        # Fallback basé sur les projets actifs mémorisés en configuration
+        candidate_paths = [
+            config_manager.get('current_renpy_project', ''),
+            config_manager.get('current_project', ''),
+            config_manager.get('current_maintenance_project', '')
+        ]
+
+        seen = set()
+        for candidate in candidate_paths:
+            if not candidate or candidate in seen:
+                continue
+            seen.add(candidate)
+
+            candidate_norm = self._normalize_path(candidate).rstrip('/')
+            if not candidate_norm:
+                continue
+
+            candidate_norm_lower = candidate_norm.lower()
+            try:
+                candidate_key = config_manager._normalize_project_key(candidate_norm)
+            except Exception:
+                candidate_key = candidate_norm
+
+            candidate_key = self._normalize_path(candidate_key).rstrip('/')
+            candidate_key_lower = candidate_key.lower()
+
+            if candidate_key_lower == normalized_lower:
+                name = os.path.basename(candidate_norm)
+                if name:
+                    return name
+
+            if candidate_norm_lower.startswith(normalized_lower + '/'):
+                name = os.path.basename(candidate_norm)
+                if name:
+                    return name
+
+            if normalized_lower.startswith(candidate_norm_lower + '/'):
+                name = os.path.basename(candidate_norm)
+                if name:
+                    return name
+        
         # Si la clé correspond à un fichier (contient une extension .rpy)
         if normalized.endswith('.rpy'):
             # Rechercher un segment 'game' pour identifier la racine Ren'Py
@@ -102,6 +157,15 @@ class ExclusionsManagerDialog:
                 return segments[-2]
             return segments[-1].replace('.rpy', '') or "Projet inconnu"
         
+        # Tentative supplémentaire : extraire le nom via helper global
+        try:
+            from infrastructure.helpers.unified_functions import extract_game_name
+            guessed_name = extract_game_name(normalized)
+            if guessed_name and guessed_name != "Projet_Inconnu":
+                return guessed_name
+        except Exception:
+            pass
+
         # Cas où la clé est un dossier complet
         base_name = os.path.basename(normalized.rstrip('/'))
         if base_name.lower() in ('game', 'tl'):

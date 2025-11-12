@@ -15,7 +15,7 @@ Module métier pour l'onglet 3 - Configuration extraction de textes
 
 import os
 import re
-import glob
+from pathlib import Path
 from typing import List, Dict, Set, Optional, Any, Tuple
 from datetime import datetime
 from infrastructure.logging.logging import log_message
@@ -41,6 +41,21 @@ class TextExtractionConfigBusiness:
         
         log_message("INFO", f"TextExtractionConfigBusiness initialisé - {len(self.system_generated_exclusions)} exclusions système", category="extraction_config")
     
+    @staticmethod
+    def _safe_collect_files(base_dir: str, pattern: str) -> List[str]:
+        """
+        Retourne la liste des fichiers correspondant au motif en gérant correctement
+        les chemins contenant des caractères spéciaux comme [ ] qui perturbent glob().
+        """
+        try:
+            base_path = Path(base_dir)
+            if not base_path.exists():
+                return []
+            return [str(path) for path in base_path.rglob(pattern)]
+        except Exception as e:
+            log_message("ATTENTION", f"Collecte de fichiers échouée dans {base_dir} ({pattern}) : {e}", category="extraction_config")
+            return []
+
     def get_combined_exclusions(self, user_exclusions: List[str]) -> List[str]:
         """
         Combine les exclusions utilisateur avec les exclusions système obligatoires
@@ -93,9 +108,9 @@ class TextExtractionConfigBusiness:
             
             # Compter les fichiers .rpy dans game
             if result['project_info']['has_game_folder']:
-                rpy_files = list(glob.glob(os.path.join(game_dir, "**/*.rpy"), recursive=True))
+                rpy_files = self._safe_collect_files(game_dir, "*.rpy")
                 # Exclure le dossier tl du comptage
-                rpy_files = [f for f in rpy_files if '/tl/' not in f.replace('\\', '/')]
+                rpy_files = [f for f in rpy_files if 'tl' not in Path(f).parts]
                 result['project_info']['game_rpy_count'] = len(rpy_files)
             
             if not result['project_info']['has_tl_folder']:
@@ -148,7 +163,7 @@ class TextExtractionConfigBusiness:
         
         try:
             # Compter les fichiers .rpy
-            rpy_files = list(glob.glob(os.path.join(lang_path, "**/*.rpy"), recursive=True))
+            rpy_files = self._safe_collect_files(lang_path, "*.rpy")
             lang_info['file_count'] = len(rpy_files)
             
             if rpy_files:
@@ -216,7 +231,7 @@ class TextExtractionConfigBusiness:
             tl_old_single_pattern = re.compile(r"old\s+'([^'\\]*(?:\\.[^'\\]*)*)'")
             i18n_double_pattern = re.compile(r'__?\(\s*"([^"\\]*(?:\\.[^"\\]*)*)"')
             i18n_single_pattern = re.compile(r"__?\(\s*'([^'\\]*(?:\\.[^'\\]*)*)'")            
-            rpy_files = list(glob.glob(os.path.join(tl_folder, "**/*.rpy"), recursive=True))
+            rpy_files = self._safe_collect_files(tl_folder, "*.rpy")
             
             if not rpy_files:
                 log_message("INFO", "Dossier tl vide ou inexistant", category="extraction_config")
@@ -303,8 +318,8 @@ class TextExtractionConfigBusiness:
                 return result
             
             # Vérifier qu'il y a des fichiers .rpy dans game
-            rpy_files = list(glob.glob(os.path.join(game_folder, "**/*.rpy"), recursive=True))
-            rpy_files = [f for f in rpy_files if '/tl/' not in f.replace('\\', '/')]
+            rpy_files = self._safe_collect_files(game_folder, "*.rpy")
+            rpy_files = [f for f in rpy_files if 'tl' not in Path(f).parts]
             
             if not rpy_files:
                 result['warnings'].append("Aucun fichier .rpy trouvé dans le dossier game")
@@ -326,7 +341,7 @@ class TextExtractionConfigBusiness:
                 return result
             
             # Vérifier qu'il y a des traductions dans cette langue
-            lang_rpy_files = list(glob.glob(os.path.join(tl_language_folder, "**/*.rpy"), recursive=True))
+            lang_rpy_files = self._safe_collect_files(tl_language_folder, "*.rpy")
             if not lang_rpy_files:
                 result['warnings'].append(f"Aucun fichier .rpy trouvé dans la langue '{selected_language}'")
             
@@ -552,8 +567,8 @@ class TextExtractionConfigBusiness:
                 return result
             
             # Analyse des fichiers .rpy
-            rpy_files = list(glob.glob(os.path.join(game_folder, "**/*.rpy"), recursive=True))
-            game_rpy_files = [f for f in rpy_files if '/tl/' not in f.replace('\\', '/')]
+            rpy_files = self._safe_collect_files(game_folder, "*.rpy")
+            game_rpy_files = [f for f in rpy_files if 'tl' not in Path(f).parts]
             
             result['structure_analysis'] = {
                 'total_rpy_files': len(rpy_files),
@@ -572,7 +587,7 @@ class TextExtractionConfigBusiness:
                 for item in os.listdir(tl_folder):
                     lang_path = os.path.join(tl_folder, item)
                     if os.path.isdir(lang_path) and item.lower() != 'none':
-                        lang_rpy_files = list(glob.glob(os.path.join(lang_path, "**/*.rpy"), recursive=True))
+                        lang_rpy_files = self._safe_collect_files(lang_path, "*.rpy")
                         if lang_rpy_files:
                             languages.append(item)
                 

@@ -790,8 +790,8 @@ init python early hide:
             # Monitoring en temps réel avec timeout adaptatif
             tl_folder = os.path.join(game_dir, "tl", language)
             generation_start_time = time.time()
-            timeout_seconds = 120  # 2 minutes d'inactivité (pas de nouveaux fichiers)
-            initial_timeout = 60  # 1 minute avant le premier fichier
+            timeout_seconds = 600  # 10 minutes d'inactivité (pas de nouveaux fichiers)
+            initial_timeout = 300  # 5 minutes avant le premier fichier
             last_file_count = 0
             last_activity_time = time.time()  # Dernière fois qu'un nouveau fichier a été détecté
             first_file_detected = False  # Indique si au moins un fichier a été généré

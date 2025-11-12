@@ -1,6 +1,33 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-12 (v1.2.14)
+
+### ✨ Améliorations
+
+#### 🕒 Génération TL tolérante
+- **Contexte** : certains projets volumineux mettaient plus de deux minutes avant d’écrire un nouveau fichier et la génération se coupait prématurément
+- **Action** : relevé du seuil d’inactivité à **10 minutes** (et 5 minutes pour le tout premier fichier) pour laisser le temps aux projets lourds de progresser
+- **Impact** : plus de coupure intempestive tant que le répertoire `tl/` continue de recevoir des fichiers, même lentement
+- **Fichier modifié** : `core/services/translation/translation_generation_business.py`
+
+### 🐛 Corrections et améliorations
+
+#### 📝 Rapport de cohérence – éditeur inline toujours visible
+- **Problème résolu** : la zone de saisie et ses boutons disparaissaient lorsqu’on filtrant par « Tous les fichiers »
+- **Solution** : le filtrage affiche désormais l’éditeur pour chaque erreur conservée, quel que soit le filtre actif
+- **Impact** : on peut corriger ou coller des traductions sans devoir cibler un fichier particulier
+- **Fichier modifié** : `core/services/reporting/coherence_html_report_generator.py`
+
+### 🔄 Compatibilité
+
+#### 🎯 Module de surveillance temps réel
+- **Validation** : le module `v2` est désormais certifié sur **Ren’Py 7.6.1** (jeu “Girl Scout Island”)
+- **Conséquence** : sélection automatique du module adéquat pour cette version sans réglage manuel
+- **Fichier modifié** : `core/services/tools/realtime_editor_business.py`
+
+---
+
 ## 2025-11-10 (v1.2.13)
 
 ### ✨ Améliorations

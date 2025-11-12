@@ -132,30 +132,30 @@ def translate_with_groq_api(text, source_lang="auto", target_lang="fr", tone="in
         # Instructions de ton selon la sélection
         tone_instruction = ""
         if tone == "formel":
-            tone_instruction = "\n4. Utilise un ton FORMEL (vouvoiement, registre soutenu)"
+            tone_instruction = "\n6. Utilise un ton FORMEL (vouvoiement, registre soutenu)"
         elif tone == "neutre":
-            tone_instruction = "\n4. Utilise un ton NEUTRE (ni tutoiement ni vouvoiement)"
+            tone_instruction = "\n6. Utilise un ton NEUTRE (ni tutoiement ni vouvoiement)"
         else:  # informel par défaut
-            tone_instruction = "\n4. Utilise un ton INFORMEL (tutoiement, registre courant)"
+            tone_instruction = "\n6. Utilise un ton INFORMEL (tutoiement, registre courant)"
         
         # Instructions de style
         style_instruction = ""
         if style == "Littéral":
-            style_instruction = "\n5. Traduis de manière LITTÉRALE en respectant au maximum la structure originale"
+            style_instruction = "\n7. Traduis de manière LITTÉRALE en respectant au maximum la structure originale"
         elif style == "Créatif":
-            style_instruction = "\n5. Traduis de manière CRÉATIVE en adaptant idiomes et expressions culturelles"
+            style_instruction = "\n7. Traduis de manière CRÉATIVE en adaptant idiomes et expressions culturelles"
         else:  # Naturel par défaut
-            style_instruction = "\n5. Traduis de manière NATURELLE en équilibrant fidélité et fluidité"
+            style_instruction = "\n7. Traduis de manière NATURELLE en équilibrant fidélité et fluidité"
         
         # Instructions de contexte
         context_instruction = ""
         if game_context != "Général":
-            context_instruction = f"\n6. Contexte du jeu : {game_context.upper()} - adapte le vocabulaire en conséquence"
+            context_instruction = f"\n8. Contexte du jeu : {game_context.upper()} - adapte le vocabulaire en conséquence"
         
         # Instructions personnalisées
         custom_instruction = ""
         if custom_instr:
-            custom_instruction = f"\n7. Instructions supplémentaires : {custom_instr}"
+            custom_instruction = f"\n9. Instructions supplémentaires : {custom_instr}"
         
         # ✅ NOUVEAU : Contexte des personnages
         characters_context = ""
@@ -186,10 +186,11 @@ def translate_with_groq_api(text, source_lang="auto", target_lang="fr", tone="in
         prompt = f"""Tu es un traducteur professionnel pour jeux vidéo Ren'Py. Traduis ce texte du {source_name} vers le {target_name}.
 
 RÈGLES STRICTES :
-1. Préserve TOUTES les balises Ren'Py : {{i}}, {{/i}}, [p], [tooltip], \\", etc.
-2. Retourne UNIQUEMENT la traduction finale, SANS notes, SANS explications, SANS commentaires
-3. Ne modifie que le texte visible, jamais les balises ou la structure
-4. NE RETOURNE JAMAIS LES GUILLEMETS (" ") dans ta réponse - seulement le texte traduit brut{tone_instruction}{style_instruction}{context_instruction}{custom_instruction}{characters_context}{conversation_context}
+1. Préserve STRICTEMENT tous les éléments techniques et de code : balises Ren'Py ({{i}}, {{/i}}, {{color=...}}, {{w=...}}, {{fast}}, {{size=...}}, {{p}}, {{/p}}), balises HTML éventuelles (<b>, </b>, <i>), variables et balises entre crochets ([player_name], [p], [variable]), placeholders Python (%s, %%, %(name)s), expressions avec doubles accolades ({{#}}, {{=}}, {{space=...}}). NE LES MODIFIE JAMAIS, ne les supprime pas, ne les duplique pas, ne les déplace pas.
+2. Conserve exactement la ponctuation, les espaces, les tabulations, les retours à la ligne et l'ordre des segments d'origine.
+3. Ne modifie que les mots à traduire autour de ces éléments techniques ; ils doivent rester au même emplacement et dans le même ordre.
+4. Retourne UNIQUEMENT la traduction finale, SANS notes, SANS explications, SANS commentaires.
+5. NE RETOURNE JAMAIS LES GUILLEMETS (" ") dans ta réponse - seulement le texte traduit brut{tone_instruction}{style_instruction}{context_instruction}{custom_instruction}{characters_context}{conversation_context}
 
 Texte à traduire :
 {speaker + ' ' if speaker else ''}"{text}"
