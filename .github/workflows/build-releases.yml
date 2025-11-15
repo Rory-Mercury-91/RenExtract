@@ -129,6 +129,13 @@ jobs:
           # Copier l'exécutable
           copy "dist/RenExtract.exe" "artifacts/windows/"
           
+          # ✅ Vérifier que l'icône est bien intégrée dans l'exécutable
+          if (Test-Path icone.ico) {
+            echo "✅ Icône intégrée dans l'exécutable via --icon=icone.ico"
+            echo "ℹ️  Note: Si l'icône ne s'affiche pas correctement sur Windows, vider le cache d'icônes:"
+            echo "   ie4uinit.exe -show (ou redémarrer l'explorateur Windows)"
+          }
+          
           # Créer l'archive avec un nom descriptif
           $version = "${{ env.RELEASE_NAME }}"
           if (-not $version.StartsWith("v")) {

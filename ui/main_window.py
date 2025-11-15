@@ -90,9 +90,21 @@ class MainWindow:
         try:
             icon_path = get_resource_path("icone.ico")
             if os.path.exists(icon_path):
-                # Sur Windows, utiliser iconbitmap
+                # Sur Windows, utiliser iconbitmap + SetCurrentProcessExplicitAppUserModelID
                 if sys.platform == "win32":
-                    self.root.iconbitmap(icon_path)
+                    try:
+                        self.root.iconbitmap(icon_path)
+                        # ✅ CORRECTION : Définir l'AppUserModelID pour que Windows utilise la bonne icône dans la barre des tâches
+                        try:
+                            import ctypes
+                            # Identifiant unique pour l'application (utilisé par Windows pour l'icône de la barre des tâches)
+                            app_id = 'com.renextract.app.1.2.15'
+                            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+                            log_message("DEBUG", f"AppUserModelID défini: {app_id}", category="ui_main")
+                        except Exception as e_win:
+                            log_message("DEBUG", f"Impossible de définir AppUserModelID: {e_win}", category="ui_main")
+                    except Exception as e_ico:
+                        log_message("DEBUG", f"Icône Windows non chargée: {e_ico}", category="ui_main")
                 else:
                     # Sur Linux/macOS, utiliser iconphoto avec une image PhotoImage
                     try:
