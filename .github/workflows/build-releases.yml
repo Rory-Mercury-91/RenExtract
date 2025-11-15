@@ -118,6 +118,7 @@ jobs:
             --add-data "ui;ui" `
             --add-data "04_Configs;04_Configs" `
             --add-data "VERSION.txt;." `
+            --add-data "icone.ico;." `
             --hidden-import=groq `
             --hidden-import=typing_extensions `
             --hidden-import=tkinter `
@@ -237,6 +238,7 @@ jobs:
             --add-data "ui:ui" \
             --add-data "04_Configs:04_Configs" \
             --add-data "VERSION.txt:." \
+            --add-data "icone.ico:." \
             --hidden-import=groq \
             --hidden-import=typing_extensions \
             main.py

@@ -88,7 +88,37 @@ class MainWindow:
         
         # Appliquer l'icône personnalisée compatible PyInstaller
         try:
-            self.root.iconbitmap(get_resource_path("icone.ico"))
+            icon_path = get_resource_path("icone.ico")
+            if os.path.exists(icon_path):
+                # Sur Windows, utiliser iconbitmap
+                if sys.platform == "win32":
+                    self.root.iconbitmap(icon_path)
+                else:
+                    # Sur Linux/macOS, utiliser iconphoto avec une image PhotoImage
+                    try:
+                        from PIL import Image, ImageTk
+                        img = Image.open(icon_path)
+                        # Convertir en format compatible (si c'est un ICO, extraire la première image)
+                        if hasattr(img, 'n_frames') and img.n_frames > 1:
+                            img.seek(0)
+                        # Redimensionner si nécessaire (tkinter préfère des tailles standard)
+                        img = img.resize((256, 256), Image.Resampling.LANCZOS)
+                        photo = ImageTk.PhotoImage(img)
+                        self.root.iconphoto(True, photo)
+                        # Garder une référence pour éviter le garbage collection
+                        self._icon_photo = photo
+                    except ImportError:
+                        # Si PIL n'est pas disponible, essayer iconbitmap quand même
+                        self.root.iconbitmap(icon_path)
+                    except Exception as e2:
+                        log_message("DEBUG", f"Icône PIL non chargée: {e2}", category="ui_main")
+                        # Fallback sur iconbitmap
+                        try:
+                            self.root.iconbitmap(icon_path)
+                        except:
+                            pass
+            else:
+                log_message("DEBUG", f"Icône introuvable: {icon_path}", category="ui_main")
         except Exception as e:
             log_message("DEBUG", f"Icône non chargée: {e}", category="ui_main")
         
