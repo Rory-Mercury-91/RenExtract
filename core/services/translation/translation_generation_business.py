@@ -754,6 +754,9 @@ init python early hide:
                     log_message("ATTENTION", f"Impossible de supprimer traceback.txt : {e}", category="renpy_generator_tl")
             
             # === GÉNÉRATION TRADUCTIONS REN'PY ===
+            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            
             process = subprocess.Popen(
                 cmd,
                 cwd=project_path,
@@ -763,7 +766,8 @@ init python early hide:
                 encoding='utf-8',
                 errors='ignore',
                 startupinfo=startupinfo,
-                env=env
+                env=env,
+                creationflags=creationflags
             )
             
             # ✅ NOUVEAU : Surveillance traceback.txt en temps réel
@@ -1250,6 +1254,9 @@ init python early hide:
                     log_message("ATTENTION", f"Impossible de supprimer traceback.txt : {e}", category="renpy_generator_tl")
             
             # Lancer le processus avec monitoring
+            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -1258,7 +1265,8 @@ init python early hide:
                 encoding='utf-8',
                 errors='ignore',
                 startupinfo=startupinfo,
-                env=env
+                env=env,
+                creationflags=creationflags
             )
             
             # ✅ NOUVEAU : Surveillance traceback.txt en temps réel

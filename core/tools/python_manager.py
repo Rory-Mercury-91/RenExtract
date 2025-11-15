@@ -293,11 +293,15 @@ class PythonManager:
             True si l'exécutable fonctionne
         """
         try:
+            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            
             result = subprocess.run(
                 [python_exe, "--version"], 
                 capture_output=True, 
                 text=True, 
-                timeout=5
+                timeout=5,
+                creationflags=creationflags
             )
             
             if result.returncode == 0:
@@ -375,13 +379,17 @@ except Exception as e:
                 startupinfo.wShowWindow = subprocess.SW_HIDE
             
             # Test rapide (2 secondes max)
+            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
+            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            
             result = subprocess.run(
                 [python_exe, "-c", test_script],
                 capture_output=True,
                 text=True,
                 timeout=2,
                 env=clean_env,
-                startupinfo=startupinfo
+                startupinfo=startupinfo,
+                creationflags=creationflags
             )
             
             if result.returncode == 0 and "COMPAT_OK" in result.stdout:

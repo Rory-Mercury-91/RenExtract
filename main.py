@@ -402,17 +402,21 @@ def cleanup_orphaned_ports():
                     if sys.platform.startswith('win'):
                         # Windows: utiliser netstat et taskkill
                         import subprocess
+                        # ✅ CORRECTION : Masquer la fenêtre console sur Windows
+                        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                        
                         netstat_output = subprocess.check_output(
                             f'netstat -ano | findstr :{port}',
                             shell=True,
-                            text=True
+                            text=True,
+                            creationflags=creationflags
                         )
                         lines = netstat_output.strip().split('\n')
                         for line in lines:
                             if f':{port}' in line and 'LISTENING' in line:
                                 parts = line.split()
                                 pid = parts[-1]
-                                subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
+                                subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True, creationflags=creationflags)
                                 cleaned_ports.append(port)
                                 log_message("DEBUG", f"Port {port} nettoyé (PID: {pid})", category="main")
                                 break
