@@ -237,6 +237,10 @@ class UnifiedBackupManager:
                 result['error'] = "Fichier source introuvable"
                 return result
         
+            # ✅ CORRECTION : Normaliser le chemin source (absolu et normalisé)
+            # Cela garantit que le chemin sera correctement enregistré et restauré
+            source_path = os.path.abspath(os.path.normpath(source_path))
+        
             if backup_type not in self.BACKUP_DESCRIPTIONS:
                 backup_type = BackupType.SECURITY
                 log_message("ATTENTION", f"Type de backup invalide, utilisation de SECURITY par défaut", category="backup")
@@ -633,6 +637,10 @@ class UnifiedBackupManager:
             if not source_path or not os.path.exists(source_path):
                 result['error'] = "Fichier/dossier source introuvable"
                 return result
+            
+            # ✅ CORRECTION : Normaliser le chemin source (absolu et normalisé)
+            # Cela garantit que le chemin sera correctement enregistré et restauré
+            source_path = os.path.abspath(os.path.normpath(source_path))
             
             if backup_type not in self.BACKUP_DESCRIPTIONS:
                 backup_type = BackupType.SECURITY

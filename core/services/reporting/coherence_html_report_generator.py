@@ -237,6 +237,15 @@ class HtmlCoherenceReportGenerator:
             border-color: rgba(81, 207, 102, 0.5) !important;
           }
           
+          /* ✅ CORRECTION : S'assurer que le textarea est toujours visible */
+          .edit-interface {
+            display: block !important;
+          }
+          
+          .edit-field {
+            display: block !important;
+          }
+          
           .saved-badge {
             display: inline-flex;
             align-items: center;
@@ -1074,7 +1083,8 @@ class HtmlCoherenceReportGenerator:
 
                         if (showSection) {{
                             // Compter et filtrer les fichiers dans cette section
-                            const fileItems = section.querySelectorAll('[data-file]');
+                            // ✅ CORRECTION : Utiliser .file-section au lieu de [data-file]
+                            const fileItems = section.querySelectorAll('.file-section');
                             let visibleFilesInSection = 0;
                             let issuesInSection = 0;
 
@@ -1089,10 +1099,16 @@ class HtmlCoherenceReportGenerator:
                                     
                                     issues.forEach(issue => {{
                                         issue.style.display = 'block';
+                                        // ✅ CORRECTION : S'assurer que le textarea est toujours visible
                                         const editInterface = issue.querySelector('.edit-interface');
                                         if (editInterface) {{
                                             editInterface.style.display = 'block';
                                         }}
+                                        // ✅ CORRECTION : S'assurer que tous les textarea sont visibles
+                                        const textareas = issue.querySelectorAll('.edit-field');
+                                        textareas.forEach(textarea => {{
+                                            textarea.style.display = 'block';
+                                        }});
                                     }});
                                     
                                     issuesInSection += issues.length;
@@ -1114,6 +1130,52 @@ class HtmlCoherenceReportGenerator:
 
                     updateVisibleStats(visibleSections, totalVisibleIssues);
                 }}
+                
+                // ✅ NOUVEAU : Fonction pour mettre à jour dynamiquement le filtre par fichier
+                function updateFileFilterOptions() {{
+                    const selectedErrorType = errorTypeFilter ? errorTypeFilter.value : 'all';
+                    const fileFilterSelect = document.getElementById('fileFilter');
+                    if (!fileFilterSelect) return;
+                    
+                    // Récupérer tous les fichiers disponibles pour le type d'erreur sélectionné
+                    const availableFiles = new Set();
+                    
+                    document.querySelectorAll('.error-type-section').forEach(section => {{
+                        const errorType = section.dataset.errorType;
+                        const matchesErrorType = selectedErrorType === 'all' || errorType === selectedErrorType;
+                        
+                        if (matchesErrorType) {{
+                            section.querySelectorAll('.file-section').forEach(fileSection => {{
+                                const fileName = fileSection.getAttribute('data-file');
+                                if (fileName) {{
+                                    availableFiles.add(fileName);
+                                }}
+                            }});
+                        }}
+                    }});
+                    
+                    // Sauvegarder la sélection actuelle
+                    const currentSelection = fileFilterSelect.value;
+                    
+                    // Vider et remplir le select
+                    fileFilterSelect.innerHTML = '<option value="all">Tous les fichiers</option>';
+                    
+                    // Trier les fichiers par ordre alphabétique
+                    const sortedFiles = Array.from(availableFiles).sort();
+                    sortedFiles.forEach(fileName => {{
+                        const option = document.createElement('option');
+                        option.value = fileName;
+                        option.textContent = fileName;
+                        fileFilterSelect.appendChild(option);
+                    }});
+                    
+                    // Restaurer la sélection si elle existe toujours, sinon "all"
+                    if (currentSelection && Array.from(fileFilterSelect.options).some(opt => opt.value === currentSelection)) {{
+                        fileFilterSelect.value = currentSelection;
+                    }} else {{
+                        fileFilterSelect.value = 'all';
+                    }}
+                }}
 
                 function updateVisibleStats(sections, issues) {{
                     const filterInfo = document.getElementById('filterInfo');
@@ -1134,6 +1196,9 @@ class HtmlCoherenceReportGenerator:
                     if (errorTypeFilter) errorTypeFilter.value = 'all';
                     if (fileFilter) fileFilter.value = 'all';
                     
+                    // ✅ CORRECTION : Mettre à jour le filtre par fichier avant de réappliquer
+                    updateFileFilterOptions();
+                    
                     // Réappliquer les filtres pour tout afficher
                     applyFilters();
                     
@@ -1150,9 +1215,18 @@ class HtmlCoherenceReportGenerator:
                     }});
                 }}
 
-                if (errorTypeFilter) errorTypeFilter.addEventListener('change', applyFilters);
+                // ✅ CORRECTION : Mettre à jour le filtre par fichier quand le type d'erreur change
+                if (errorTypeFilter) {{
+                    errorTypeFilter.addEventListener('change', function() {{
+                        updateFileFilterOptions();
+                        applyFilters();
+                    }});
+                }}
                 if (fileFilter) fileFilter.addEventListener('change', applyFilters);
                 if (resetBtn) resetBtn.addEventListener('click', resetAllFilters);
+                
+                // Initialiser le filtre par fichier au chargement
+                updateFileFilterOptions();
 
                 // Tout déplier / Tout replier
                 const expandAllBtn = document.getElementById('expandAll');

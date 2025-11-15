@@ -1,6 +1,41 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-15 (v1.2.15)
+
+### 🐛 Corrections et améliorations
+
+#### 💾 Système de sauvegarde/restauration – normalisation des chemins
+- **Problème résolu** : Après le nettoyage du dossier `tl`, le chemin d'accès était mal enregistré, empêchant la restauration de fonctionner correctement
+- **Cause** : Les chemins n'étaient pas normalisés (absolus et normalisés) avant d'être enregistrés dans les métadonnées
+- **Solution** : Normalisation systématique des chemins avec `os.path.abspath(os.path.normpath())` lors de la création et de la restauration des sauvegardes
+- **Impact** : Les sauvegardes ZIP créées lors du nettoyage peuvent désormais être restaurées correctement, même avec des chemins contenant des espaces ou des caractères spéciaux
+- **Fichiers modifiés** :
+  - `core/models/backup/unified_backup_manager.py` : Normalisation dans `create_backup()` et `create_zip_backup()`
+  - `ui/dialogs/unified_backup_interface.py` : Normalisation dans `restore_selected()`, `_get_zip_source_path_smart()` et `_extract_zip_backup()`
+
+#### 📝 Rapport de cohérence HTML – améliorations du filtrage
+- **Problème résolu 1** : Le bloc textarea n'apparaissait pas lors du filtrage par type d'erreur + fichier
+- **Problème résolu 2** : Le filtre par fichier affichait tous les fichiers au lieu de seulement ceux contenant des erreurs du type sélectionné
+- **Solution** :
+  - Correction du sélecteur dans `applyFilters()` pour utiliser `.file-section` au lieu de `[data-file]`
+  - Ajout de la fonction `updateFileFilterOptions()` qui met à jour dynamiquement le filtre par fichier selon le type d'erreur sélectionné
+  - Ajout de règles CSS pour garantir la visibilité du textarea et de l'interface d'édition
+- **Impact** :
+  - Le textarea est maintenant toujours visible, même lors du filtrage
+  - Le filtre par fichier s'actualise automatiquement et n'affiche que les fichiers pertinents
+  - Le bloc d'édition (textarea + boutons) est présent sur tous les types d'erreur
+- **Fichier modifié** : `core/services/reporting/coherence_html_report_generator.py`
+
+### 🔄 Compatibilité
+
+#### 🎯 Module de surveillance temps réel – nouvelles validations
+- **Ren'Py 7.5.1** : Module `v2` validé sur le jeu "Corrupted Love"
+- **Ren'Py 8.0.1** : Module `v2` validé sur le jeu "Motherless"
+- **Conséquence** : Sélection automatique du module adéquat pour ces versions sans réglage manuel
+- **Fichier modifié** : `core/services/tools/realtime_editor_business.py`
+
+---
 ## 2025-11-12 (v1.2.14)
 
 ### ✨ Améliorations

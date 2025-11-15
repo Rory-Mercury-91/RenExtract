@@ -33,9 +33,11 @@ class RealTimeEditorBusiness:
         (8, 2, 1): "v1",  # Testé sur FamilyIsland
         (8, 3, 2): "v1",  # Compatible avec le module v1
         (8, 3, 7): "v1",  # Compatible avec le module v1
+        (8, 0, 1): "v2",  # ✅ Ren'Py 8.0.1 validé sur Motherless
         (7, 3, 5): "v2",  # ✅ Ren'Py 7.3.5 validé (dialogues + choix)
-        (7, 6, 3): "v2",  # En attente de traitement, utilise le module v2
+        (7, 5, 1): "v2",  # ✅ Ren'Py 7.5.1 validé sur Corrupted Love
         (7, 6, 1): "v2",  # ✅ Ren'Py 7.6.1 validé sur Girl Scout Island (reload + choix OK)
+        (7, 6, 3): "v2",  # En attente de traitement, utilise le module v2
         # Ajoutez ici les futures versions et modules
     }
     

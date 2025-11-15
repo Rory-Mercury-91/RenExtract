@@ -945,6 +945,11 @@ class UnifiedBackupDialog:
                 target_path = backup.get('source_path')
                 log_message("DEBUG", f"Target path original pour ZIP: {target_path}", category="ui_backup")
                 
+                # ✅ CORRECTION : Normaliser le chemin avant de vérifier s'il existe
+                if target_path:
+                    target_path = os.path.abspath(os.path.normpath(target_path))
+                    log_message("DEBUG", f"Target path normalisé pour ZIP: {target_path}", category="ui_backup")
+                
                 # Si le chemin original n'existe pas, essayer de le reconstruire intelligemment
                 if not target_path or not os.path.exists(target_path):
                     target_path = self._get_zip_source_path_smart(backup)
@@ -964,6 +969,11 @@ class UnifiedBackupDialog:
                 # Pour les fichiers individuels (SECURITY, REALTIME_EDIT)
                 target_path = backup.get('source_path')
                 log_message("DEBUG", f"Target path pour fichier (logs): {target_path}", category="ui_backup")
+                
+                # ✅ CORRECTION : Normaliser le chemin avant de vérifier s'il existe
+                if target_path:
+                    target_path = os.path.abspath(os.path.normpath(target_path))
+                    log_message("DEBUG", f"Target path normalisé pour fichier: {target_path}", category="ui_backup")
                 
                 if not target_path or not os.path.exists(target_path):
                     if hasattr(self.manager, '_get_source_path_on_demand'):
@@ -1091,9 +1101,12 @@ class UnifiedBackupDialog:
         try:
             # D'abord, essayer d'utiliser le chemin source original
             original_source_path = backup.get('source_path')
-            if original_source_path and os.path.exists(original_source_path):
-                log_message("INFO", f"Chemin source original trouvé: {original_source_path}", category="ui_backup")
-                return original_source_path
+            if original_source_path:
+                # ✅ CORRECTION : Normaliser le chemin avant de vérifier s'il existe
+                original_source_path = os.path.abspath(os.path.normpath(original_source_path))
+                if os.path.exists(original_source_path):
+                    log_message("INFO", f"Chemin source original trouvé: {original_source_path}", category="ui_backup")
+                    return original_source_path
             
             # Si le chemin original n'existe pas, essayer de le reconstruire
             backup_type = backup['type']
@@ -1171,10 +1184,14 @@ class UnifiedBackupDialog:
     def _extract_project_root_from_source_path(self, source_path):
         """Extrait le répertoire racine du projet depuis le chemin source original"""
         try:
+            # ✅ CORRECTION : Normaliser le chemin source avant l'analyse
+            source_path = os.path.abspath(os.path.normpath(source_path))
+            
             # Analyser le chemin source pour trouver le projet racine
             # Exemple: D:\02 - Jeux VN\02 - A traduire\WastelandGuardians-0.6-pc\game\tl\french
             # → Projet racine: D:\02 - Jeux VN\02 - A traduire\WastelandGuardians-0.6-pc
             
+            # Normaliser les séparateurs pour l'analyse
             path_parts = source_path.replace('\\', '/').split('/')
             
             # Chercher les indicateurs de fin de projet
@@ -1184,6 +1201,8 @@ class UnifiedBackupDialog:
                 if part in project_indicators:
                     # Le projet racine est le dossier parent de cet indicateur
                     project_root = '/'.join(path_parts[:i])
+                    # ✅ CORRECTION : Normaliser le chemin reconstruit
+                    project_root = os.path.normpath(project_root)
                     if os.path.exists(project_root):
                         log_message("INFO", f"Projet racine extrait: {project_root}", category="ui_backup")
                         return project_root
@@ -1191,6 +1210,8 @@ class UnifiedBackupDialog:
             # Si aucun indicateur trouvé, essayer de trouver le dossier contenant le jeu
             for i in range(len(path_parts) - 1, -1, -1):
                 test_path = '/'.join(path_parts[:i+1])
+                # ✅ CORRECTION : Normaliser le chemin reconstruit
+                test_path = os.path.normpath(test_path)
                 if os.path.exists(test_path):
                     # Vérifier si ce dossier contient des projets Ren'Py
                     if self._is_project_directory(test_path):
@@ -1348,6 +1369,13 @@ class UnifiedBackupDialog:
         import shutil
         
         try:
+            # ✅ CORRECTION : Normaliser le chemin cible avant l'extraction
+            target_dir = os.path.abspath(os.path.normpath(target_dir))
+            log_message("DEBUG", f"Chemin cible normalisé pour extraction ZIP: {target_dir}", category="ui_backup")
+            
+            # Créer le dossier cible s'il n'existe pas
+            os.makedirs(target_dir, exist_ok=True)
+            
             # Créer un dossier temporaire pour l'extraction
             temp_dir = os.path.join(os.path.dirname(zip_path), f"temp_extract_{os.path.basename(zip_path)}")
             
