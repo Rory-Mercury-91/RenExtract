@@ -1,6 +1,32 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-16 (v1.2.16)
+
+### 🐛 Corrections et améliorations
+
+#### 🖼️ Icône application – support multi-plateforme amélioré
+- **Problème résolu** : L'icône ne s'affichait pas correctement dans la barre des tâches Windows et sur l'exécutable
+- **Solution** :
+  - Ajout de `SetCurrentProcessExplicitAppUserModelID()` pour Windows afin que l'icône s'affiche correctement dans la barre des tâches
+  - Support amélioré pour Linux/macOS avec `iconphoto()` utilisant PIL/Pillow
+  - Inclusion de l'icône dans le bundle PyInstaller via `--add-data` pour Windows et Linux
+- **Impact** : L'icône personnalisée s'affiche maintenant correctement dans la fenêtre, la barre des tâches et sur l'exécutable
+- **Fichiers modifiés** :
+  - `ui/main_window.py` : Support multi-plateforme avec AppUserModelID pour Windows
+  - `.github/workflows/build-releases.yml` : Inclusion de l'icône dans les builds PyInstaller
+
+#### 🪟 Masquage des fenêtres de commande sur Windows
+- **Problème résolu** : Les fenêtres de commande (cmd.exe) s'affichaient et faisaient clignoter l'écran lors de l'exécution de certaines actions
+- **Solution** : Ajout systématique de `subprocess.CREATE_NO_WINDOW` sur tous les appels `subprocess.run()` et `subprocess.Popen()` sur Windows
+- **Impact** : Plus de clignotement d'écran, toutes les commandes s'exécutent en arrière-plan de manière silencieuse
+- **Fichiers modifiés** :
+  - `core/services/tools/cleaning_business.py` : Masquage lors de la génération lint.txt
+  - `core/services/translation/translation_generation_business.py` : Masquage pour les générations embedded et SDK
+  - `core/tools/python_manager.py` : Masquage pour les tests Python
+  - `main.py` : Masquage pour les commandes netstat/taskkill
+
+---
 ## 2025-11-15 (v1.2.15)
 
 ### 🐛 Corrections et améliorations
