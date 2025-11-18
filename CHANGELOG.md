@@ -1,6 +1,47 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-16 (v1.2.17)
+
+### ✨ Améliorations
+
+#### 🧭 Éditeur Temps Réel – menus à nombreux choix (sandbox)
+- **Nouveauté** : Conteneur scrollable avec ascenseur vertical pour l’interface des choix
+- **Détails** :
+  - Canvas + Scrollbar verticale, mise à jour automatique de la zone de scroll
+  - Défilement à la molette (Windows/Linux), y compris en fenêtre détachée
+  - Boutons “Ouvrir” et “Enregistrer Tous les Choix” toujours accessibles via le défilement
+- **Fichier modifié** : `ui/tab_tools/realtime_editor_tab.py`
+
+### 🐛 Corrections et compatibilité
+
+#### 🎯 Module de surveillance temps réel – compat et nettoyage du log
+- **Compatibilité** :
+  - Ren’Py 7.4.4 → module `v2` (validé: Between Salvation and Abyss)
+  - Ren’Py 8.2.3 → module `v2` (v1 incompatible, v2 OK partiel)
+  - Fallback amélioré pour versions inconnues: `v2` privilégié pour 7.x et 8.0/8.2
+- **Nettoyage du log** :
+  - Filtrage des placeholders hérités `{0}|{1}|{2}|{3}|{4}`
+  - Déduplication des doublons consécutifs du même dialogue
+- **Fichier modifié** : `core/services/tools/realtime_editor_business.py`
+
+#### 📊 Rapport de cohérence – contrôle des pourcentages amélioré
+- **Problème résolu** : Les variables Ren'Py `%(lettres)s`, `%(nom)d`, etc. étaient incorrectement signalées comme des erreurs "Pourcentages incohérents"
+- **Solution** : Le contrôle ignore désormais les variables Ren'Py valides et ne compte que les pourcentages littéraux isolés (qui doivent être échappés en `%%`)
+- **Pattern ignoré** : `%\([a-zA-Z0-9_]+\)[a-zA-Z]` (ex: `%(fa)s`, `%(nom)d`)
+- **Impact** : Plus de faux positifs sur les variables Ren'Py dans les dialogues traduits
+- **Fichier modifié** : `core/services/tools/coherence_checker_business.py`
+
+#### 🎯 Générateur de traductions – génération simple protégée
+- **Problème résolu** : Le bouton "Générer les traductions" générait automatiquement des fichiers supplémentaires (`99_Z_ScreenPreferences.rpy`, `common.rpy`, `screens.rpy`) même si aucune option n'était cochée, écrasant les fichiers existants
+- **Solution** :
+  - Détection automatique des générations simples (toutes les options à `False`)
+  - Génération simple : ignore complètement les options de la config et ne génère QUE les fichiers de traduction
+  - Protection backup : si un fichier est écrasé lors d'une génération avec options explicites, un backup avec timestamp est créé automatiquement
+- **Impact** : Le bouton "Générer les traductions" ne génère plus que les fichiers `.rpy` de traduction, sans écraser les fichiers de configuration existants
+- **Fichier modifié** : `core/services/translation/translation_generation_business.py`
+
+---
 ## 2025-11-16 (v1.2.16)
 
 ### 🐛 Corrections et améliorations

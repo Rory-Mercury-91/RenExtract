@@ -1799,9 +1799,46 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
     
     edit_main = tk.Frame(parent_container, bg=theme["bg"])
 
+    # === Conteneur scrollable (Canvas + Scrollbar) pour gérer >10 choix ===
+    # Le header et tout le contenu sont placés dans un inner_frame scrolable.
+    scroll_container = tk.Frame(edit_main, bg=theme["bg"])
+    scroll_container.pack(fill='both', expand=True)
+    canvas = tk.Canvas(scroll_container, bg=theme["bg"], highlightthickness=0)
+    canvas.pack(side='left', fill='both', expand=True)
+    v_scrollbar = tk.Scrollbar(scroll_container, orient="vertical", command=canvas.yview)
+    v_scrollbar.pack(side='right', fill='y')
+    canvas.configure(yscrollcommand=v_scrollbar.set)
+    inner_frame = tk.Frame(canvas, bg=theme["bg"])
+    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+
+    def _update_scroll_region(event=None):
+        try:
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        except Exception:
+            pass
+    inner_frame.bind("<Configure>", _update_scroll_region)
+
+    # Support molette (Windows/Linux)
+    def _on_mousewheel(event):
+        try:
+            delta = event.delta
+            if delta == 0 and hasattr(event, 'num'):
+                # Compat X11: Button-4/5
+                if event.num == 4:
+                    delta = 120
+                elif event.num == 5:
+                    delta = -120
+            canvas.yview_scroll(int(-1 * (delta / 120)), "units")
+        except Exception:
+            pass
+    # Binder sur le conteneur et ses enfants
+    inner_frame.bind_all("<MouseWheel>", _on_mousewheel)
+    inner_frame.bind_all("<Button-4>", _on_mousewheel)
+    inner_frame.bind_all("<Button-5>", _on_mousewheel)
+
     # ✅ HEADER SEULEMENT POUR LA FENÊTRE DÉTACHÉE
     if is_detached:
-        header_frame = tk.Frame(edit_main, bg=theme["bg"])
+        header_frame = tk.Frame(inner_frame, bg=theme["bg"])
         header_frame.pack(fill='x', padx=15, pady=(5, 10))
 
         if hasattr(main_interface, 'monitor_status_label'):
@@ -1817,7 +1854,7 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         _build_editor_controls(header_frame, main_interface, is_detached=True)
 
     # --- Titre principal ---
-    title_frame = tk.Frame(edit_main, bg=theme["bg"])
+    title_frame = tk.Frame(inner_frame, bg=theme["bg"])
     title_frame.pack(fill='x', pady=(0, 5), padx=5)
     choices = menu_info.get('choices', [])
     tk.Label(
@@ -1828,7 +1865,7 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
     ).pack(side='left')
 
     # --- Conteneur principal pour les grilles VO et VF ---
-    text_areas_frame = tk.Frame(edit_main, bg=theme["bg"])
+    text_areas_frame = tk.Frame(inner_frame, bg=theme["bg"])
     text_areas_frame.pack(fill='both', expand=True)
     text_areas_frame.grid_columnconfigure(0, weight=1)
     text_areas_frame.grid_columnconfigure(1, weight=1)
@@ -1933,7 +1970,7 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
                   bg=theme["button_primary_bg"], fg="#000000", font=('Segoe UI', 9), pady=4, padx=8).grid(row=2, column=0, padx=3, pady=(2, 3))
 
     # --- Boutons globaux ---
-    buttons_frame = tk.Frame(edit_main, bg=theme["bg"])
+    buttons_frame = tk.Frame(inner_frame, bg=theme["bg"])
     # ✅ Ajouter un petit espace en bas et à droite en mode détaché
     if is_detached:
         buttons_frame.pack(fill='x', pady=(10, 8), padx=(0, 8))

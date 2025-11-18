@@ -961,15 +961,53 @@ init python early hide:
                         result['warnings'].append(f"Erreur console développeur : {cons_error}")
 
                 # Options screen preferences avancées - Nouveau système modulaire unifié
-                # Vérifier si les options avancées sont passées explicitement
-                if options and 'advanced_screen_options' in options:
+                # ✅ CORRECTION : Ne générer les screen preferences QUE si explicitement demandé
+                # Le bouton "Générer les traductions" doit uniquement générer les traductions,
+                # sans prendre en compte les options cochées dans la config
+                
+                options_explicitly_passed = options and 'advanced_screen_options' in options
+                
+                # Détecter si c'est une génération simple (toutes les options sont False ou absentes)
+                is_simple_generation = False
+                if options:
+                    # Si les options explicites indiquent qu'on ne veut pas les features
+                    has_false_options = (
+                        options.get('create_common_file') == False or
+                        options.get('create_screen_file') == False or
+                        options.get('create_developer_console') == False or
+                        options.get('create_language_selector') == False or
+                        options.get('apply_system_font') == False
+                    )
+                    # Si aucune option avancée n'est explicitement activée
+                    no_explicit_options = (
+                        not options.get('create_common_file', False) and
+                        not options.get('create_screen_file', False) and
+                        not options.get('create_developer_console', False) and
+                        not options.get('create_language_selector', False) and
+                        not options.get('apply_system_font', False) and
+                        not options_explicitly_passed
+                    )
+                    is_simple_generation = has_false_options or no_explicit_options
+                
+                if options_explicitly_passed:
+                    # Options explicitement passées dans la génération
                     advanced_options = options['advanced_screen_options']
+                elif is_simple_generation:
+                    # Génération simple : ne PAS charger depuis la config, tout désactiver
+                    advanced_options = {
+                        'language_selector': False,
+                        'fontsize_control': False,
+                        'textbox_opacity': False,
+                        'textbox_offset': False,
+                        'textbox_outline': False
+                    }
+                    log_message("INFO", "Génération simple détectée - options screen preferences ignorées", category="renpy_generator_tl")
                 else:
-                    # Sinon, charger depuis la config
+                    # Sinon, charger depuis la config (pour génération avec options cochées)
                     advanced_options = config_manager.get_advanced_screen_options()
                 
-                # Si au moins une option est activée
-                if any(advanced_options.values()):
+                # Si au moins une option est activée ET que ce n'est pas une génération simple
+                if not is_simple_generation and any(advanced_options.values()):
                     if progress_callback:
                         progress_callback(96, "Création des options screen preferences...")
                     if status_callback:
@@ -2034,6 +2072,30 @@ init python early hide:
                     # Si l'image échoue, désactiver seulement les options textbox, pas fontsize
                     need_textbox = False
             
+            # ✅ CORRECTION : Vérifier si le fichier existe déjà avant de l'écraser
+            file_exists = target_file.exists()
+            backup_created = False
+            
+            if file_exists:
+                # Créer un backup du fichier existant avant écrasement
+                try:
+                    from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
+                    from datetime import datetime
+                    
+                    backup_manager = UnifiedBackupManager()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    backup_filename = f"99_Z_ScreenPreferences_backup_{timestamp}.rpy"
+                    backup_path = target_file.parent / backup_filename
+                    
+                    # Copier le fichier existant vers le backup
+                    import shutil
+                    shutil.copy2(target_file, backup_path)
+                    backup_created = True
+                    
+                    log_message("INFO", f"Backup créé du fichier existant: {backup_filename}", category="renpy_generator_tl")
+                except Exception as e:
+                    log_message("ATTENTION", f"Impossible de créer un backup du fichier existant: {e}", category="renpy_generator_tl")
+            
             # Générer le contenu
             content = self._generate_screen_preferences_content(
                 language,
@@ -2044,7 +2106,7 @@ init python early hide:
                 image_path_relative
             )
             
-            # Écrire le fichier
+            # Écrire le fichier (écrase si existant, crée si nouveau)
             target_file.write_text(content, encoding="utf-8", newline="\n")
             
             # Construire le message de résultat
@@ -2060,7 +2122,13 @@ init python early hide:
             if options.get('textbox_outline', False):
                 features.append("contour texte")
             
-            message = f"Options screen preferences créées: {', '.join(features)}"
+            if file_exists:
+                message = f"Options screen preferences recréées: {', '.join(features)}"
+                if backup_created:
+                    message += " (backup du fichier précédent créé)"
+            else:
+                message = f"Options screen preferences créées: {', '.join(features)}"
+            
             log_message("INFO", message, category="renpy_generator_tl")
             
             return True, message

@@ -795,23 +795,37 @@ class UnifiedCoherenceChecker:
         issues = []
         
         try:
-            # Variables de formatage %[^%]*%
-            old_format_vars = len(re.findall(r'%[^%]*%', old_text))
-            new_format_vars = len(re.findall(r'%[^%]*%', new_text))
+            def count_isolated_percents(text):
+                """Compte les pourcentages isolés en excluant les variables Ren'Py %(lettres)s et les %% échappés"""
+                # 1. Remplacer toutes les variables Ren'Py %(nom)s, %(nom)d, etc. par un placeholder
+                # Pattern: %(lettres ou chiffres ou underscore)lettre (s, d, i, f, etc.)
+                text_no_vars = re.sub(r'%\([a-zA-Z0-9_]+\)[a-zA-Z]', '__RENPY_VAR__', text)
+                
+                # 2. Remplacer tous les %% échappés par un placeholder
+                text_no_escaped = text_no_vars.replace('%%', '__DOUBLE_PERCENT__')
+                
+                # 3. Compter les % restants (pourcentages isolés)
+                isolated_count = text_no_escaped.count('%')
+                
+                return isolated_count
+            
+            # Compter les pourcentages isolés (hors variables Ren'Py et %% échappés)
+            old_isolated = count_isolated_percents(old_text)
+            new_isolated = count_isolated_percents(new_text)
             
             # Double % échappé
             old_double_percent = old_text.count('%%')
             new_double_percent = new_text.count('%%')
             
             # Fusionner les vérifications
-            format_mismatch = old_format_vars != new_format_vars
+            isolated_mismatch = old_isolated != new_isolated
             double_mismatch = old_double_percent != new_double_percent
             
-            if format_mismatch or double_mismatch:
+            if isolated_mismatch or double_mismatch:
                 # Construire une description détaillée
                 details = []
-                if format_mismatch:
-                    details.append(f"Variables % (Attendu: {old_format_vars}, Présent: {new_format_vars})")
+                if isolated_mismatch:
+                    details.append(f"Variables % (Attendu: {old_isolated}, Présent: {new_isolated})")
                 if double_mismatch:
                     details.append(f"Échappés %% (Attendu: {old_double_percent}, Présent: {new_double_percent})")
                 

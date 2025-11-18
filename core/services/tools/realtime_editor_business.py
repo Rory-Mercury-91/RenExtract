@@ -31,6 +31,7 @@ class RealTimeEditorBusiness:
         (8, 1, 1): "v1",  # Compatible avec le module v1
         (8, 1, 2): "v1",  # Testé sur Nudist Olivia
         (8, 2, 1): "v1",  # Testé sur FamilyIsland
+        (8, 2, 3): "v2",  # Partiellement compatible v2, v1 incompatible (signalé)
         (8, 3, 2): "v1",  # Compatible avec le module v1
         (8, 3, 7): "v1",  # Compatible avec le module v1
         (8, 0, 1): "v2",  # ✅ Ren'Py 8.0.1 validé sur Motherless
@@ -38,6 +39,7 @@ class RealTimeEditorBusiness:
         (7, 5, 1): "v2",  # ✅ Ren'Py 7.5.1 validé sur Corrupted Love
         (7, 6, 1): "v2",  # ✅ Ren'Py 7.6.1 validé sur Girl Scout Island (reload + choix OK)
         (7, 6, 3): "v2",  # En attente de traitement, utilise le module v2
+        (7, 4, 4): "v2",  # Compatible v2 (Between Salvation and Abyss)
         # Ajoutez ici les futures versions et modules
     }
     
@@ -1151,8 +1153,21 @@ class RealTimeEditorBusiness:
             if selected_module is None:
                 detected_version = self._get_renpy_version_from_project(project_path)
                 result['renpy_version_detected'] = detected_version
-                result['warnings'].append(f"Version Ren'Py {detected_version} inconnue, utilisation du module v1 par défaut")
-                selected_module = "v1"
+                # Heuristique de fallback plus sûre :
+                # - Ren'Py 7.x → v2
+                # - Ren'Py 8.0.x ou 8.2.x → v2 (retours: v1 incompatible sur 8.2.3)
+                # - Sinon → v1
+                if isinstance(detected_version, tuple) and len(detected_version) >= 2:
+                    major, minor = detected_version[0], detected_version[1]
+                    if major == 7 or (major == 8 and minor in (0, 2)):
+                        selected_module = "v2"
+                        result['warnings'].append(f"Version Ren'Py {detected_version} inconnue: fallback module v2 appliqué")
+                    else:
+                        selected_module = "v1"
+                        result['warnings'].append(f"Version Ren'Py {detected_version} inconnue: fallback module v1 appliqué")
+                else:
+                    selected_module = "v1"
+                    result['warnings'].append("Version Ren'Py inconnue: fallback module v1 appliqué")
             
             result['module_version'] = selected_module
             log_message("INFO", f"Module {selected_module} sélectionné pour le projet", category="realtime_editor")
@@ -1616,10 +1631,22 @@ class RealTimeEditorBusiness:
             if len(lines) <= self.last_dialogue_line: return
             
             in_menu, menu_choices, current_line_index = False, [], self.last_dialogue_line
+            previous_effective_line = None  # Pour filtrer les doublons consécutifs
             
             while current_line_index < len(lines):
                 line = lines[current_line_index].strip()
                 if not line:
+                    current_line_index += 1
+                    continue
+                
+                # Filtrer les lignes placeholders provenant d'anciens modules (v1) encore présents
+                # Exemple: "{0}|{1}|{2}|{3}|{4}"
+                if line == "{0}|{1}|{2}|{3}|{4}":
+                    current_line_index += 1
+                    continue
+                
+                # Filtrer les doublons consécutifs exacts (certaines versions loggent deux fois la même ligne)
+                if previous_effective_line is not None and line == previous_effective_line:
                     current_line_index += 1
                     continue
                 
@@ -1662,6 +1689,7 @@ class RealTimeEditorBusiness:
                             self._notify_dialogue(dialogue_info)
                 
                 current_line_index += 1
+                previous_effective_line = line
             
             self.last_dialogue_line = len(lines)
                             
