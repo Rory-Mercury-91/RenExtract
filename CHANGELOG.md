@@ -1,6 +1,20 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-22 (v1.2.18)
+
+### 🐛 Corrections et améliorations
+
+#### 🎨 Générateur de traductions – sauvegarde persistante des choix de police
+- **Problème résolu** : Les préférences de police individuelles (checkbox et sélection de police) n'étaient pas sauvegardées de manière persistante entre les sessions
+- **Solution** :
+  - Ajout du chargement automatique des préférences de police au démarrage de l'interface
+  - Ajout de la sauvegarde automatique des préférences de police à la fermeture de la fenêtre
+  - Les préférences sont maintenant sauvegardées à chaque modification ET à la fermeture (double sécurité)
+- **Impact** : Les choix de police (checkbox activées/désactivées et polices sélectionnées) sont maintenant conservés entre les sessions
+- **Fichiers modifiés** : `ui/dialogs/translation_generator_interface.py`
+
+---
 ## 2025-11-16 (v1.2.17)
 
 ### ✨ Améliorations

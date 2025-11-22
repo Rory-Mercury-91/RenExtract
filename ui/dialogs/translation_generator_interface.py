@@ -26,7 +26,7 @@ from infrastructure.helpers.unified_functions import show_translated_messagebox,
 
 # Imports des 5 onglets du générateur
 from ui.tab_generator.extraction_rpa_tab import create_extraction_tab
-from ui.tab_generator.generation_tl_tab import create_generation_tab_aligned
+from ui.tab_generator.generation_tl_tab import create_generation_tab_aligned, load_font_preferences, save_font_preferences
 from ui.tab_generator.extraction_config_tab import create_extraction_config_tab
 from ui.tab_generator.extraction_results_tab import create_extraction_results_tab
 from ui.tab_generator.combination_tab import create_combination_tab
@@ -788,6 +788,13 @@ class TranslationGeneratorInterface:
             if hasattr(self, 'extraction_excluded_files_var'):
                 extraction_exclusions = config_manager.get('extraction_excluded_files', 'common.rpy, screens.rpy')
                 self.extraction_excluded_files_var.set(extraction_exclusions)
+            
+            # ✅ AJOUT : Charger les préférences de police individuelles
+            try:
+                load_font_preferences(self)
+                log_message("DEBUG", "Préférences de police individuelles chargées", category="renpy_generator")
+            except Exception as e:
+                log_message("ATTENTION", f"Erreur chargement préférences police: {e}", category="renpy_generator")
             
         except Exception as e:
             log_message("ERREUR", f"Erreur chargement configuration: {e}", category="renpy_generator")
@@ -1920,6 +1927,13 @@ class TranslationGeneratorInterface:
                 # Configuration extraction
                 if hasattr(self, 'extraction_excluded_files_var'):
                     config_manager.set('extraction_excluded_files', self.extraction_excluded_files_var.get())
+
+                # ✅ AJOUT : Sauvegarder les préférences de police individuelles
+                try:
+                    save_font_preferences(self)
+                    log_message("DEBUG", "Préférences de police individuelles sauvegardées", category="renpy_generator")
+                except Exception as e:
+                    log_message("ATTENTION", f"Erreur sauvegarde préférences police: {e}", category="renpy_generator")
 
                 # SUPPRIMÉ: Sauvegarde paramètres onglets 5 et 7
 
