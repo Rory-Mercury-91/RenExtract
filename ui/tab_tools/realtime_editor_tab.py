@@ -1858,7 +1858,7 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
     v_scrollbar.pack(side='right', fill='y')
     canvas.configure(yscrollcommand=v_scrollbar.set)
     inner_frame = tk.Frame(canvas, bg=theme["bg"])
-    canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+    inner_window = canvas.create_window((0, 0), window=inner_frame, anchor="nw")
 
     def _update_scroll_region(event=None):
         try:
@@ -1866,6 +1866,14 @@ def _build_menu_choices_interface(parent_container, main_interface, menu_info, i
         except Exception:
             pass
     inner_frame.bind("<Configure>", _update_scroll_region)
+
+    def _on_canvas_configure(event):
+        """Ajuste la largeur de l'inner_frame pour éviter les débordements horizontaux."""
+        try:
+            canvas.itemconfig(inner_window, width=event.width)
+        except Exception:
+            pass
+    canvas.bind("<Configure>", _on_canvas_configure)
 
     # Support molette (Windows/Linux)
     def _on_mousewheel(event):

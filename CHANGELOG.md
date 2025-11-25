@@ -1,5 +1,15 @@
 # 📝 CHANGELOG - RenExtract
 
+## 2025-11-25 (v1.2.19.5)
+
+### 🐛 Corrections et améliorations
+
+#### 🧾 Éditeur temps réel – menu de choix lisible
+- **Problème résolu** : le conteneur scrollable des menus ne s’adaptait pas à la largeur disponible, coupant les textes VO/VF lorsque plusieurs choix étaient présents
+- **Solution** : synchronisation automatique de la largeur du `Canvas` avec le contenu interne pour que les zones VO/VF s’étendent correctement
+- **Impact** : les dialogues et traductions des menus restent pleinement visibles, même avec beaucoup de texte
+- **Fichier modifié** : `ui/tab_tools/realtime_editor_tab.py`
+
 ---
 ## 2025-11-24 (v1.2.19)
 
