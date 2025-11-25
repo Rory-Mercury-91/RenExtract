@@ -181,7 +181,11 @@ def create_realtime_editor_tab(parent_notebook, main_interface):
     scan_btn.pack(side='left', padx=(0, 10))
 
     install_btn = tk.Button(config_frame, text="Installer le module", command=lambda: install_monitoring_module(main_interface), bg=theme["button_feature_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8, relief='flat', cursor='hand2')
-    install_btn.pack(side='left')
+    install_btn.pack(side='left', padx=(0, 5))
+    
+    # ✅ NOUVEAU : Bouton pour forcer l'installation du module v2 (test de compatibilité)
+    install_v2_btn = tk.Button(config_frame, text="Tester module v2", command=lambda: install_monitoring_module(main_interface, force_v2=True), bg=theme["button_utility_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8, relief='flat', cursor='hand2')
+    install_v2_btn.pack(side='left')
     
     def _auto_scan_realtime_if_ready(*_):
         # Scanner si on a un projet et (combo vide OU projet différent du dernier scan)
@@ -1460,7 +1464,7 @@ def on_editor_close(main_interface):
     main_interface.detached_editor_window = None
 
 
-def install_monitoring_module(main_interface):
+def install_monitoring_module(main_interface, force_v2=False):
     """Installe le module de surveillance dans le projet Ren'Py."""
     try:
         if not main_interface.current_project_path:
@@ -1472,12 +1476,16 @@ def install_monitoring_module(main_interface):
         # Version manuelle désactivée - utilisation de la détection automatique uniquement
         manual_version = None
         
+        # ✅ NOUVEAU : Forcer le module v2 si demandé
+        force_module_version = "v2" if force_v2 else None
+        
         main_interface._update_status("Installation du module de surveillance...")
         biz = main_interface._get_realtime_editor_business()
         result = biz.generate_monitoring_module(
             project_path=main_interface.current_project_path, 
             language=language,
-            manual_version=manual_version
+            manual_version=manual_version,
+            force_module_version=force_module_version
         )
         
         if result.get('success'):
@@ -1485,33 +1493,74 @@ def install_monitoring_module(main_interface):
             module_version = result.get('module_version', 'v1')
             
             # Message de succès avec infos sur la version
-            success_msg = f"Module {module_version} installé avec succès pour '{language}'"
+            if force_v2:
+                success_msg = f"Module {module_version} installé (test de compatibilité) pour '{language}'"
+            else:
+                success_msg = f"Module {module_version} installé avec succès pour '{language}'"
             main_interface._update_status(success_msg)
             log_message("INFO", f"Module de surveillance installé: {module_path} (version {module_version})", category="realtime_editor")
             
-            # Feedback si version inconnue
-            if result.get('warnings'):
+            # Feedback si version inconnue ou module forcé
+            if result.get('warnings') or force_v2:
                 from infrastructure.helpers.unified_functions import show_custom_messagebox
                 from ui.themes import theme_manager
                 
                 detected_version = result.get('renpy_version_detected')
-                warning_message = [
-                    ("⚠️ Version Ren'Py inconnue détectée\n\n", "bold"),
-                    (f"Version détectée : ", "normal"),
-                    (f"{detected_version}\n\n", "bold_blue"),
-                    ("Le module v1 (compatible 8.1.2 et 8.2.1) sera utilisé par défaut.\n\n", "normal"),
-                    ("Si le module ne fonctionne pas correctement, merci de signaler cette version pour qu'un module adapté soit créé.\n\n", "normal"),
-                    ("📧 Contact : ", "bold"),
-                    ("Rapportez cette version sur GitHub ou par email.", "normal")
-                ]
+                module_version = result.get('module_version', 'v1')
                 
-                show_custom_messagebox(
-                    "warning",
-                    "Version Ren'Py inconnue",
-                    warning_message,
-                    theme_manager.get_theme(),
-                    parent=main_interface.window
-                )
+                if force_v2:
+                    # Message spécial pour test de compatibilité v2
+                    warning_message = [
+                        ("🧪 Test de compatibilité - Module v2\n\n", "bold_green"),
+                        (f"Version Ren'Py détectée : ", "normal"),
+                        (f"{detected_version or 'Inconnue'}\n\n", "bold_blue"),
+                        ("Le module v2 a été installé manuellement pour test.\n\n", "normal"),
+                        ("📋 Instructions de test :\n", "bold"),
+                        ("1. Lancez votre jeu Ren'Py\n", "normal"),
+                        ("2. Testez l'éditeur temps réel (surveillance + traduction)\n", "normal"),
+                        ("3. Vérifiez que tout fonctionne correctement\n\n", "normal"),
+                        ("💡 Si le module v2 fonctionne :\n", "bold_green"),
+                        ("   → Utilisez le bouton 'Tester module v2' pour continuer à l'utiliser\n\n", "normal"),
+                        ("⚠️ Si le module v2 ne fonctionne pas :\n", "bold_yellow"),
+                        ("   → Réinstallez avec 'Installer le module' pour revenir au module recommandé\n\n", "normal"),
+                        ("📧 Important : ", "bold"),
+                        ("Merci de signaler le résultat du test (version Ren'Py + module testé + résultat) pour mettre à jour le tableau de compatibilité !\n\n", "normal"),
+                        ("Rapportez sur GitHub ou par email.", "italic")
+                    ]
+                    
+                    show_custom_messagebox(
+                        "info",
+                        "Test de compatibilité - Module v2",
+                        warning_message,
+                        theme_manager.get_theme(),
+                        parent=main_interface.window
+                    )
+                else:
+                    # Message pour version inconnue (comportement normal)
+                    warning_message = [
+                        ("⚠️ Version Ren'Py inconnue détectée\n\n", "bold"),
+                        (f"Version détectée : ", "normal"),
+                        (f"{detected_version}\n\n", "bold_blue"),
+                        (f"Le module {module_version} sera utilisé par défaut.\n\n", "normal"),
+                        ("🧪 Test de compatibilité disponible :\n", "bold_green"),
+                        ("Si vous rencontrez des problèmes, vous pouvez tester le module v2 avec le bouton ", "normal"),
+                        ("'Tester module v2'", "bold_yellow"),
+                        (" pour vérifier la compatibilité.\n\n", "normal"),
+                        ("📋 Après test, merci de signaler :\n", "bold"),
+                        ("• La version Ren'Py testée\n", "normal"),
+                        ("• Le module utilisé (v1 ou v2)\n", "normal"),
+                        ("• Le résultat (fonctionne / ne fonctionne pas)\n\n", "normal"),
+                        ("📧 Contact : ", "bold"),
+                        ("Rapportez sur GitHub ou par email pour mettre à jour le tableau de compatibilité.", "normal")
+                    ]
+                    
+                    show_custom_messagebox(
+                        "warning",
+                        "Version Ren'Py inconnue",
+                        warning_message,
+                        theme_manager.get_theme(),
+                        parent=main_interface.window
+                    )
         else:
             error_message = " / ".join(result.get('errors', ["Erreur inconnue"]))
             main_interface._update_status("Erreur installation module")
@@ -4284,14 +4333,16 @@ def show_installation_help(parent_window):
         ("--------------------------------------------------\n", "normal"),
         ("1.  ", "bold"), ("Pré-requis :", "italic"), (" Sélectionnez votre projet Ren'Py, la langue de traduction et votre ", "normal"),
         ("éditeur de code préféré", "bold"), (" dans les menus de configuration.\n\n", "normal"),
-        ("    ", "normal"), ("Version Ren'Py (optionnel) :", "bold"), (" La version Ren'Py est détectée automatiquement. ", "normal"),
-        ("Si le module ne fonctionne pas correctement, vous pouvez spécifier manuellement la version de Ren'Py (ex: 8.2.1) ", "normal"),
-        ("dans le champ 'Version Ren'Py'. Cela permet d'utiliser le module adapté à votre version.\n\n", "normal"),
+        ("    ", "normal"), ("Version Ren'Py :", "bold"), (" La version Ren'Py est détectée automatiquement. ", "normal"),
+        ("Si votre version n'est pas dans le tableau de compatibilité, vous pouvez utiliser le bouton ", "normal"),
+        ("'Tester module v2'", "bold_yellow"), (" pour tester manuellement la compatibilité du module v2.\n", "normal"),
+        ("    ", "normal"), ("💡 ", "bold_green"), ("Après test, merci de signaler le résultat (version + module testé + résultat) pour mettre à jour le tableau de compatibilité !\n\n", "normal"),
         
         ("2.  ", "bold"), ("Installation (une seule fois) :", "italic"), (" Cliquez sur ", "normal"), 
-        ("\"Installer le module\"", "yellow"), (". Un fichier sera ajouté au dossier ", "normal"), 
-        ("game/", "italic"), (" de votre projet. \n    ", "normal"),
-        ("Note :", "bold_yellow"), (" Si vous mettez à jour RenExtract, il est conseillé de réinstaller le module pour bénéficier des derniers correctifs.\n\n", "yellow"),
+        ("\"Installer le module\"", "yellow"), (" pour installer le module recommandé, ou ", "normal"),
+        ("\"Tester module v2\"", "bold_yellow"), (" pour tester manuellement le module v2 si votre version Ren'Py n'est pas dans le tableau de compatibilité.\n", "normal"),
+        ("    ", "normal"), ("Un fichier sera ajouté au dossier ", "normal"), ("game/", "italic"), (" de votre projet.\n", "normal"),
+        ("    ", "normal"), ("Note :", "bold_yellow"), (" Si vous mettez à jour RenExtract, il est conseillé de réinstaller le module pour bénéficier des derniers correctifs.\n\n", "yellow"),
 
         ("3.  ", "bold"), ("Lancement :", "italic"), (" Démarrez la surveillance dans RenExtract ", "normal"), 
         ("PUIS", "bold_red"), (" lancez votre jeu Ren'Py. L'application va alors créer un cache de vos traductions pour être ultra-rapide.\n\n", "normal"),

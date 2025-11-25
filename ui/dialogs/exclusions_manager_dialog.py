@@ -51,6 +51,7 @@ class ExclusionsManagerDialog:
         self.tree_items = {}  # {item_id: (project, index)}
         self.project_filter_map = {}  # {display_name: set(project_paths)}
         self.file_filter_map = {}  # {display_name: set(file_paths)}
+        self.project_display_names = {}  # Cache le nom affiché par projet
         
         # Système de sélection multiple par checkbox
         self.selected_items = {}  # {item_id: True/False}
@@ -399,9 +400,11 @@ class ExclusionsManagerDialog:
         try:
             projects = list(self.exclusions_data.keys())
             self.project_filter_map = {}
+            self.project_display_names = {}
             
             for project_key in projects:
                 display_name = self._get_project_display_name(project_key)
+                self.project_display_names[project_key] = display_name
                 if display_name not in self.project_filter_map:
                     self.project_filter_map[display_name] = set()
                 self.project_filter_map[display_name].add(project_key)
@@ -442,12 +445,13 @@ class ExclusionsManagerDialog:
                 exclusions = self.exclusions_data.get(project_path, [])
                 for exclusion in exclusions:
                     file_path = exclusion.get('file', '')
-                    if not file_path:
+                    normalized_file_path = self._normalize_path(file_path)
+                    if not normalized_file_path:
                         continue
-                    display_name = self._get_file_display_name(file_path)
+                    display_name = self._get_file_display_name(normalized_file_path)
                     if display_name not in self.file_filter_map:
                         self.file_filter_map[display_name] = set()
-                    self.file_filter_map[display_name].add(file_path)
+                    self.file_filter_map[display_name].add(normalized_file_path)
             
             file_values = ["Tous les fichiers"] + sorted(self.file_filter_map.keys(), key=str.lower)
             
@@ -498,29 +502,39 @@ class ExclusionsManagerDialog:
             selected_project_filter = self.current_project_filter.get()
             selected_file_filter = self.current_file_filter.get()
             
+            allowed_projects = None
+            if selected_project_filter != "Tous les projets":
+                allowed_projects = self.project_filter_map.get(selected_project_filter, set())
+            
+            allowed_files = None
+            if selected_file_filter != "Tous les fichiers":
+                allowed_files = self.file_filter_map.get(selected_file_filter, set())
+            
             total_exclusions = 0
             visible_exclusions = 0
             
             for project_path, exclusions in self.exclusions_data.items():
-                project_name = self._get_project_display_name(project_path)
-                
-                # Vérifier le filtre par projet
-                if selected_project_filter != "Tous les projets" and project_name != selected_project_filter:
+                if allowed_projects is not None and project_path not in allowed_projects:
                     continue
+                
+                project_name = self.project_display_names.get(project_path) or self._get_project_display_name(project_path)
+                self.project_display_names[project_path] = project_name
                 
                 for idx, exclusion in enumerate(exclusions):
                     total_exclusions += 1
                     
                     # Extraire les données
                     file_path = exclusion.get('file', 'N/A')
-                    file_display_name = self._get_file_display_name(file_path)
+                    normalized_file_path = self._normalize_path(file_path)
+                    file_display_name = self._get_file_display_name(normalized_file_path or file_path)
                     line = exclusion.get('line', 0)
                     text = exclusion.get('text', '')
                     date = exclusion.get('added_date', 'N/A')
                     
                     # Vérifier le filtre par fichier
-                    if selected_file_filter != "Tous les fichiers" and file_display_name != selected_file_filter:
-                        continue
+                    if allowed_files is not None:
+                        if not normalized_file_path or normalized_file_path not in allowed_files:
+                            continue
                     
                     visible_exclusions += 1
                     
@@ -529,7 +543,9 @@ class ExclusionsManagerDialog:
                         text = text[:77] + "..."
                     
                     # Créer un ID unique pour cette exclusion
-                    item_unique_id = f"{project_path}|{file_path}|{line}"
+                    normalized_project_key = project_path
+                    normalized_file_for_id = normalized_file_path or file_path
+                    item_unique_id = f"{normalized_project_key}|{normalized_file_for_id}|{line}"
                     
                     # Initialiser la sélection à False
                     self.selected_items[item_unique_id] = False

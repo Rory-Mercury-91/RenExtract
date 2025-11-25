@@ -1,6 +1,45 @@
 # 📝 CHANGELOG - RenExtract
 
 ---
+## 2025-11-24 (v1.2.19)
+
+### ✨ Améliorations
+
+#### 🌐 Rapport de cohérence – mémorisation du choix du traducteur
+- **Nouveauté** : Le choix du traducteur dans le rapport de cohérence est maintenant mémorisé entre les sessions
+- **Détails** :
+  - Le traducteur sélectionné (Google, DeepL, Groq AI, Microsoft, Yandex) est automatiquement sauvegardé dans la configuration
+  - Au chargement d'un nouveau rapport, le dernier traducteur utilisé est automatiquement sélectionné
+  - Le choix est partagé entre tous les rapports de cohérence (même configuration globale que l'éditeur temps réel)
+- **Impact** : Plus besoin de re-sélectionner le traducteur à chaque ouverture de rapport, gain de temps et meilleure expérience utilisateur
+- **Fichiers modifiés** :
+  - `ui/shared/editor_manager_server.py` : Ajout des endpoints API `/api/coherence/translator` (GET/POST)
+  - `core/services/reporting/coherence_html_report_generator.py` : Chargement et sauvegarde automatique du choix du traducteur
+
+#### ⚡ Éditeur temps réel – tests de compatibilité module v2
+- **Nouveauté** : Les utilisateurs peuvent forcer l'installation du module `v2.rpy` pour tester la compatibilité lorsqu'une version Ren'Py n'est pas encore répertoriée
+- **Détails** :
+  - Bouton **« Tester module v2 »** ajouté dans l'onglet temps réel pour installer manuellement v2 sans modifier la détection automatique
+  - Popups dédiés expliquant la procédure de test et demandant de remonter la version Ren'Py utilisée + résultat afin d'actualiser le tableau de compatibilité
+  - Aide intégrée mise à jour (workflow + prérequis) pour documenter cette nouvelle possibilité
+  - Le backend accepte un paramètre `force_module_version` afin d'imposer v1 ou v2 lors de la génération du module de surveillance
+- **Impact** : Les utilisateurs peuvent valider eux‑mêmes la compatibilité de nouvelles versions Ren'Py et nous transmettre les résultats rapidement
+- **Fichiers modifiés** :
+  - `ui/tab_tools/realtime_editor_tab.py` : bouton dédié, popups contextualisées et guide mis à jour
+  - `core/services/tools/realtime_editor_business.py` : support de l’option `force_module_version` et journalisation des tests
+
+### 🐛 Corrections et améliorations
+
+#### 🎯 Gestionnaire d'exclusions – filtre par projet corrigé
+- **Problème résolu** : Le filtre par projet ne se mettait pas à jour correctement lors de la sélection d'un projet
+- **Solution** :
+  - Correction de la logique de filtrage pour utiliser les clés normalisées de projet au lieu des noms d'affichage
+  - Amélioration de la mise à jour du filtre de fichiers selon le projet sélectionné
+  - Utilisation d'ensembles (`set`) pour une correspondance plus fiable entre projets et fichiers
+- **Impact** : Le filtre par projet fonctionne maintenant correctement et met à jour automatiquement la liste des fichiers disponibles
+- **Fichier modifié** : `ui/dialogs/exclusions_manager_dialog.py`
+
+---
 ## 2025-11-22 (v1.2.18)
 
 ### 🐛 Corrections et améliorations

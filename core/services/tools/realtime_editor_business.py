@@ -30,9 +30,10 @@ class RealTimeEditorBusiness:
     MODULE_COMPATIBILITY = {
         (8, 1, 1): "v1",  # Compatible avec le module v1
         (8, 1, 2): "v1",  # Testé sur Nudist Olivia
-        (8, 2, 1): "v1",  # Testé sur FamilyIsland
+        (8, 2, 1): "v2",  # ✅ Compatible avec le module v2
         (8, 2, 3): "v2",  # Partiellement compatible v2, v1 incompatible (signalé)
         (8, 3, 2): "v1",  # Compatible avec le module v1
+        (8, 3, 6): "v2",  # ✅ Compatible avec le module v2
         (8, 3, 7): "v1",  # Compatible avec le module v1
         (8, 0, 1): "v2",  # ✅ Ren'Py 8.0.1 validé sur Motherless
         (7, 3, 5): "v2",  # ✅ Ren'Py 7.3.5 validé (dialogues + choix)
@@ -1120,7 +1121,7 @@ class RealTimeEditorBusiness:
         """Vérifie s'il y a des modifications en attente"""
         return len(self.pending_modifications) > 0
 
-    def generate_monitoring_module(self, project_path: str, language: str, manual_version: Optional[str] = None) -> Dict[str, Any]:
+    def generate_monitoring_module(self, project_path: str, language: str, manual_version: Optional[str] = None, force_module_version: Optional[str] = None) -> Dict[str, Any]:
         """
         Génère et installe le module de surveillance dans le projet
         
@@ -1128,6 +1129,7 @@ class RealTimeEditorBusiness:
             project_path: Chemin vers le projet Ren'Py
             language: Langue cible (ex: "french")
             manual_version: Version Ren'Py manuelle au format "8.2.1" (optionnel)
+            force_module_version: Force l'utilisation d'un module spécifique ("v1" ou "v2") pour tester la compatibilité
             
         Returns:
             Dict avec les résultats de l'opération
@@ -1146,8 +1148,16 @@ class RealTimeEditorBusiness:
             
             module_path = os.path.join(game_dir, "renextract_realtime_monitor.rpy")
             
-            # Sélectionner la version du module
-            selected_module = self._select_module_version(project_path, manual_version)
+            # ✅ NOUVEAU : Si force_module_version est spécifié, l'utiliser directement
+            if force_module_version in ["v1", "v2"]:
+                selected_module = force_module_version
+                detected_version = self._get_renpy_version_from_project(project_path)
+                result['renpy_version_detected'] = detected_version
+                result['warnings'].append(f"Module {force_module_version} forcé manuellement pour test de compatibilité")
+                log_message("INFO", f"Module {force_module_version} forcé manuellement pour test", category="realtime_editor")
+            else:
+                # Sélectionner la version du module normalement
+                selected_module = self._select_module_version(project_path, manual_version)
             
             # Si la version est None, c'est une version inconnue
             if selected_module is None:
@@ -2062,14 +2072,14 @@ class RealTimeEditorBusiness:
                 escaped_replacement = self._escape_quotes_properly(replacement)
                 
                 # Triples guillemets en priorité
-                matches_triple = list(re.finditer(r'\"\"\"(.*?)\"\"\"', s))
+                matches_triple = list(re.finditer(r'\"\"\"(.*?)\"\"\"', s, re.DOTALL))
                 if matches_triple:
                     # Prendre le dernier match pour les triples guillemets
                     last_match = matches_triple[-1]
                     start, end = last_match.span(1)
                     return s[:start] + escaped_replacement.replace('\"\"\"', '\\\"\\\"\\\"') + s[end:]
                 
-                # Simples guillemets - chercher tous les matches
+                # Simples guillemets - chercher tous les matches (gère les échappements \")
                 matches_simple = list(re.finditer(r'\"((?:\\.|[^\"])*)\"', s))
                 if matches_simple:
                     if len(matches_simple) == 1:
@@ -2081,6 +2091,23 @@ class RealTimeEditorBusiness:
                         # Plusieurs segments - prendre le dernier (le dialogue)
                         last_match = matches_simple[-1]
                         start, end = last_match.span(1)
+                        return s[:start] + escaped_replacement + s[end:]
+                
+                # ✅ NOUVEAU : Gérer les guillemets simples (apostrophes) comme fallback
+                matches_single_quote = list(re.finditer(r"'((?:\\.|[^'])*)'", s))
+                if matches_single_quote:
+                    last_match = matches_single_quote[-1]
+                    start, end = last_match.span(1)
+                    # Échapper les apostrophes dans le remplacement
+                    escaped_for_single = escaped_replacement.replace("'", "\\'")
+                    return s[:start] + escaped_for_single + s[end:]
+                
+                # ✅ NOUVEAU : Si la ligne contient "old" et "new", essayer de remplacer dans "new"
+                if 'old' in s.lower() and 'new' in s.lower():
+                    # Pattern pour trouver "new" suivi de guillemets
+                    new_match = re.search(r'new\s+\"((?:\\.|[^\"])*)\"', s)
+                    if new_match:
+                        start, end = new_match.span(1)
                         return s[:start] + escaped_replacement + s[end:]
                 
                 return None
@@ -2108,15 +2135,33 @@ class RealTimeEditorBusiness:
                 if line.strip().startswith('#'):
                     for j in range(target_index + 1, min(len(lines), target_index + 8)):
                         sj = lines[j].strip()
-                        if sj and not sj.startswith('#') and ('"' in sj):
+                        if sj and not sj.startswith('#') and ('"' in sj or "'" in sj):
                             edit_index = j
                             break
 
+                # ✅ AMÉLIORATION : Si la ligne trouvée n'a toujours pas de guillemets, chercher plus loin
                 edit_line = lines[edit_index]
+                if not ('"' in edit_line or "'" in edit_line):
+                    # Chercher dans les lignes suivantes (jusqu'à 10 lignes)
+                    for j in range(edit_index + 1, min(len(lines), edit_index + 11)):
+                        candidate = lines[j].strip()
+                        if candidate and not candidate.startswith('#') and ('"' in candidate or "'" in candidate):
+                            edit_index = j
+                            edit_line = lines[edit_index]
+                            break
+                
                 replaced = _replace_first_quoted_text(edit_line, new_translation)
                 
                 if replaced is None:
-                    result['errors'].append("Format de ligne non reconnu")
+                    # ✅ AMÉLIORATION : Log détaillé pour diagnostiquer le problème
+                    log_message("ERREUR", 
+                        f"Format de ligne non reconnu à la ligne {edit_index + 1}:\n"
+                        f"Ligne originale: {repr(edit_line[:200])}\n"
+                        f"Ligne cible: {repr(line[:200])}\n"
+                        f"Index cible: {target_index + 1}, Index édition: {edit_index + 1}",
+                        category="realtime_editor"
+                    )
+                    result['errors'].append(f"Format de ligne non reconnu (ligne {edit_index + 1}): {edit_line.strip()[:100]}")
                     return result
 
                 lines[edit_index] = replaced

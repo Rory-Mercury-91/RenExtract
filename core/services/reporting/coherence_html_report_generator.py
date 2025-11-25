@@ -358,6 +358,7 @@ class HtmlCoherenceReportGenerator:
         # Obtenir l'hôte et le port du serveur depuis la config
         from infrastructure.config.config import config_manager
         from infrastructure.logging.logging import log_message
+        from ui.shared.translator_utils import get_default_translator
         server_host_config = config_manager.get('editor_server_host', '127.0.0.1') or '127.0.0.1'
         try:
             server_port_config = int(config_manager.get('editor_server_port', 8765))
@@ -366,7 +367,11 @@ class HtmlCoherenceReportGenerator:
         
         server_host_client = '127.0.0.1' if server_host_config in ('0.0.0.0', '::') else server_host_config
         server_url = f"http://{server_host_client}:{server_port_config}"
-        log_message("DEBUG", f"🎯 Génération JavaScript rapport : server_url={server_url}", category="report")
+        
+        # Obtenir le traducteur par défaut
+        default_translator = get_default_translator()
+        
+        log_message("DEBUG", f"🎯 Génération JavaScript rapport : server_url={server_url}, default_translator={default_translator}", category="report")
         
         return f"""
         <script>
@@ -381,7 +386,8 @@ class HtmlCoherenceReportGenerator:
                 language: '{language}',
                 selectedFile: '{selected_file}',
                 totalFiles: {total_files},
-                project_path: '{project_path}'  // 🆕
+                project_path: '{project_path}',  // 🆕
+                default_translator: '{default_translator}'  // 🆕 Traducteur par défaut
             }};
             
             // 🆕 Calculer dynamiquement la hauteur du header au chargement
@@ -409,6 +415,59 @@ class HtmlCoherenceReportGenerator:
                     themeBtn.textContent = 'Thème: ' + (isLight ? 'Clair' : 'Sombre');
                 }}
             }}
+            
+            // 🆕 Gestion du traducteur par défaut
+            async function loadDefaultTranslator() {{
+                try {{
+                    const translatorSelect = document.getElementById('translatorSelect');
+                    if (!translatorSelect) return;
+                    
+                    // Charger depuis la config (via window.coherenceSelectionInfo)
+                    const defaultTranslator = window.coherenceSelectionInfo.default_translator || 'Google';
+                    
+                    // Définir la valeur du select
+                    translatorSelect.value = defaultTranslator;
+                    
+                    console.log(`✅ Traducteur chargé: ${{defaultTranslator}}`);
+                }} catch (error) {{
+                    console.error('❌ Erreur chargement traducteur:', error);
+                }}
+            }}
+            
+            async function saveTranslatorChoice(translator) {{
+                try {{
+                    const response = await fetch(`${{window.RENEXTRACT_SERVER_URL}}/api/coherence/translator`, {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ translator }})
+                    }});
+                    
+                    if (response.ok) {{
+                        const data = await response.json();
+                        if (data.ok) {{
+                            console.log(`✅ Traducteur sauvegardé: ${{translator}}`);
+                            // Mettre à jour la valeur par défaut dans window.coherenceSelectionInfo
+                            window.coherenceSelectionInfo.default_translator = translator;
+                        }}
+                    }}
+                }} catch (error) {{
+                    console.error('❌ Erreur sauvegarde traducteur:', error);
+                }}
+            }}
+            
+            // Initialiser le traducteur et ajouter l'event listener au chargement
+            document.addEventListener('DOMContentLoaded', function() {{
+                const translatorSelect = document.getElementById('translatorSelect');
+                if (translatorSelect) {{
+                    // Charger la valeur par défaut
+                    loadDefaultTranslator();
+                    
+                    // Sauvegarder quand l'utilisateur change de traducteur
+                    translatorSelect.addEventListener('change', function() {{
+                        saveTranslatorChoice(this.value);
+                    }});
+                }}
+            }});
 
             // Fonction pour ouvrir dans l'éditeur
             window.openInEditor = function(filePath, lineNumber) {{

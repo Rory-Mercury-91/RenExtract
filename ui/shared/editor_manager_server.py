@@ -352,6 +352,52 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send_json_response({'ok': False, 'error': str(e)}, 500)
             return
         
+        # ===== Endpoint: /api/coherence/translator (POST) =====
+        if parsed.path == "/api/coherence/translator":
+            try:
+                from ui.shared.translator_utils import set_default_translator, get_default_translator
+                
+                data = self._read_request_body()
+                translator = data.get('translator', '').strip()
+                
+                log_message("DEBUG", f"POST /translator - translator={translator}", category="coherence_api")
+                
+                if not translator:
+                    self._send_json_response({'ok': False, 'error': 'Traducteur manquant'}, 400)
+                    return
+                
+                # Valider que le traducteur est dans la liste autorisée
+                valid_translators = ["Google", "DeepL", "Groq AI", "Microsoft", "Yandex"]
+                if translator not in valid_translators:
+                    self._send_json_response({'ok': False, 'error': 'Traducteur invalide'}, 400)
+                    return
+                
+                # Sauvegarder le choix du traducteur
+                set_default_translator(translator)
+                
+                log_message("INFO", f"✅ Traducteur sauvegardé: {translator}", category="coherence_translator")
+                self._send_json_response({'ok': True, 'translator': translator})
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur sauvegarde traducteur: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
+        # ===== Endpoint: /api/coherence/translator (GET) =====
+        if parsed.path == "/api/coherence/translator":
+            try:
+                from ui.shared.translator_utils import get_default_translator
+                
+                translator = get_default_translator()
+                
+                log_message("DEBUG", f"GET /translator - translator={translator}", category="coherence_api")
+                self._send_json_response({'ok': True, 'translator': translator})
+                
+            except Exception as e:
+                log_message("ERREUR", f"Erreur récupération traducteur: {e}", category="coherence_api")
+                self._send_json_response({'ok': False, 'error': str(e)}, 500)
+            return
+        
         # Endpoint non trouvé
         self.send_response(404)
         self._cors()
