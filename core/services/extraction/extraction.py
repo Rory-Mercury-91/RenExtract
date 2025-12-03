@@ -1105,6 +1105,13 @@ class TextExtractor:
                     f.write(f"{ph} => {tag}\n")
         
         # POSITION DATA ENRICHIE - FICHIER UNIQUE AVEC TOUT
+        # Calculer les compteurs pour le rechargement
+        extracted_count = len(self.extracted_texts)
+        asterix_count = len(self.asterix_texts)
+        tilde_count = len(self.tilde_texts)
+        empty_count = len(self.empty_texts)
+        duplicate_count = len(self.duplicate_manager.duplicate_texts_for_translation) if hasattr(self, 'duplicate_manager') and self.duplicate_manager.duplicate_texts_for_translation else 0
+        
         position_data = {
             'line_to_content_indices': {str(k): v for k, v in self.line_to_content_indices.items()},
             'original_lines': {str(k): v for k, v in self.original_lines_with_translations.items()},
@@ -1123,7 +1130,14 @@ class TextExtractor:
             'metadata_version': '2.8.0',
             'extraction_date': time.strftime('%Y-%m-%d %H:%M:%S'),
             'has_asterix_metadata': len(self.asterix_metadata) > 0,
-            'has_tilde_metadata': len(self.tilde_metadata) > 0  # NOUVEAU
+            'has_tilde_metadata': len(self.tilde_metadata) > 0,  # NOUVEAU
+            
+            # 🆕 NOUVEAU : Ajouter les compteurs pour le rechargement
+            'extracted_count': extracted_count,
+            'asterix_count': asterix_count,
+            'tilde_count': tilde_count,
+            'empty_count': empty_count,
+            'duplicate_count': duplicate_count
         }
         
         positions_file = os.path.join(reference_folder, f'{file_base}_positions.json')

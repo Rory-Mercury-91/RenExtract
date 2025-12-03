@@ -8,6 +8,8 @@ Contrôleur principal de l'application - Logique métier séparée de l'interfac
 
 import os
 import time
+import glob
+import datetime
 from typing import Optional, Dict, Any
 
 # Imports métier
@@ -340,6 +342,111 @@ class AppController:
             log_message("DEBUG", f"Erreur tracker: {e}", category="progress_tracker")
             return None
 
+    def _check_existing_extraction(self, original_path):
+        """
+        Vérifie si une extraction existe déjà pour ce fichier.
+        Retourne un dictionnaire avec les informations de l'extraction si elle existe, None sinon.
+        """
+        if not original_path:
+            return None
+        
+        file_base = get_file_base_name(original_path)
+        game_name = extract_game_name(original_path) if original_path else "jeu_inconnu"
+        
+        temp_folder = os.path.join(FOLDERS["temporaires"], game_name, file_base)
+        translate_folder = os.path.join(temp_folder, "fichiers_a_traduire")
+        reference_folder = os.path.join(temp_folder, "fichiers_a_ne_pas_traduire")
+        
+        # Vérifier si les fichiers essentiels existent
+        positions_file = os.path.join(reference_folder, f'{file_base}_positions.json')
+        dialogue_file = os.path.join(translate_folder, f'{file_base}_dialogue.txt')
+        
+        if os.path.exists(positions_file) and os.path.exists(dialogue_file):
+            # Vérifier la date de modification pour afficher des infos
+            mod_time = os.path.getmtime(positions_file)
+            mod_date = datetime.datetime.fromtimestamp(mod_time).strftime('%d/%m/%Y à %H:%M:%S')
+            
+            return {
+                'exists': True,
+                'temp_folder': temp_folder,
+                'translate_folder': translate_folder,
+                'reference_folder': reference_folder,
+                'file_base': file_base,
+                'modification_date': mod_date,
+                'positions_file': positions_file,
+                'dialogue_file': dialogue_file
+            }
+        
+        return None
+
+    def _load_existing_extraction(self, extraction_info):
+        """
+        Charge une extraction existante sans refaire le processus complet.
+        Simule les résultats d'extraction pour que le reste du code fonctionne.
+        """
+        try:
+            import json
+            
+            file_base = extraction_info['file_base']
+            translate_folder = extraction_info['translate_folder']
+            reference_folder = extraction_info['reference_folder']
+            
+            # Charger le fichier positions.json pour obtenir les métadonnées
+            positions_file = extraction_info['positions_file']
+            with open(positions_file, 'r', encoding='utf-8') as f:
+                positions_data = json.load(f)
+            
+            # Construire le résultat similaire à celui d'une extraction normale
+            result = {
+                'file_base': file_base,
+                'files_to_open': [],
+                'dialogue_file': None,
+                'dialogue_files': [],
+                'doublons_file': None,
+                'doublons_files': [],
+                'asterix_file': None,
+                'asterix_files': [],
+                'tilde_file': None,
+                'empty_file': None,
+                'extracted_count': positions_data.get('extracted_count', 0),
+                'asterix_count': positions_data.get('asterix_count', 0),
+                'tilde_count': positions_data.get('tilde_count', 0),
+                'empty_count': positions_data.get('empty_count', 0),
+                'duplicate_count': positions_data.get('duplicate_count', 0)
+            }
+            
+            # Trouver tous les fichiers de dialogue (support multi-fichiers)
+            dialogue_files = glob.glob(os.path.join(translate_folder, f'{file_base}_dialogue*.txt'))
+            if dialogue_files:
+                result['dialogue_files'] = sorted(dialogue_files)
+                result['dialogue_file'] = dialogue_files[0]
+                result['files_to_open'].extend(dialogue_files)
+            
+            # Trouver les fichiers de doublons
+            doublons_files = glob.glob(os.path.join(translate_folder, f'{file_base}_doublons*.txt'))
+            if doublons_files:
+                result['doublons_files'] = sorted(doublons_files)
+                result['doublons_file'] = doublons_files[0]
+                result['files_to_open'].extend(doublons_files)
+            
+            # Trouver les fichiers d'astérisques/tildes
+            asterix_files = glob.glob(os.path.join(translate_folder, f'{file_base}_asterix*.txt'))
+            if asterix_files:
+                result['asterix_files'] = sorted(asterix_files)
+                result['asterix_file'] = asterix_files[0]
+                result['files_to_open'].extend(asterix_files)
+            
+            # Trouver le fichier empty
+            empty_file = os.path.join(reference_folder, f'{file_base}_empty.txt')
+            if os.path.exists(empty_file):
+                result['empty_file'] = empty_file
+            
+            return result
+            
+        except Exception as e:
+            log_message("ERREUR", f"Erreur lors du chargement de l'extraction existante: {e}", category="extraction")
+            return None
+
     def extract_texts(self):
         """Extrait les textes à traduire"""
         if not self.file_content:
@@ -351,6 +458,107 @@ class AppController:
             info_frame.show_processing('Extraction en cours...')
 
         try:
+            # 🆕 NOUVEAU : Vérifier si une extraction existe déjà
+            existing_extraction = None
+            if self.original_path:
+                existing_extraction = self._check_existing_extraction(self.original_path)
+                
+                if existing_extraction:
+                    # Afficher une boîte de dialogue pour demander à l'utilisateur
+                    from infrastructure.helpers.unified_functions import show_custom_askyesnocancel
+                    
+                    message = (
+                        f"Une extraction existe déjà pour ce fichier.\n\n"
+                        f"Date de l'extraction : {existing_extraction['modification_date']}\n\n"
+                        f"Souhaitez-vous :\n"
+                        f"• Recharger l'extraction existante (pour continuer la traduction)\n"
+                        f"• Refaire une extraction complète (écrasera l'ancienne)\n"
+                        f"• Annuler"
+                    )
+                    
+                    theme = theme_manager.get_theme()
+                    response = show_custom_askyesnocancel(
+                        "Extraction existante détectée",
+                        message,
+                        theme,
+                        yes_text="Recharger",
+                        no_text="Refaire",
+                        cancel_text="Annuler",
+                        parent=self.main_window.root
+                    )
+                    
+                    if response is None:  # Annuler
+                        if info_frame:
+                            info_frame.hide_processing()
+                        return
+                    elif response is True:  # Recharger
+                        # Charger l'extraction existante
+                        results = self._load_existing_extraction(existing_extraction)
+                        if not results:
+                            self.main_window.show_notification(
+                                "Erreur lors du chargement de l'extraction existante.", 'TOAST'
+                            )
+                            if info_frame:
+                                info_frame.hide_processing()
+                            return
+                        
+                        self.extraction_results = results
+                        
+                        # Déterminer le timestamp du premier fichier dialogue
+                        if results.get('dialogue_files') and results['dialogue_files']:
+                            first_dialogue_file = results['dialogue_files'][0]
+                            if os.path.exists(first_dialogue_file):
+                                self.extraction_file_timestamp = os.path.getmtime(first_dialogue_file)
+                        elif results.get('dialogue_file') and os.path.exists(results['dialogue_file']):
+                            self.extraction_file_timestamp = os.path.getmtime(results['dialogue_file'])
+                        
+                        # Collecter tous les fichiers à ouvrir
+                        files_to_open = []
+                        if results.get('dialogue_files'):
+                            files_to_open.extend(results['dialogue_files'])
+                        elif results.get('dialogue_file'):
+                            files_to_open.append(results['dialogue_file'])
+                        if results.get('doublons_files'):
+                            files_to_open.extend(results['doublons_files'])
+                        elif results.get('doublons_file'):
+                            files_to_open.append(results['doublons_file'])
+                        if results.get('asterix_files'):
+                            files_to_open.extend(results['asterix_files'])
+                        elif results.get('asterix_file'):
+                            files_to_open.append(results['asterix_file'])
+                        
+                        # Ouvrir les fichiers si auto-open est activé
+                        auto_open_enabled = config_manager.is_auto_open_enabled()
+                        if auto_open_enabled and files_to_open:
+                            FileOpener.open_files(files_to_open, True)
+                        
+                        extracted_count = results.get('extracted_count', 0)
+                        status_msg = f"Extraction existante rechargée ({extracted_count} textes)"
+                        self.update_status(status_msg)
+                        
+                        if info_frame and self.original_path:
+                            # Pas de temps d'exécution pour un rechargement
+                            info_frame.hide_processing()
+                        
+                        # 🆕 NOUVEAU : Mettre à jour le chemin de sortie après rechargement
+                        buttons_frame = self.main_window.get_component('buttons')
+                        if buttons_frame and hasattr(buttons_frame, 'update_output_path_after_extraction'):
+                            buttons_frame.update_output_path_after_extraction(self.original_path)
+                        
+                        toast_msg = "✅ Extraction existante rechargée avec succès."
+                        self.main_window.show_notification(toast_msg, 'TOAST', duration=5000, toast_type='success')
+                        
+                        # À la fin, si succès
+                        if results:
+                            tracker = self._get_translation_progress_tracker()
+                            if tracker:
+                                tracker.scan_translation_folder()
+                        
+                        if info_frame:
+                            info_frame.hide_processing()
+                        return
+                    # Si response is False, continuer avec l'extraction normale
+
             self.main_window.show_notification('Lancement de l\'extraction...', 'STATUS')
 
             if self.original_path:

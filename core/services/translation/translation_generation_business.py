@@ -2084,7 +2084,7 @@ init python early hide:
                     
                     backup_manager = UnifiedBackupManager()
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    backup_filename = f"99_Z_ScreenPreferences_backup_{timestamp}.rpy"
+                    backup_filename = f"99_Z_ScreenPreferences_{timestamp}.rpy.backup"
                     backup_path = target_file.parent / backup_filename
                     
                     # Copier le fichier existant vers le backup

@@ -1,12 +1,53 @@
 # 📝 CHANGELOG - RenExtract
 
+## 2025-11-28 (v1.2.20)
+
+### ✨ Améliorations
+
+#### 🔄 Système d'extraction – détection et rechargement d'extraction existante
+- **Nouveauté** : Détection automatique d'une extraction existante avant de lancer une nouvelle extraction
+- **Détails** :
+  - Vérification automatique de l'existence d'une extraction précédente pour le fichier chargé
+  - Affichage d'une boîte de dialogue avec 3 options : Recharger l'extraction existante / Refaire une extraction complète / Annuler
+  - Rechargement intelligent de l'extraction existante sans refaire le processus complet
+  - Affichage de la date de l'extraction existante pour information
+  - Support des fichiers multiples (dialogue, doublons, astérisques)
+  - Ouverture automatique des fichiers si l'option est activée
+- **Impact** : Permet de reprendre une traduction interrompue sans perdre le travail déjà effectué, évite les extractions inutiles
+- **Fichiers modifiés** :
+  - `core/app_controller.py` : Ajout de `_check_existing_extraction()` et `_load_existing_extraction()`, modification de `extract_texts()`
+  - `core/services/extraction/extraction.py` : Sauvegarde des compteurs dans `positions.json` pour permettre le rechargement
+
+#### 🎭 Éditeur temps réel – modification du locuteur
+- **Nouveauté** : Possibilité de modifier le locuteur d'un dialogue directement depuis l'éditeur temps réel
+- **Détails** :
+  - Affichage du nom du locuteur au-dessus du texte (VO et VF) avec son nom réel depuis les définitions de personnages
+  - Combobox déroulante listant tous les locuteurs trouvés dans le jeu (scan automatique des fichiers .rpy)
+  - Modification du fichier source Ren'Py : remplacement de la lettre du locuteur (ex: `jessica "texte"` → `madison "texte"`)
+  - Préservation du contenu du dialogue lors du changement de locuteur
+  - Backup automatique avant modification du fichier source
+  - Cache des locuteurs scannés pour améliorer les performances
+- **Impact** : Correction rapide des inversions de noms de personnages directement depuis l'éditeur, sans avoir à modifier manuellement les fichiers source
+- **Fichiers modifiés** :
+  - `ui/tab_tools/realtime_editor_tab.py` : Interface avec combobox, scan des locuteurs, modification du fichier source
+
+### 🐛 Corrections et améliorations
+
+#### 💾 Générateur de traductions – extension correcte pour les backups screen preferences
+- **Problème résolu** : Le fichier de backup du fichier `99_Z_ScreenPreferences.rpy` était créé avec une extension incorrecte
+- **Solution** : Le backup est maintenant créé avec l'extension `.rpy.backup` au lieu de `.rpy`, évitant toute confusion avec les fichiers source
+- **Impact** : Les fichiers de backup sont clairement identifiables et ne risquent plus d'être confondus avec les fichiers source Ren'Py
+- **Fichier modifié** : `core/services/translation/translation_generation_business.py`
+
+---
+
 ## 2025-11-25 (v1.2.19.5)
 
 ### 🐛 Corrections et améliorations
 
 #### 🧾 Éditeur temps réel – menu de choix lisible
-- **Problème résolu** : le conteneur scrollable des menus ne s’adaptait pas à la largeur disponible, coupant les textes VO/VF lorsque plusieurs choix étaient présents
-- **Solution** : synchronisation automatique de la largeur du `Canvas` avec le contenu interne pour que les zones VO/VF s’étendent correctement
+- **Problème résolu** : le conteneur scrollable des menus ne s'adaptait pas à la largeur disponible, coupant les textes VO/VF lorsque plusieurs choix étaient présents
+- **Solution** : synchronisation automatique de la largeur du `Canvas` avec le contenu interne pour que les zones VO/VF s'étendent correctement
 - **Impact** : les dialogues et traductions des menus restent pleinement visibles, même avec beaucoup de texte
 - **Fichier modifié** : `ui/tab_tools/realtime_editor_tab.py`
 

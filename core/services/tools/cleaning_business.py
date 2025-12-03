@@ -678,10 +678,11 @@ Statistics:
                     if cleaned_name:
                         excluded_files.append(cleaned_name)
             
-                        return excluded_files
+            return excluded_files
             
         except Exception as e:
-                        return []
+            log_message("ERREUR", f"Erreur récupération fichiers exclus: {e}", category="renpy_generator_clean_tl")
+            return []
 
     def _should_exclude_file(self, file_name: str, excluded_files: List[str]) -> bool:
         """Vérifie si un fichier doit être exclu du nettoyage"""

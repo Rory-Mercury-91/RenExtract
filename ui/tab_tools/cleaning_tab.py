@@ -231,6 +231,7 @@ def _on_cleanup_exclusion_changed(main_interface):
     try:
         exclusions_text = main_interface.cleanup_excluded_files_var.get()
         config_manager.set('cleanup_excluded_files', exclusions_text)
+        config_manager.save_config()  # ✅ CORRIGÉ : Sauvegarder immédiatement
         log_message("DEBUG", "Liste d'exclusions nettoyage mise à jour", category="renpy_generator_clean_tl")
     except Exception as e:
         log_message("ERREUR", f"Erreur sauvegarde exclusions nettoyage: {e}", category="renpy_generator_clean_tl")
@@ -784,12 +785,16 @@ def run_cleanup_thread(main_interface, sdk_path, selected_languages):
             main_interface._update_status("🧹 Nettoyage en cours...")
             main_interface._on_progress_update(60, "Suppression des orphelins...")
             
-            # Récupérer les exclusions depuis la nouvelle variable
+            # ✅ CORRIGÉ : Récupérer et sauvegarder les exclusions avant le nettoyage
             excluded_files = []
             if hasattr(main_interface, 'cleanup_excluded_files_var'):
                 excluded_text = main_interface.cleanup_excluded_files_var.get().strip()
                 if excluded_text:
                     excluded_files = [item.strip() for item in excluded_text.split(',') if item.strip()]
+                    # Sauvegarder dans la configuration pour que _get_excluded_files() puisse les lire
+                    from infrastructure.config.config import config_manager
+                    config_manager.set('cleanup_excluded_files', excluded_text)
+                    config_manager.save_config()
             
             log_message("INFO", f"Fichiers exclus du nettoyage: {excluded_files if excluded_files else 'Aucun'}", category="renpy_generator_clean_tl")
             

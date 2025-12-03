@@ -1782,6 +1782,25 @@ class RealTimeEditorBusiness:
                 # 🔧 RÉCUPÉRER LE VRAI TEXTE ORIGINAL depuis le fichier de traduction
                 original_text, translated_text = self._get_vo_vf_texts(tl_file, tl_line, displayed_text)
                 
+                # ✅ NOUVEAU : Extraire le locuteur depuis le fichier source
+                speaker_key = None
+                if source_file and source_line > 0 and self.current_project_path:
+                    try:
+                        source_file_path = os.path.join(self.current_project_path, "game", source_file)
+                        if not os.path.exists(source_file_path):
+                            # Essayer aussi directement dans le projet
+                            source_file_path = os.path.join(self.current_project_path, source_file)
+                        
+                        if os.path.exists(source_file_path):
+                            with open(source_file_path, 'r', encoding='utf-8') as f:
+                                lines = f.readlines()
+                            
+                            if 0 <= source_line - 1 < len(lines):
+                                source_line_content = lines[source_line - 1]
+                                speaker_key = self._extract_speaker_from_line(source_line_content)
+                    except Exception as e:
+                        log_message("ATTENTION", f"Erreur extraction locuteur depuis source: {e}", category="realtime_editor")
+                
                 return {
                     'displayed_text': displayed_text,
                     'original_text': original_text,
@@ -1789,7 +1808,8 @@ class RealTimeEditorBusiness:
                     'source_file': source_file,
                     'source_line': source_line,
                     'tl_file': tl_file,
-                    'tl_line': tl_line
+                    'tl_line': tl_line,
+                    'speaker_key': speaker_key  # ✅ NOUVEAU : Clé du locuteur (ex: 'p', 'a', None pour narrateur)
                 }
         except Exception as e:
             log_message("ATTENTION", f"Erreur parsing ligne dialogue: {e}", category="realtime_editor")

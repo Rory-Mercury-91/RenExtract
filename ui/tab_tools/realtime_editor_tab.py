@@ -589,8 +589,10 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
         main_interface.vo_content_container.grid(row=1, column=0, sticky='ew')
         
         main_interface.vo_content_container.grid_propagate(False)
-        main_interface.vo_content_container.grid_rowconfigure(0, weight=1)
-        main_interface.vo_content_container.grid_rowconfigure(1, weight=0)
+        # ✅ MODIFIÉ : Configuration pour inclure le champ locuteur (3 lignes au lieu de 2)
+        main_interface.vo_content_container.grid_rowconfigure(0, weight=0)  # Locuteur (fixe)
+        main_interface.vo_content_container.grid_rowconfigure(1, weight=1)  # Zone texte (expandable)
+        main_interface.vo_content_container.grid_rowconfigure(2, weight=0)  # Boutons (fixe)
         main_interface.vo_content_container.grid_columnconfigure(0, weight=1)
 
         _create_normal_vo_interface_with_grid(main_interface)
@@ -611,8 +613,10 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
         main_interface.vf_content_container.grid(row=1, column=0, sticky='ew')
         
         main_interface.vf_content_container.grid_propagate(False)
-        main_interface.vf_content_container.grid_rowconfigure(0, weight=1)
-        main_interface.vf_content_container.grid_rowconfigure(1, weight=0)
+        # ✅ MODIFIÉ : Configuration pour inclure le champ locuteur (3 lignes au lieu de 2)
+        main_interface.vf_content_container.grid_rowconfigure(0, weight=0)  # Locuteur (fixe)
+        main_interface.vf_content_container.grid_rowconfigure(1, weight=1)  # Zone texte (expandable)
+        main_interface.vf_content_container.grid_rowconfigure(2, weight=0)  # Boutons (fixe)
         main_interface.vf_content_container.grid_columnconfigure(0, weight=1)
         
         _create_normal_vf_interface_with_grid_and_buttons(main_interface)
@@ -640,6 +644,142 @@ def _build_editor_panel(parent_container, main_interface, is_detached=False):
 
         return edit_main
 
+def _get_character_display_name(speaker_key, main_interface):
+    """Récupère le nom d'affichage d'un personnage depuis sa lettre de définition"""
+    if not speaker_key:
+        return "Narrateur"
+    
+    from infrastructure.config.config import config_manager
+    characters_def = config_manager.get('groq_characters_definitions', {})
+    
+    if speaker_key in characters_def:
+        char_info = characters_def[speaker_key]
+        prenom = char_info.get('prenom', '')
+        if prenom:
+            return f"{speaker_key} ({prenom})"
+        # Fallback : utiliser la lettre si pas de prénom défini
+        return speaker_key.upper()
+    
+    # Si pas dans les définitions, retourner la lettre
+    return speaker_key.upper()
+
+def _scan_all_speakers_from_game(main_interface):
+    """Scanne tous les fichiers .rpy du jeu pour trouver tous les locuteurs utilisés (avec cache)"""
+    # ✅ Cache pour éviter de scanner à chaque fois
+    if not hasattr(main_interface, '_scanned_speakers_cache'):
+        main_interface._scanned_speakers_cache = {}
+    
+    cache_key = main_interface.current_project_path if hasattr(main_interface, 'current_project_path') else None
+    if cache_key and cache_key in main_interface._scanned_speakers_cache:
+        return main_interface._scanned_speakers_cache[cache_key]
+    
+    speakers_found = set()
+    
+    try:
+        if not hasattr(main_interface, 'current_project_path') or not main_interface.current_project_path:
+            return speakers_found
+        
+        game_folder = os.path.join(main_interface.current_project_path, "game")
+        if not os.path.exists(game_folder):
+            return speakers_found
+        
+        # Scanner tous les fichiers .rpy (hors tl/)
+        import glob
+        rpy_files = glob.glob(os.path.join(game_folder, "**/*.rpy"), recursive=True)
+        rpy_files = [f for f in rpy_files if '/tl/' not in f.replace('\\', '/')]
+        
+        # Mots-clés Ren'Py à exclure (liste complète)
+        renpy_keywords = {
+            'define', 'label', 'menu', 'if', 'elif', 'else', 'while', 'for', 'return', 
+            'call', 'jump', 'scene', 'show', 'hide', 'play', 'stop', 'pause', 'window', 
+            'nvl', 'centered', 'extend', 'with', 'at', 'as', 'onlayer', 'zorder', 'transform', 
+            'function', 'class', 'init', 'python', 'screen', 'image', 'default', 'persistent',
+            'old', 'new', 'translate', 'renpy', 'config', 'store'
+        }
+        
+        # Pattern pour détecter les locuteurs : lettre "texte" ou nom "texte"
+        speaker_pattern = re.compile(r'^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s+"')
+        
+        for filepath in rpy_files:
+            try:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        # Ignorer les commentaires et lignes spéciales
+                        stripped = line.strip()
+                        if not stripped or stripped.startswith('#') or stripped.startswith('translate ') or 'old ' in stripped.lower() or 'new ' in stripped.lower():
+                            continue
+                        
+                        # Chercher un locuteur
+                        match = speaker_pattern.match(line)
+                        if match:
+                            speaker_key = match.group(1).lower()
+                            # Exclure les mots-clés Ren'Py
+                            if speaker_key not in renpy_keywords:
+                                speakers_found.add(speaker_key)
+            except Exception:
+                continue
+        
+        # Mettre en cache
+        if cache_key:
+            main_interface._scanned_speakers_cache[cache_key] = speakers_found
+        
+        log_message("INFO", f"Scan locuteurs: {len(speakers_found)} locuteurs trouvés dans le jeu", category="realtime_editor")
+        return speakers_found
+        
+    except Exception as e:
+        log_message("ERREUR", f"Erreur scan locuteurs: {e}", category="realtime_editor")
+        return speakers_found
+
+def _get_characters_list_for_combobox(main_interface):
+    """Récupère la liste des personnages formatée pour une Combobox (inclut tous les locuteurs du jeu)"""
+    from infrastructure.config.config import config_manager
+    characters_def = config_manager.get('groq_characters_definitions', {})
+    
+    # Créer une liste avec "Narrateur" en premier
+    characters_list = ["Narrateur (aucun locuteur)"]
+    
+    # ✅ NOUVEAU : Scanner tous les locuteurs du jeu
+    all_speakers = _scan_all_speakers_from_game(main_interface)
+    
+    # Combiner les locuteurs scannés avec les définitions
+    all_char_keys = set(all_speakers)
+    for char_key in characters_def.keys():
+        all_char_keys.add(char_key)
+    
+    # Ajouter tous les locuteurs avec leur nom d'affichage
+    for char_key in sorted(all_char_keys):
+        # Chercher dans les définitions pour le nom
+        if char_key in characters_def:
+            char_info = characters_def[char_key]
+            if isinstance(char_info, dict):
+                prenom = char_info.get('prenom', '')
+                if prenom:
+                    display_name = f"{char_key} ({prenom})"
+                else:
+                    display_name = char_key.upper()
+            else:
+                display_name = char_key.upper()
+        else:
+            # Si pas dans les définitions, utiliser juste la lettre
+            display_name = char_key.upper()
+        
+        characters_list.append(display_name)
+    
+    return characters_list
+
+def _get_speaker_key_from_display_name(display_name):
+    """Extrait la lettre du locuteur depuis le nom d'affichage de la combobox"""
+    if not display_name or display_name == "Narrateur (aucun locuteur)":
+        return None
+    
+    # Extraire la lettre (premier mot avant l'espace ou parenthèse)
+    import re
+    match = re.match(r'^(\w+)', display_name)
+    if match:
+        return match.group(1).lower()
+    
+    return None
+
 def _create_normal_vo_interface_with_grid(main_interface):
     """Crée l'interface VO normale avec le thème sombre."""
     theme = theme_manager.get_theme()
@@ -647,6 +787,51 @@ def _create_normal_vo_interface_with_grid(main_interface):
 
     for widget in main_interface.vo_content_container.winfo_children():
         widget.destroy()
+
+    # ✅ NOUVEAU : Réorganiser la grille pour inclure le champ locuteur
+    main_interface.vo_content_container.grid_rowconfigure(0, weight=0)  # Locuteur (fixe)
+    main_interface.vo_content_container.grid_rowconfigure(1, weight=1)  # Zone texte (expandable)
+    main_interface.vo_content_container.grid_rowconfigure(2, weight=0)  # Boutons (fixe)
+
+    # ✅ NOUVEAU : Frame pour le locuteur au-dessus
+    speaker_frame = tk.Frame(main_interface.vo_content_container, bg=theme["bg"])
+    speaker_frame.grid(row=0, column=0, sticky='ew', pady=(0, 5))
+    speaker_frame.grid_columnconfigure(1, weight=1)
+
+    tk.Label(
+        speaker_frame,
+        text="Locuteur:",
+        font=('Segoe UI', 9, 'bold'),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    ).grid(row=0, column=0, padx=(0, 5), sticky='w')
+
+    # Combobox pour sélectionner le locuteur
+    if not hasattr(main_interface, 'vo_speaker_combo_var'):
+        main_interface.vo_speaker_combo_var = tk.StringVar()
+    
+    characters_list = _get_characters_list_for_combobox(main_interface)
+    main_interface.vo_speaker_combo = ttk.Combobox(
+        speaker_frame,
+        textvariable=main_interface.vo_speaker_combo_var,
+        values=characters_list,
+        state='readonly',
+        font=('Segoe UI', 9),
+        width=25
+    )
+    main_interface.vo_speaker_combo.grid(row=0, column=1, sticky='ew', padx=(0, 5))
+    
+    # Callback pour sauvegarder la modification
+    def on_speaker_changed(event=None):
+        selected_display = main_interface.vo_speaker_combo_var.get()
+        new_speaker_key = _get_speaker_key_from_display_name(selected_display)
+        if new_speaker_key is not None or selected_display == "Narrateur (aucun locuteur)":
+            _save_speaker_key_modification(main_interface, new_speaker_key)
+    
+    main_interface.vo_speaker_combo.bind('<<ComboboxSelected>>', on_speaker_changed)
+    
+    # Mettre à jour la liste des personnages dans la combobox
+    main_interface.vo_speaker_combo['values'] = characters_list
 
     # ✅ MODIFIÉ : Application du thème sombre sans dimensions fixes (pour permettre le word wrap)
     vo_text = tk.Text(
@@ -660,11 +845,11 @@ def _create_normal_vo_interface_with_grid(main_interface):
         borderwidth=1,
         highlightbackground='#666666'
     )
-    vo_text.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
+    vo_text.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     main_interface.vo_text_widget = vo_text
 
     vo_buttons_frame = tk.Frame(main_interface.vo_content_container, bg=theme["bg"])
-    vo_buttons_frame.grid(row=1, column=0, pady=8)
+    vo_buttons_frame.grid(row=2, column=0, pady=8)
 
     tk.Button(
         vo_buttons_frame, text="Copier",
@@ -692,17 +877,59 @@ def _create_normal_vf_interface_with_grid_and_buttons(main_interface):
     for widget in main_interface.vf_content_container.winfo_children():
         widget.destroy()
 
+    # ✅ NOUVEAU : Réorganiser la grille pour inclure le champ locuteur
+    main_interface.vf_content_container.grid_rowconfigure(0, weight=0)  # Locuteur (fixe)
+    main_interface.vf_content_container.grid_rowconfigure(1, weight=1)  # Zone texte (expandable)
+    main_interface.vf_content_container.grid_rowconfigure(2, weight=0)  # Boutons (fixe)
+
+    # ✅ NOUVEAU : Frame pour le locuteur au-dessus
+    speaker_frame = tk.Frame(main_interface.vf_content_container, bg=theme["bg"])
+    speaker_frame.grid(row=0, column=0, sticky='ew', pady=(0, 5))
+    speaker_frame.grid_columnconfigure(1, weight=1)
+
+    tk.Label(
+        speaker_frame,
+        text="Locuteur:",
+        font=('Segoe UI', 9, 'bold'),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    ).grid(row=0, column=0, padx=(0, 5), sticky='w')
+
+    # Combobox pour sélectionner le locuteur
+    if not hasattr(main_interface, 'vf_speaker_combo_var'):
+        main_interface.vf_speaker_combo_var = tk.StringVar()
+    
+    characters_list = _get_characters_list_for_combobox(main_interface)
+    main_interface.vf_speaker_combo = ttk.Combobox(
+        speaker_frame,
+        textvariable=main_interface.vf_speaker_combo_var,
+        values=characters_list,
+        state='readonly',
+        font=('Segoe UI', 9),
+        width=25
+    )
+    main_interface.vf_speaker_combo.grid(row=0, column=1, sticky='ew', padx=(0, 5))
+    
+    # Callback pour sauvegarder la modification
+    def on_speaker_changed(event=None):
+        selected_display = main_interface.vf_speaker_combo_var.get()
+        new_speaker_key = _get_speaker_key_from_display_name(selected_display)
+        if new_speaker_key is not None or selected_display == "Narrateur (aucun locuteur)":
+            _save_speaker_key_modification(main_interface, new_speaker_key)
+    
+    main_interface.vf_speaker_combo.bind('<<ComboboxSelected>>', on_speaker_changed)
+
     # ✅ MODIFIÉ : Application du thème sombre sans dimensions fixes (pour permettre le word wrap)
     vf_text = tk.Text(main_interface.vf_content_container, wrap='word', font=editor_font,
                      bg=theme["entry_bg"], fg=theme["accent"], relief='solid', borderwidth=1,
                      insertbackground='#1976d2', highlightbackground='#666666'
                      )
-    vf_text.grid(row=0, column=0, sticky='nsew', pady=(0, 5))
+    vf_text.grid(row=1, column=0, sticky='nsew', pady=(0, 5))
     main_interface.vf_text_widget = vf_text
     main_interface.vf_text_widget_2 = None
 
     vf_buttons_frame = tk.Frame(main_interface.vf_content_container, bg=theme["bg"])
-    vf_buttons_frame.grid(row=1, column=0, pady=8)
+    vf_buttons_frame.grid(row=2, column=0, pady=8)
 
     tk.Button(vf_buttons_frame, text="Coller", command=lambda: paste_vf_text_simple(main_interface),
               bg=theme["button_primary_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8).pack(side='left', padx=(0, 5))
@@ -2160,6 +2387,28 @@ def _handle_unnamed_speaker_update(main_interface, dialogue_type, dialogue_struc
     # (car current_dialogue_info contient encore l'ancien dialogue)
     original_full_text = dialogue_info.get('original_text', '')
     
+    # ✅ NOUVEAU : Afficher le nom du locuteur (pour référence, même en mode split)
+    speaker_key = dialogue_info.get('speaker_key')
+    modified_speaker_key = dialogue_info.get('modified_speaker_key')
+    
+    current_speaker_key = modified_speaker_key if modified_speaker_key is not None else speaker_key
+    
+    characters_list = _get_characters_list_for_combobox(main_interface)
+    display_name = "Narrateur (aucun locuteur)"
+    
+    if current_speaker_key:
+        for item in characters_list:
+            if item.startswith(f"{current_speaker_key} "):
+                display_name = item
+                break
+        else:
+            display_name = _get_character_display_name(current_speaker_key, main_interface)
+    
+    if hasattr(main_interface, 'vo_speaker_combo_var'):
+        main_interface.vo_speaker_combo_var.set(display_name)
+    if hasattr(main_interface, 'vf_speaker_combo_var'):
+        main_interface.vf_speaker_combo_var.set(display_name)
+    
     # Si on a le texte original complet, l'analyser pour séparer locuteur/dialogue
     if original_full_text and '"' in original_full_text:
         import re
@@ -2193,6 +2442,28 @@ def _handle_multiline_update(main_interface, dialogue_type, dialogue_structure, 
     """Met à jour l'UI pour un dialogue divisé sur plusieurs lignes."""
     if getattr(main_interface, 'vo_split_mode', False):
         _create_normal_vo_interface_with_grid(main_interface)
+    
+    # ✅ NOUVEAU : Afficher le nom du locuteur
+    speaker_key = dialogue_info.get('speaker_key')
+    modified_speaker_key = dialogue_info.get('modified_speaker_key')
+    
+    current_speaker_key = modified_speaker_key if modified_speaker_key is not None else speaker_key
+    
+    characters_list = _get_characters_list_for_combobox(main_interface)
+    display_name = "Narrateur (aucun locuteur)"
+    
+    if current_speaker_key:
+        for item in characters_list:
+            if item.startswith(f"{current_speaker_key} "):
+                display_name = item
+                break
+        else:
+            display_name = _get_character_display_name(current_speaker_key, main_interface)
+    
+    if hasattr(main_interface, 'vo_speaker_combo_var'):
+        main_interface.vo_speaker_combo_var.set(display_name)
+    if hasattr(main_interface, 'vf_speaker_combo_var'):
+        main_interface.vf_speaker_combo_var.set(display_name)
     
     # ✅ CORRECTION : Utiliser dialogue_info passé en paramètre au lieu de current_dialogue_info
     # (car current_dialogue_info contient encore l'ancien dialogue)
@@ -2237,6 +2508,31 @@ def _handle_simple_dialogue_update(main_interface, dialogue_type, original_text,
         main_interface.vo_text_widget.config(state='disabled')
     
     _create_normal_vf_interface_with_grid_and_buttons(main_interface)
+    
+    # ✅ NOUVEAU : Afficher le nom du locuteur (après création des interfaces)
+    speaker_key = dialogue_info.get('speaker_key')
+    modified_speaker_key = dialogue_info.get('modified_speaker_key')
+    
+    # Utiliser la clé modifiée si disponible, sinon la clé originale
+    current_speaker_key = modified_speaker_key if modified_speaker_key is not None else speaker_key
+    
+    # Trouver le nom d'affichage dans la liste
+    characters_list = _get_characters_list_for_combobox(main_interface)
+    display_name = "Narrateur (aucun locuteur)"
+    
+    if current_speaker_key:
+        for item in characters_list:
+            if item.startswith(f"{current_speaker_key} "):
+                display_name = item
+                break
+        else:
+            # Si pas trouvé, créer un nom d'affichage simple
+            display_name = _get_character_display_name(current_speaker_key, main_interface)
+    
+    if hasattr(main_interface, 'vo_speaker_combo_var'):
+        main_interface.vo_speaker_combo_var.set(display_name)
+    if hasattr(main_interface, 'vf_speaker_combo_var'):
+        main_interface.vf_speaker_combo_var.set(display_name)
     
     # Afficher le texte VF (traduit)
     if hasattr(main_interface, 'vf_text_widget') and main_interface.vf_text_widget.winfo_exists():
@@ -2454,6 +2750,201 @@ def _find_translation_block(lines, target_line):
             dialogue_match = re.search(r'"((?:\\.|[^"])*)"', line)
             if dialogue_match: dialogue_block.append((i, dialogue_match.group(1)))
     return dialogue_block
+
+def _save_speaker_key_modification(main_interface, new_speaker_key):
+    """Sauvegarde la modification de la lettre du locuteur et modifie le fichier source Ren'Py"""
+    try:
+        if not hasattr(main_interface, 'current_dialogue_info') or not main_interface.current_dialogue_info:
+            return
+        
+        dialogue_info = main_interface.current_dialogue_info
+        biz = main_interface._get_realtime_editor_business()
+        
+        # Récupérer le speaker_key original
+        original_speaker_key = dialogue_info.get('speaker_key')
+        
+        # ✅ NOUVEAU : Modifier le fichier source Ren'Py
+        source_file = dialogue_info.get('source_file')
+        source_line = dialogue_info.get('source_line', 0)
+        
+        if source_file and source_line > 0 and main_interface.current_project_path:
+            try:
+                # Construire le chemin du fichier source
+                source_file_path = os.path.join(main_interface.current_project_path, "game", source_file)
+                if not os.path.exists(source_file_path):
+                    source_file_path = os.path.join(main_interface.current_project_path, source_file)
+                
+                if os.path.exists(source_file_path):
+                    # Créer un backup
+                    from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
+                    backup_manager = UnifiedBackupManager()
+                    backup_result = backup_manager.create_backup(
+                        source_file_path,
+                        BackupType.REALTIME_EDIT,
+                        f"Modification locuteur: {original_speaker_key} → {new_speaker_key}"
+                    )
+                    
+                    # Lire le fichier
+                    with open(source_file_path, 'r', encoding='utf-8') as f:
+                        lines = f.readlines()
+                    
+                    # Modifier la ligne source
+                    target_index = source_line - 1
+                    if 0 <= target_index < len(lines):
+                        original_line = lines[target_index]
+                        original_line_stripped = original_line.rstrip('\n\r')
+                        
+                        # ✅ DEBUG : Logger la ligne originale
+                        log_message("DEBUG", f"Ligne originale: '{original_line_stripped}'", category="realtime_editor")
+                        log_message("DEBUG", f"Locuteur original: '{original_speaker_key}' → Nouveau: '{new_speaker_key}'", category="realtime_editor")
+                        
+                        # ✅ APPROCHE SIMPLIFIÉE ET ROBUSTE : Extraire manuellement le contenu
+                        # Extraire l'indentation
+                        indent_match = re.match(r'^(\s*)', original_line_stripped)
+                        indent = indent_match.group(1) if indent_match else ''
+                        
+                        # Trouver la position du premier guillemet ouvrant après le locuteur
+                        # Chercher le pattern : espaces + locuteur + espaces + guillemet
+                        speaker_pattern = re.compile(
+                            r'^\s*' + re.escape(original_speaker_key) + r'\s+"',
+                            re.IGNORECASE
+                        )
+                        
+                        match = speaker_pattern.search(original_line_stripped)
+                        
+                        if match:
+                            # Le locuteur a été trouvé
+                            quote_start = match.end() - 1  # Position du guillemet ouvrant
+                            
+                            # Extraire le contenu entre guillemets en gérant les échappements
+                            content_start = quote_start + 1
+                            content = ""
+                            i = content_start
+                            while i < len(original_line_stripped):
+                                if original_line_stripped[i] == '\\' and i + 1 < len(original_line_stripped):
+                                    # Échappement : préserver \"
+                                    content += original_line_stripped[i:i+2]
+                                    i += 2
+                                elif original_line_stripped[i] == '"':
+                                    # Fin du contenu
+                                    break
+                                else:
+                                    content += original_line_stripped[i]
+                                    i += 1
+                            
+                            # Récupérer le reste de la ligne après le guillemet fermant
+                            if i < len(original_line_stripped):
+                                rest_of_line = original_line_stripped[i+1:]  # +1 pour sauter le guillemet fermant
+                            else:
+                                rest_of_line = ""
+                            
+                            # ✅ DEBUG : Logger le contenu extrait
+                            log_message("DEBUG", f"Contenu extrait: '{content}'", category="realtime_editor")
+                            log_message("DEBUG", f"Reste de la ligne: '{rest_of_line}'", category="realtime_editor")
+                            
+                            # Reconstruire la ligne avec le nouveau locuteur
+                            if new_speaker_key:
+                                new_line = f'{indent}{new_speaker_key} "{content}"{rest_of_line}'
+                            else:
+                                # Pas de locuteur (narrateur)
+                                new_line = f'{indent}"{content}"{rest_of_line}'
+                            
+                            log_message("DEBUG", f"Nouvelle ligne: '{new_line}'", category="realtime_editor")
+                        else:
+                            # Le locuteur n'a pas été trouvé dans la ligne
+                            log_message("ATTENTION", f"Locuteur '{original_speaker_key}' non trouvé dans: '{original_line_stripped}'", category="realtime_editor")
+                            new_line = original_line_stripped
+                        
+                        # Préserver le saut de ligne original
+                        if not new_line.endswith('\n') and original_line.endswith('\n'):
+                            new_line += '\n'
+                        elif new_line.endswith('\n') and not original_line.endswith('\n'):
+                            new_line = new_line.rstrip('\n')
+                        
+                        if new_line != original_line:
+                            lines[target_index] = new_line
+                            
+                            # Écrire le fichier modifié
+                            with open(source_file_path, 'w', encoding='utf-8') as f:
+                                f.writelines(lines)
+                            
+                            log_message("INFO", f"Fichier source modifié: {source_file}:{source_line} ({original_speaker_key} → {new_speaker_key})", category="realtime_editor")
+                        else:
+                            log_message("ATTENTION", f"Aucune modification détectée dans la ligne source", category="realtime_editor")
+                    else:
+                        log_message("ATTENTION", f"Ligne source hors limites: {source_line}", category="realtime_editor")
+                else:
+                    log_message("ATTENTION", f"Fichier source introuvable: {source_file_path}", category="realtime_editor")
+            except Exception as e:
+                log_message("ERREUR", f"Erreur modification fichier source: {e}", category="realtime_editor")
+        
+        # Créer une clé unique pour cette modification
+        key = f"{dialogue_info.get('tl_file', '')}|{dialogue_info.get('tl_line', 0)}"
+        
+        # Vérifier si une modification existe déjà
+        if hasattr(biz, 'pending_modifications') and key in biz.pending_modifications:
+            mod_entry = biz.pending_modifications[key]
+            mod_data = mod_entry.get('modification_data', {})
+        else:
+            mod_data = {'type': 'simple', 'content': ''}
+        
+        # Ajouter la modification de la lettre du locuteur dans les métadonnées
+        mod_data['speaker_modification'] = {
+            'original_speaker_key': original_speaker_key,
+            'modified_speaker_key': new_speaker_key,
+            'source_file': source_file,
+            'source_line': source_line
+        }
+        
+        # Sauvegarder dans pending_modifications
+        if not hasattr(biz, 'pending_modifications'):
+            biz.pending_modifications = {}
+        
+        biz.pending_modifications[key] = {
+            'dialogue_info': dialogue_info,
+            'modification_data': mod_data,
+            'timestamp': time.time()
+        }
+        
+        # Sauvegarder dans le fichier JSON si disponible
+        if hasattr(biz, 'pending_modifications_file') and biz.pending_modifications_file:
+            try:
+                import json
+                with open(biz.pending_modifications_file, 'w', encoding='utf-8') as f:
+                    json.dump(biz.pending_modifications, f, indent=2, ensure_ascii=False, default=str)
+            except Exception as e:
+                log_message("ATTENTION", f"Erreur sauvegarde JSON modification locuteur: {e}", category="realtime_editor")
+        
+        # Mettre à jour le dialogue_info pour refléter la modification
+        dialogue_info['modified_speaker_key'] = new_speaker_key
+        dialogue_info['speaker_key'] = new_speaker_key  # Mettre à jour aussi la clé originale
+        
+        # Mettre à jour les deux combobox (VO et VF) pour synchronisation
+        characters_list = _get_characters_list_for_combobox(main_interface)
+        new_display_name = "Narrateur (aucun locuteur)"
+        
+        if new_speaker_key:
+            # Trouver le nom d'affichage complet depuis la liste
+            for item in characters_list:
+                if item.startswith(f"{new_speaker_key} ") or item == f"{new_speaker_key.upper()}":
+                    new_display_name = item
+                    break
+            else:
+                # Si pas trouvé, créer un nom d'affichage simple
+                new_display_name = _get_character_display_name(new_speaker_key, main_interface)
+        
+        if hasattr(main_interface, 'vo_speaker_combo_var'):
+            main_interface.vo_speaker_combo_var.set(new_display_name)
+        if hasattr(main_interface, 'vf_speaker_combo_var'):
+            main_interface.vf_speaker_combo_var.set(new_display_name)
+        
+        display_name = _get_character_display_name(new_speaker_key, main_interface) if new_speaker_key else "Narrateur"
+        main_interface._update_status(f"Locuteur modifié: {display_name}")
+        log_message("INFO", f"Modification locuteur sauvegardée: {original_speaker_key} → {new_speaker_key}", category="realtime_editor")
+        
+    except Exception as e:
+        log_message("ERREUR", f"Erreur sauvegarde modification locuteur: {e}", category="realtime_editor")
+        main_interface._update_status("Erreur lors de la sauvegarde du locuteur")
 
 def _save_current_modification_if_changed(main_interface):
     """Sauvegarde la modification actuelle en attente si elle a changé."""
