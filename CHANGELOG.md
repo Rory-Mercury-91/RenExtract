@@ -1,5 +1,22 @@
 # 📝 CHANGELOG - RenExtract
 
+## 2025-12-15 (v1.2.21)
+
+### 🐛 Corrections et améliorations
+
+#### 🧹 Nettoyage intelligent – correction du système d'exclusion de fichiers
+- **Problème résolu** : Les fichiers ajoutés dans le champ "Fichiers à exclure du nettoyage" étaient quand même nettoyés
+- **Solution** :
+  - Ajout de logs détaillés pour diagnostiquer les exclusions (chaîne brute, liste finale, vérification par fichier)
+  - Amélioration de la vérification des exclusions avec logging de chaque étape
+  - Affichage clair des fichiers exclus (système ou utilisateur) dans les logs
+  - Vérification insensible à la casse pour les exclusions utilisateur
+- **Impact** : Les exclusions de fichiers fonctionnent maintenant correctement, permettant de protéger les fichiers personnalisés du nettoyage automatique
+- **Fichiers modifiés** :
+  - `core/services/tools/cleaning_business.py` : Amélioration du logging dans `_should_exclude_file()`, `_get_excluded_files()` et `_clean_language_folder_unified()`
+
+---
+
 ## 2025-11-28 (v1.2.20)
 
 ### ✨ Améliorations

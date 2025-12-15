@@ -634,13 +634,14 @@ Statistics:
         try:
             # Récupérer les fichiers à exclure de la configuration
             excluded_files = self._get_excluded_files()
+            log_message("INFO", f"Fichiers exclus du nettoyage (config): {excluded_files if excluded_files else 'Aucun'}", category="renpy_generator_clean_tl")
             
             for root, dirs, files in os.walk(language_folder):
                 for file in files:
                     if file.endswith('.rpy'):
                         # Vérifier si le fichier doit être exclu
                         if self._should_exclude_file(file, excluded_files):
-                                                        continue
+                            continue
                         
                         file_path = os.path.join(root, file)
                         result = self._clean_file_unified(file_path, lint_file_path, game_folder_path)
@@ -670,6 +671,7 @@ Statistics:
             from infrastructure.config.config import config_manager
             
             excluded_files_str = config_manager.get('cleanup_excluded_files')
+            log_message("INFO", f"📋 Chaîne d'exclusions brute depuis config: '{excluded_files_str}'", category="renpy_generator_clean_tl")
             
             excluded_files = []
             if excluded_files_str:
@@ -677,7 +679,9 @@ Statistics:
                     cleaned_name = file_name.strip()
                     if cleaned_name:
                         excluded_files.append(cleaned_name)
+                        log_message("INFO", f"  ➕ Fichier ajouté aux exclusions: '{cleaned_name}'", category="renpy_generator_clean_tl")
             
+            log_message("INFO", f"📋 Liste finale des exclusions: {excluded_files}", category="renpy_generator_clean_tl")
             return excluded_files
             
         except Exception as e:
@@ -699,21 +703,28 @@ Statistics:
             file_name_lower = file_name.lower()
             for system_file in system_generated_files:
                 if system_file.lower() == file_name_lower:
-                                        return True
+                    log_message("DEBUG", f"✅ Fichier exclu (système) : {file_name}", category="renpy_generator_clean_tl")
+                    return True
             
             # Ensuite vérifier les exclusions utilisateur
+            log_message("DEBUG", f"🔍 Vérification exclusion pour '{file_name}' dans {excluded_files}", category="renpy_generator_clean_tl")
+            
             if file_name in excluded_files:
+                log_message("INFO", f"✅ Fichier exclu (utilisateur) : {file_name}", category="renpy_generator_clean_tl")
                 return True
             
             # Vérification insensible à la casse pour les exclusions utilisateur
             for excluded_file in excluded_files:
                 if excluded_file.lower() == file_name_lower:
+                    log_message("INFO", f"✅ Fichier exclu (utilisateur, casse insensible) : {file_name} == {excluded_file}", category="renpy_generator_clean_tl")
                     return True
             
+            log_message("DEBUG", f"❌ Fichier NON exclu : {file_name}", category="renpy_generator_clean_tl")
             return False
             
         except Exception as e:
-                        return False
+            log_message("ERREUR", f"Erreur vérification exclusion pour {file_name}: {e}", category="renpy_generator_clean_tl")
+            return False
 
     def _create_unified_backup(self, file_path: str) -> Optional[str]:
         """Crée une sauvegarde unifiée du fichier avant tout traitement"""
