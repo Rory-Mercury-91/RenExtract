@@ -29,6 +29,8 @@ from datetime import datetime
 
 from infrastructure.logging.logging import log_message
 from infrastructure.config.config import config_manager
+from infrastructure.helpers.unified_functions import show_translated_messagebox
+from core.models.backup.unified_backup_manager import BackupType
 from core.tools.sdk_manager import get_sdk_manager
 from core.services.translation.font_manager import FontManager
 from core.models.backup.unified_backup_manager import UnifiedBackupManager
@@ -106,7 +108,59 @@ class TranslationGenerationBusiness:
             except Exception as e: 
                 log_message("ATTENTION", f"Erreur callback error: {e}", category="renpy_generator_tl")
         log_message("ERREUR", f"Erreur: {error_message}", category="renpy_generator_tl")
-    
+
+    def _safe_write_file(self, file_path: Path, content: str) -> Tuple[Path, str]:
+        """Écrit le contenu dans `file_path` de manière sûre.
+
+        Si un fichier de type 'texte manquant' (ou 'missing') existe dans le même dossier
+        et que `file_path` n'existe pas encore, propose à l'utilisateur de fusionner
+        le contenu dans ce fichier existant (AskYes/No). Renvoie le chemin effectivement
+        utilisé et un message de statut.
+        """
+        try:
+            directory = file_path.parent
+            pattern = re.compile(r'(?i)(?:texte[\s_-]*manquant|manquant|missing).*\\.rpy$')
+            candidates = [p for p in directory.iterdir() if p.is_file() and pattern.match(p.name)]
+
+            if candidates and not file_path.exists():
+                candidate = candidates[0]
+                message = (
+                    f"Un fichier similaire existe déjà : {candidate.name}\n"
+                    f"Voulez-vous fusionner le contenu généré dans ce fichier au lieu de créer '{file_path.name}' ?"
+                )
+                try:
+                    response = show_translated_messagebox('askyesno', 'Fusion fichier', message)
+                except Exception as e:
+                    log_message('ATTENTION', f"Erreur UI demande fusion: {e}", category='renpy_generator_tl')
+                    response = False
+
+                if response:
+                    try:
+                        # Créer un backup avant fusion et l'enregistrer dans le gestionnaire unifié
+                        try:
+                            backup_result = self.backup_manager.create_backup(str(candidate), BackupType.BEFORE_FUSION, "Sauvegarde avant fusion automatique")
+                            if backup_result.get('success'):
+                                log_message('INFO', f"Backup avant fusion créé: {backup_result.get('backup_path')}", category='renpy_generator_tl')
+                            else:
+                                log_message('ATTENTION', f"Backup avant fusion échoué: {backup_result.get('error')}", category='renpy_generator_tl')
+                        except Exception as be:
+                            log_message('ATTENTION', f"Erreur création backup avant fusion: {be}", category='renpy_generator_tl')
+
+                        with open(candidate, 'a', encoding='utf-8') as f:
+                            f.write('\n\n# === Fusion depuis {} : {} ===\n'.format(file_path.name, datetime.now().isoformat()))
+                            f.write(content)
+                        return candidate, f"Fusionné dans {candidate.name}"
+                    except Exception as e:
+                        log_message('ERREUR', f"Erreur fusion fichier {candidate}: {e}", category='renpy_generator_tl')
+                        # Si la fusion échoue, on retombe sur l'écriture normale ci-dessous
+
+            # Écriture normale (écrase si existant)
+            file_path.write_text(content, encoding='utf-8', newline='\n')
+            return file_path, f"Écrit: {file_path.name}"
+
+        except Exception as e:
+            log_message('ERREUR', f"Erreur écriture fichier {file_path}: {e}", category='renpy_generator_tl')
+            raise    
     def get_available_fonts_with_accents(self):
         """Retourne la liste des polices système supportant les accents français"""
         system = platform.system().lower()
@@ -449,7 +503,7 @@ init python early hide:
         }}
     )
 """
-        rpy_path.write_text(content, encoding="utf-8")
+        self._safe_write_file(rpy_path, content)
 
     def create_french_common_file_pre_generation(self, project_path: str, language: str):
         """
@@ -522,7 +576,7 @@ init python early hide:
                     # Continuer avec l'écriture en cas d'erreur de lecture
             
             # Écrire le fichier directement (pas de backup)
-            common_file.write_text(new_common_content, encoding="utf-8", newline="\n")
+self._safe_write_file(common_file, new_common_content)
             
             # LOG SEULEMENT - PAS DE CALLBACK NOTIFICATION
             log_message("INFO", f"Fichier common français créé/écrasé depuis module : {common_file.name}", category="renpy_generator_tl")
@@ -1735,7 +1789,7 @@ init python early hide:
                 return False, f"Impossible de charger le contenu des screens : {e}"
             
             # Écrire le fichier directement (pas de backup)
-            screens_file.write_text(new_screens_content, encoding="utf-8", newline="\n")
+            self._safe_write_file(screens_file, new_screens_content)
             
             log_message("INFO", f"Fichier screens français créé/écrasé depuis module : {screens_file.name}", category="renpy_generator_tl")
             return True, f"Fichier screens.rpy généré avec interface française"
@@ -1775,9 +1829,9 @@ init python early hide:
                     '    old "Language"\n'
                     f'    new "{translated_label}"\n'
                 )
-            # Écriture disque
-            file_path.write_text(content, encoding="utf-8", newline="\n")
-            log_message("INFO", f"Screen preferences modifié sauvegardé : {file_path.name}", category="renpy_generator_tl")
+            # Écriture disque (safe: propose fusion si fichier 'manquant' présent)
+            actual_path, status_msg = self._safe_write_file(file_path, content)
+            log_message("INFO", f"Screen preferences modifié sauvegardé : {actual_path.name} ({status_msg})", category="renpy_generator_tl")
 
         except Exception as e:
             log_message("ERREUR", f"Erreur écriture fichier sélecteur langue : {e}", category="renpy_generator_tl")
@@ -1814,11 +1868,11 @@ init python early hide:
                 "        config.console = True\n"
             )
 
-            # ÉCRASER SYSTÉMATIQUEMENT (pas de recherche/compare)
-            target_file.write_text(content, encoding="utf-8", newline="\n")
+            # ÉCRITURE (safe: fusion si un fichier 'manquant' existe et qu'on ne veut pas créer un nouveau fichier)
+            actual_path, status_msg = self._safe_write_file(target_file, content)
 
             # LOG SEULEMENT - PAS DE CALLBACK NOTIFICATION
-            log_message("INFO", f"Console dev: {target_file.name} écrit (écrasement)", category="renpy_generator_tl")
+            log_message("INFO", f"Console dev: {actual_path.name} écrit ({status_msg})", category="renpy_generator_tl")
             return True, f"Console développeur activée"
             
         except Exception as e:
@@ -2106,8 +2160,8 @@ init python early hide:
                 image_path_relative
             )
             
-            # Écrire le fichier (écrase si existant, crée si nouveau)
-            target_file.write_text(content, encoding="utf-8", newline="\n")
+            # Écrire le fichier (safe: créera ou proposera fusion si approprié)
+            actual_path, status_msg = self._safe_write_file(target_file, content)
             
             # Construire le message de résultat
             features = []

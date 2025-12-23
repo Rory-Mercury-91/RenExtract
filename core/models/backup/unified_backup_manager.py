@@ -34,6 +34,7 @@ class BackupType:
     REALTIME_EDIT = "realtime_edit"
     BEFORE_COMBINATION = "before_combination"
     COHERENCE_EDIT = "coherence_edit"
+    BEFORE_FUSION = "before_fusion"
 
 class UnifiedBackupManager:
     """Gestionnaire unifié avec structure hiérarchique et cache mémoire (Singleton)"""
@@ -46,7 +47,8 @@ class UnifiedBackupManager:
         BackupType.RPA_BUILD: "📦 Avant RPA",
         BackupType.REALTIME_EDIT: "⚡ Édition temps réel",
         BackupType.BEFORE_COMBINATION: "🔗 Avant combinaison",
-        BackupType.COHERENCE_EDIT: "🔧 Modification cohérence"
+        BackupType.COHERENCE_EDIT: "🔧 Modification cohérence",
+        BackupType.BEFORE_FUSION: "🔀 Avant fusion"
     }
     
     # Configuration de rotation par type
