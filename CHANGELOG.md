@@ -1,5 +1,27 @@
 # 📝 CHANGELOG - RenExtract
 
+## 2025-12-23 (v1.2.22)
+
+### 🔒 Fusion contrôlée pour `textes_manquants.rpy`
+- Limitation : la proposition de fusion est désormais effectuée **uniquement** depuis le flux d'extraction (export), et **n'est plus** déclenchée automatiquement par les helpers d'écriture.
+- Avant toute fusion automatique, une sauvegarde est créée via le type de backup **BEFORE_FUSION**.
+- Le dialogue natif de confirmation "Remplacer le fichier" a été désactivé (`confirmoverwrite=False`) pour laisser l'application gérer la logique de fusion proprement.
+
+### ✅ Nettoyage et tests locaux
+- Suppression des scripts temporaires utilisés pendant le debug.
+- Ajout de tests automatisés couvrant : fusion pour `textes_manquants.rpy` et écriture normale pour les autres cas.
+- Les tests sont conservés **localement** dans `Z_Ne_Pas_supprimer/tests/` et exclus du dépôt distant pour éviter d'exposer du code de test dans le repo principal.
+
+### 🧹 Petits nettoyages
+- Simplification de `_safe_write_file` : comportement par défaut = écriture simple, paramètre inutile retiré.
+
+**Fichiers modifiés :**
+- `core/services/translation/text_extraction_results_business.py` (gestion fusion + backup)
+- `core/services/translation/translation_generation_business.py` (écriture sûre par défaut)
+- `ui/tab_generator/extraction_results_tab.py` (suppression confirmation native `Save As`)
+- `core/models/backup/unified_backup_manager.py` (usage de `BEFORE_FUSION`)
+
+
 ## 2025-12-15 (v1.2.21)
 
 ### 🐛 Corrections et améliorations
