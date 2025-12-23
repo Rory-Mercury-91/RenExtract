@@ -624,13 +624,17 @@ def _generate_extraction_file(main_interface):
             suggested_folder = None
         
         # Dialogue de sauvegarde
+        # IMPORTANT: disable the native "replace existing file" confirmation so our app
+        # can handle existing files (propose fusion) itself. On Windows this prevents the
+        # OS dialog from showing its own "replace" prompt.
         save_path = filedialog.asksaveasfilename(
             defaultextension=".rpy",
             filetypes=[("Fichiers Ren'Py", "*.rpy"), ("Tous les fichiers", "*.*")],
             initialfile=suggested_filename,
             initialdir=suggested_folder,
             title="💾 Sauvegarder le fichier d'extraction",
-            parent=main_interface.window
+            parent=main_interface.window,
+            confirmoverwrite=False
         )
         
         if not save_path:

@@ -112,55 +112,20 @@ class TranslationGenerationBusiness:
     def _safe_write_file(self, file_path: Path, content: str) -> Tuple[Path, str]:
         """Écrit le contenu dans `file_path` de manière sûre.
 
-        Si un fichier de type 'texte manquant' (ou 'missing') existe dans le même dossier
-        et que `file_path` n'existe pas encore, propose à l'utilisateur de fusionner
-        le contenu dans ce fichier existant (AskYes/No). Renvoie le chemin effectivement
-        utilisé et un message de statut.
+        NOTE: La détection automatique et la proposition de fusion pour des fichiers
+        spéciaux (ex: `textes_manquants.rpy`) est gérée exclusivement par le flux
+        d'extraction (`TextExtractionResultsBusiness.generate_extraction_file`).
+        Ce helper effectue une écriture simple et prévisible par défaut.
         """
         try:
-            directory = file_path.parent
-            pattern = re.compile(r'(?i)(?:texte[\s_-]*manquant|manquant|missing).*\\.rpy$')
-            candidates = [p for p in directory.iterdir() if p.is_file() and pattern.match(p.name)]
-
-            if candidates and not file_path.exists():
-                candidate = candidates[0]
-                message = (
-                    f"Un fichier similaire existe déjà : {candidate.name}\n"
-                    f"Voulez-vous fusionner le contenu généré dans ce fichier au lieu de créer '{file_path.name}' ?"
-                )
-                try:
-                    response = show_translated_messagebox('askyesno', 'Fusion fichier', message)
-                except Exception as e:
-                    log_message('ATTENTION', f"Erreur UI demande fusion: {e}", category='renpy_generator_tl')
-                    response = False
-
-                if response:
-                    try:
-                        # Créer un backup avant fusion et l'enregistrer dans le gestionnaire unifié
-                        try:
-                            backup_result = self.backup_manager.create_backup(str(candidate), BackupType.BEFORE_FUSION, "Sauvegarde avant fusion automatique")
-                            if backup_result.get('success'):
-                                log_message('INFO', f"Backup avant fusion créé: {backup_result.get('backup_path')}", category='renpy_generator_tl')
-                            else:
-                                log_message('ATTENTION', f"Backup avant fusion échoué: {backup_result.get('error')}", category='renpy_generator_tl')
-                        except Exception as be:
-                            log_message('ATTENTION', f"Erreur création backup avant fusion: {be}", category='renpy_generator_tl')
-
-                        with open(candidate, 'a', encoding='utf-8') as f:
-                            f.write('\n\n# === Fusion depuis {} : {} ===\n'.format(file_path.name, datetime.now().isoformat()))
-                            f.write(content)
-                        return candidate, f"Fusionné dans {candidate.name}"
-                    except Exception as e:
-                        log_message('ERREUR', f"Erreur fusion fichier {candidate}: {e}", category='renpy_generator_tl')
-                        # Si la fusion échoue, on retombe sur l'écriture normale ci-dessous
-
-            # Écriture normale (écrase si existant)
+            # Comportement par défaut : écriture simple et déterministe
             file_path.write_text(content, encoding='utf-8', newline='\n')
             return file_path, f"Écrit: {file_path.name}"
 
         except Exception as e:
             log_message('ERREUR', f"Erreur écriture fichier {file_path}: {e}", category='renpy_generator_tl')
             raise    
+
     def get_available_fonts_with_accents(self):
         """Retourne la liste des polices système supportant les accents français"""
         system = platform.system().lower()
@@ -576,7 +541,7 @@ init python early hide:
                     # Continuer avec l'écriture en cas d'erreur de lecture
             
             # Écrire le fichier directement (pas de backup)
-self._safe_write_file(common_file, new_common_content)
+            self._safe_write_file(common_file, new_common_content)
             
             # LOG SEULEMENT - PAS DE CALLBACK NOTIFICATION
             log_message("INFO", f"Fichier common français créé/écrasé depuis module : {common_file.name}", category="renpy_generator_tl")

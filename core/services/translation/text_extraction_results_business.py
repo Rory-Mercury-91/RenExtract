@@ -15,9 +15,12 @@ import os
 import re
 import glob
 import threading
+from pathlib import Path
 from typing import Dict, Set, List, Any, Optional, Pattern
 from datetime import datetime
 from infrastructure.logging.logging import log_message
+from infrastructure.helpers.unified_functions import show_translated_messagebox
+from core.models.backup.unified_backup_manager import BackupType, UnifiedBackupManager
 
 
 class OptimizedTextExtractor:
@@ -927,6 +930,48 @@ class TextExtractionResultsBusiness:
             if output_dir:
                 os.makedirs(output_dir, exist_ok=True)
             
+            # Si le fichier cible est exactement `textes_manquants.rpy`, proposer une fusion
+            # au lieu d'écraser, uniquement si le fichier généré n'existe pas encore.
+            output_name = os.path.basename(output_path).lower()
+            if output_name == 'textes_manquants.rpy':
+                target_file = Path(output_path)
+                if target_file.exists():
+                    message = (
+                        f"Un fichier 'textes_manquants.rpy' existe déjà : {target_file.name}\n"
+                        f"Voulez-vous fusionner le contenu généré dans ce fichier au lieu de l'écraser ?"
+                    )
+                    try:
+                        response = show_translated_messagebox('askyesno', 'Fusion fichier', message)
+                    except Exception as e:
+                        log_message('ATTENTION', f"Erreur UI demande fusion: {e}", category='extraction_results')
+                        response = False
+
+                    if response:
+                        # Créer un backup avant fusion
+                        try:
+                            ubm = UnifiedBackupManager()
+                            backup_result = ubm.create_backup(str(target_file), BackupType.BEFORE_FUSION, "Sauvegarde avant fusion automatique (extraction)")
+                            if backup_result.get('success'):
+                                log_message('INFO', f"Backup avant fusion créé: {backup_result.get('backup_path')}", category='extraction_results')
+                            else:
+                                log_message('ATTENTION', f"Backup avant fusion échoué: {backup_result.get('error')}", category='extraction_results')
+                        except Exception as be:
+                            log_message('ATTENTION', f"Erreur création backup avant fusion: {be}", category='extraction_results')
+
+                        # Appender le contenu généré
+                        with open(target_file, 'a', encoding='utf-8') as f:
+                            f.write('\n\n# === Fusion depuis {} : {} ===\n'.format(output_path, datetime.now().isoformat()))
+                            f.write('translate french strings:\n\n')
+                            sorted_texts = sorted(selected_texts)
+                            for text in sorted_texts:
+                                f.write(f'    old "{text}"\n    new "{text}"\n\n')
+
+                        result['success'] = True
+                        result['texts_count'] = len(selected_texts)
+                        log_message('INFO', f"Fusion effectuée avec succès: {output_path}", category='extraction_results')
+                        return result
+
+            # Écriture normale (écrase si existant)
             with open(output_path, 'w', encoding='utf-8') as f:
                 current_time = datetime.now().strftime("%d/%m/%Y à %H:%M:%S")
                 project_name = metadata.get('Projet', 'Projet inconnu') if metadata else 'Projet inconnu'
