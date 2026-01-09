@@ -187,6 +187,13 @@ Accédez aux options avancées via **⚙️ Options Avancées** :
 
 Le système détecte automatiquement le style de votre `screens.rpy` et génère un code cohérent !
 
+#### ⚠️ Conflits de ports & serveur local
+- **Ports par défaut** : serveur éditeur HTTP `8765`, serveur hotkey `8766`.
+- **Comportement au démarrage** : RenExtract tente de nettoyer les processus orphelins écoutant sur ces ports **mais vérifie d'abord** l'identité du PID (nom du processus et ligne de commande). Les processus qui **ne correspondent pas** à RenExtract sont **ignorés** et un message est écrit dans les logs (ex: `Saut nettoyage port 8766 (PID 8448, proc: electron.exe, cmd: )`).
+- **Forcer un port** : pour changer un port par défaut, modifiez la valeur dans le code et redémarrez l'application :
+  - `ui/shared/editor_manager_server.py` → `run_server(port=8765)` (serveur éditeur)
+  - `ui/shared/hotkey_manager.py` → constructeur `HotkeyManager.__init__(port=8766)` (serveur hotkey)
+
 ---
 
 ## 📚 Structure du Projet

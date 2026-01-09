@@ -1,5 +1,15 @@
 # 📝 CHANGELOG - RenExtract
 
+## 2026-01-09 (v1.2.23)
+
+### 🛡️ Sécurité & stabilité des ports
+- **Correction** : RenExtract ne tue plus d'autres applications au démarrage lors du nettoyage des ports. L'outil vérifie désormais le **nom du processus** et la **ligne de commande** avant d'exécuter `taskkill`/`kill` ; les processus non identifiés sont ignorés et loggés.
+- **Amélioration** : Logs explicites lorsque le nettoyage d'un port est sauté (ex: `Saut nettoyage port 8766 (PID 8448, proc: electron.exe, cmd: )`).
+- **Impact** : Empêche la fermeture involontaire d'applications tierces (ex: Le Nexus) lorsque RenExtract démarre.
+
+**Fichiers modifiés :**
+- `main.py` (`cleanup_orphaned_ports`) : vérification du nom de processus / ligne de commande avant kill, et logging lors des sauts.
+
 ## 2025-12-23 (v1.2.22)
 
 ### 🔒 Fusion contrôlée pour `textes_manquants.rpy`
