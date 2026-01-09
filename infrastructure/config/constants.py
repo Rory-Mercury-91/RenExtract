@@ -71,7 +71,7 @@ def get_version():
         pass
     
     # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    return "RenExtract v1.2.22"
+    return "RenExtract v1.2.23"
 
 def increment_build_number():
     """
@@ -321,6 +321,14 @@ DEFAULT_CONFIG = {
     "extraction_excluded_files":"",
     "cleanup_excluded_files":"common.rpy",
     "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_check_ellipsis":True,
+
+    # --- Ports configurables ---
+    # Port du serveur éditeur HTTP (utilisé par l'UI / rapport)
+    "editor_server_port": 8765,
+    # Port du serveur hotkey (focus / commandes externes)
+    "hotkey_server_port": 45000,
+    # Liste des ports à vérifier et nettoyer au démarrage
+    "orphaned_ports": [8765, 45000, 8767],
     "coherence_check_escape_sequences":True,"coherence_check_percentages":True,"coherence_check_quotations":True,"coherence_check_parentheses":True,
     "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_line_structure":True,"coherence_check_length_difference":True,
     "coherence_custom_exclusions":{},

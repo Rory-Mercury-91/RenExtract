@@ -11,8 +11,14 @@ from typing import Optional
 from infrastructure.logging.logging import log_message
 
 
-def is_server_running(port: int = 8765, host: str = '127.0.0.1') -> bool:
-    """Vérifie si le serveur tourne sur le port donné"""
+def is_server_running(port: int | None = None, host: str = '127.0.0.1') -> bool:
+    """Vérifie si le serveur tourne sur le port donné. Si `port` est None, lit `editor_server_port` depuis la config."""
+    if port is None:
+        try:
+            from infrastructure.config.config import config_manager
+            port = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            port = 8765
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(0.5)
@@ -22,8 +28,14 @@ def is_server_running(port: int = 8765, host: str = '127.0.0.1') -> bool:
         return False
 
 
-def find_server_pid(port: int = 8765) -> Optional[int]:
-    """Trouve le PID du processus qui écoute sur le port donné"""
+def find_server_pid(port: int | None = None) -> Optional[int]:
+    """Trouve le PID du processus qui écoute sur le port donné. Si `port` est None, lit `editor_server_port` depuis la config."""
+    if port is None:
+        try:
+            from infrastructure.config.config import config_manager
+            port = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            port = 8765
     try:
         if sys.platform.startswith('win'):
             # Windows: utiliser netstat
@@ -57,8 +69,8 @@ def find_server_pid(port: int = 8765) -> Optional[int]:
     return None
 
 
-def stop_server(port: int = 8765) -> bool:
-    """Arrête le serveur qui écoute sur le port donné"""
+def stop_server(port: int | None = None) -> bool:
+    """Arrête le serveur qui écoute sur le port donné. Si `port` est None, lit `editor_server_port` depuis la config."""
     try:
         pid = find_server_pid(port)
         if not pid:
@@ -88,8 +100,16 @@ def stop_server(port: int = 8765) -> bool:
         return False
 
 
-def get_server_info(port: int = 8765) -> dict:
-    """Retourne les informations sur le serveur"""
+def get_server_info(port: int | None = None) -> dict:
+    """Retourne les informations sur le serveur. Si `port` est None, lit `editor_server_port` depuis la config."""
+    # Résoudre le port pour l'affichage
+    if port is None:
+        try:
+            from infrastructure.config.config import config_manager
+            port = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            port = 8765
+
     running = is_server_running(port)
     pid = find_server_pid(port) if running else None
     
@@ -97,6 +117,6 @@ def get_server_info(port: int = 8765) -> dict:
         'running': running,
         'port': port,
         'pid': pid,
-        'url': f'http://127.0.0.1:{port}' if running else None
+        'url': f'http://127.0.0.1:{port}' if running and port is not None else None
     }
 

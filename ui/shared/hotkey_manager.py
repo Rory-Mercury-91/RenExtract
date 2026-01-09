@@ -14,7 +14,15 @@ from infrastructure.logging.logging import log_message
 class HotkeyManager:
     """Gestionnaire de hotkey globale pour focus/activation à distance"""
     
-    def __init__(self, port: int = 8766):
+    def __init__(self, port: int | None = None):
+        """Par défaut, récupère la valeur depuis `config_manager` si disponible.
+        Vous pouvez override en fournissant `port` explicitement."""
+        if port is None:
+            try:
+                from infrastructure.config.config import config_manager
+                port = int(config_manager.get('hotkey_server_port', 45000))
+            except Exception:
+                port = 45000
         self.port = port
         self.server_socket: Optional[socket.socket] = None
         self.listen_thread: Optional[threading.Thread] = None
@@ -136,19 +144,26 @@ class HotkeyManager:
 
 
 # Fonction utilitaire pour envoyer une commande hotkey (côté Ren'Py)
-def send_hotkey_command(command: str, port: int = 8766, timeout: float = 1.0) -> bool:
+def send_hotkey_command(command: str, port: int | None = None, timeout: float = 1.0) -> bool:
     """
     Envoie une commande hotkey au serveur RenExtract
     
     Args:
         command: Commande à envoyer ("focus_renextract", "ping", etc.)
-        port: Port du serveur hotkey
+        port: Port du serveur hotkey (si None, récupéré depuis la config)
         timeout: Timeout de connexion
         
     Returns:
         bool: True si la commande a été envoyée avec succès
     """
     try:
+        if port is None:
+            try:
+                from infrastructure.config.config import config_manager
+                port = int(config_manager.get('hotkey_server_port', 45000))
+            except Exception:
+                port = 45000
+
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.settimeout(timeout)
         client_socket.connect(('127.0.0.1', port))

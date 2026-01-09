@@ -381,13 +381,70 @@ class RenExtractApp:
         finally:
             sys.exit(0)
 
+def _is_renextract_process(proc_name: str, cmdline: str) -> bool:
+    """Détermine si un processus identifié par son nom et sa ligne de commande semble appartenir à RenExtract.
+
+    Cette détection est volontairement stricte : on vérifie la présence de 'renextract' dans le nom
+    du processus ou la ligne de commande, ou on compare le nom de l'exécutable courant
+    (ex: python.exe / renextract.exe) et le nom du script (`main.py`).
+    """
+    try:
+        lower_proc = (proc_name or '').lower()
+        lower_cmd = (cmdline or '').lower()
+        exe_basename = os.path.basename(sys.executable).lower()
+        script_basename = os.path.basename(__file__).lower()
+
+        if 'renextract' in lower_proc or 'renextract' in lower_cmd:
+            return True
+        if exe_basename and exe_basename in lower_proc:
+            return True
+        if script_basename and script_basename in lower_cmd:
+            return True
+        return False
+    except Exception:
+        return False
+
+
 def cleanup_orphaned_ports():
     """Nettoie les ports orphelins avant le démarrage de l'application"""
     import socket
     
-    ports_to_check = [8765, 8766, 8767]
+    # Lire la configuration des ports si disponible
     cleaned_ports = []
-    
+    try:
+        from infrastructure.config.config import config_manager
+        cfg_ports = config_manager.get('orphaned_ports', [8765, 45000, 8767]) or [8765, 45000, 8767]
+        # Normaliser en int et garder l'ordre sans doublons
+        normalized = []
+        for p in cfg_ports:
+            try:
+                ip = int(p)
+                if ip not in normalized:
+                    normalized.append(ip)
+            except Exception:
+                pass
+        # S'assurer que editor & hotkey sont présents
+        try:
+            editor_p = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            editor_p = 8765
+        try:
+            hotkey_p = int(config_manager.get('hotkey_server_port', 45000))
+        except Exception:
+            hotkey_p = 45000
+        if editor_p not in normalized:
+            normalized.insert(0, editor_p)
+        if hotkey_p not in normalized:
+            # insérer après l'éditeur si possible
+            if editor_p in normalized:
+                idx = normalized.index(editor_p) + 1
+                normalized.insert(idx, hotkey_p)
+            else:
+                normalized.insert(0, hotkey_p)
+        ports_to_check = normalized
+    except Exception:
+        ports_to_check = [8765, 45000, 8767]
+
     for port in ports_to_check:
         try:
             # Vérifier si le port est utilisé
@@ -400,11 +457,11 @@ def cleanup_orphaned_ports():
                 # Port utilisé, tenter de trouver et tuer le processus
                 try:
                     if sys.platform.startswith('win'):
-                        # Windows: utiliser netstat et taskkill
+                        # Windows: utiliser netstat et taskkill, mais vérifier le processus avant de le tuer
                         import subprocess
                         # ✅ CORRECTION : Masquer la fenêtre console sur Windows
                         creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                        
+
                         netstat_output = subprocess.check_output(
                             f'netstat -ano | findstr :{port}',
                             shell=True,
@@ -416,9 +473,45 @@ def cleanup_orphaned_ports():
                             if f':{port}' in line and 'LISTENING' in line:
                                 parts = line.split()
                                 pid = parts[-1]
-                                subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True, creationflags=creationflags)
-                                cleaned_ports.append(port)
-                                log_message("DEBUG", f"Port {port} nettoyé (PID: {pid})", category="main")
+
+                                # Récupérer la ligne de commande associée au PID (wmic peut renvoyer vide)
+                                try:
+                                    cmd_output = subprocess.check_output(
+                                        f'wmic process where ProcessId={pid} get CommandLine',
+                                        shell=True,
+                                        text=True,
+                                        creationflags=creationflags,
+                                        stderr=subprocess.DEVNULL
+                                    ).strip().replace('\r', '')
+                                    cmdlines = [l.strip() for l in cmd_output.splitlines() if l.strip()]
+                                    cmdline_text = " ".join(cmdlines) if cmdlines else ""
+                                except Exception:
+                                    cmdline_text = ""
+
+                                # Récupérer le nom du processus (tasklist)
+                                try:
+                                    tasklist_out = subprocess.check_output(
+                                        f'tasklist /FI "PID eq {pid}" /FO CSV /NH',
+                                        shell=True,
+                                        text=True,
+                                        creationflags=creationflags,
+                                        stderr=subprocess.DEVNULL
+                                    ).strip()
+                                    # Format attendu: "process.exe","<pid>",...
+                                    proc_name = tasklist_out.split('\",\"')[0].strip('"') if tasklist_out else ''
+                                except Exception:
+                                    proc_name = ''
+
+                                lower_cmd = cmdline_text.lower()
+                                lower_proc = proc_name.lower()
+
+                                # N'éliminer que si on reconnaît un processus RenExtract (par nom ou par cmdline)
+                                if _is_renextract_process(proc_name, cmdline_text):
+                                    subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True, creationflags=creationflags)
+                                    cleaned_ports.append(port)
+                                    log_message("DEBUG", f"Port {port} nettoy e9 (PID: {pid}, proc: {proc_name}, cmd: {cmdline_text})", category="main")
+                                else:
+                                    log_message("DEBUG", f"Saut nettoyage port {port} (PID {pid}, proc: {proc_name}, cmd: {cmdline_text})", category="main")
                                 break
                     else:
                         # Linux/Mac: utiliser ss ou netstat
@@ -436,9 +529,22 @@ def cleanup_orphaned_ports():
                             pid_match = re.search(r'pid=(\d+)', ss_output)
                             if pid_match:
                                 pid = pid_match.group(1)
-                                subprocess.run(['kill', '-9', pid], capture_output=True)
-                                cleaned_ports.append(port)
-                                log_message("DEBUG", f"Port {port} nettoyé (PID: {pid})", category="main")
+                                # Vérifier la commande associée au PID avant de tuer
+                                try:
+                                    proc_cmd = subprocess.check_output(
+                                        ['ps', '-p', pid, '-o', 'args='],
+                                        text=True,
+                                        stderr=subprocess.DEVNULL
+                                    ).strip()
+                                except Exception:
+                                    proc_cmd = ''
+
+                                if _is_renextract_process('', proc_cmd):
+                                    subprocess.run(['kill', '-9', pid], capture_output=True)
+                                    cleaned_ports.append(port)
+                                    log_message("DEBUG", f"Port {port} nettoy e9 (PID: {pid}, cmd: {proc_cmd})", category="main")
+                                else:
+                                    log_message("DEBUG", f"Saut nettoyage port {port} (PID {pid}, cmd: {proc_cmd})", category="main")
                         except subprocess.CalledProcessError:
                             # Fallback: essayer avec lsof si disponible
                             try:
@@ -451,9 +557,21 @@ def cleanup_orphaned_ports():
                                 pids = lsof_output.strip().split('\n')
                                 for pid in pids:
                                     if pid:
-                                        subprocess.run(['kill', '-9', pid], capture_output=True)
-                                        cleaned_ports.append(port)
-                                        log_message("DEBUG", f"Port {port} nettoyé (PID: {pid})", category="main")
+                                        try:
+                                            proc_cmd = subprocess.check_output(
+                                                ['ps', '-p', pid, '-o', 'args='],
+                                                text=True,
+                                                stderr=subprocess.DEVNULL
+                                            ).strip()
+                                        except Exception:
+                                            proc_cmd = ''
+
+                                        if _is_renextract_process('', proc_cmd):
+                                            subprocess.run(['kill', '-9', pid], capture_output=True)
+                                            cleaned_ports.append(port)
+                                            log_message("DEBUG", f"Port {port} nettoy e9 (PID: {pid}, cmd: {proc_cmd})", category="main")
+                                        else:
+                                            log_message("DEBUG", f"Saut nettoyage port {port} (PID {pid}, cmd: {proc_cmd})", category="main")
                             except subprocess.CalledProcessError:
                                 pass
                 except Exception as e:

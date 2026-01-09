@@ -232,20 +232,31 @@ class HtmlCleanupReportGenerator:
     
     def _get_javascript(self) -> str:
         """JavaScript harmonisé avec filtrage par dropdown uniquement"""
-        return """
+        # Résoudre l'URL du serveur d'édition depuis la configuration
+        try:
+            from infrastructure.config.config import config_manager
+            server_port = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            server_port = 8765
+        server_url = f"http://127.0.0.1:{server_port}"
+
+        return f"""
         <script>
-        (function() {
+        (function() {{
+            // URL du serveur d'édition (configurable)
+            window.RENEXTRACT_SERVER_URL = '{server_url}';
+
             // Gestion du thème
             const savedTheme = localStorage.getItem('renextract_report_theme') || 'dark';
             if (savedTheme === 'light') document.body.classList.add('light');
             
-            function toggleTheme() {
+            function toggleTheme() {{
                 const isLight = document.body.classList.toggle('light');
                 localStorage.setItem('renextract_report_theme', isLight ? 'light' : 'dark');
                 document.getElementById('themeBtn').textContent = 
                     'Thème: ' + (isLight ? 'Clair' : 'Sombre');
-            }
-            
+            }}
+"            
             // Fonction pour copier un bloc
             window.copyBlock = function(blockId) {
                 const element = document.getElementById(blockId);
@@ -307,7 +318,7 @@ class HtmlCleanupReportGenerator:
             
             // Fonction pour ouvrir dans l'éditeur
             window.openInEditor = function(filePath, lineNumber) {
-                const url = `http://127.0.0.1:8765/open?file=${encodeURIComponent(filePath)}&line=${encodeURIComponent(lineNumber)}`;
+                const url = `${window.RENEXTRACT_SERVER_URL}/open?file=${encodeURIComponent(filePath)}&line=${encodeURIComponent(lineNumber)}`;
 
                 // Essaye le serveur local d'abord
                 fetch(url, { method: 'GET' })

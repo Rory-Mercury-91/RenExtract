@@ -8,7 +8,28 @@
 - **Impact** : Empêche la fermeture involontaire d'applications tierces (ex: Le Nexus) lorsque RenExtract démarre.
 
 **Fichiers modifiés :**
-- `main.py` (`cleanup_orphaned_ports`) : vérification du nom de processus / ligne de commande avant kill, et logging lors des sauts.
+- `main.py` (v1.2.23) (`cleanup_orphaned_ports`) : vérification du nom de processus / ligne de commande avant kill, et logging lors des sauts.
+
+## 2026-01-10 (v1.2.23-Fix)
+
+### 🐛 Ports configurables & sécurité
+- **Correction** : Lecture des ports depuis la configuration (`editor_server_port`, `hotkey_server_port`, `orphaned_ports`) ; le nettoyage n'essaie de fermer un processus que si celui-ci est identifié comme RenExtract (nom ou ligne de commande).
+- **Changement** : Port hotkey par défaut modifié en **45000** (modifiable via `hotkey_server_port`).
+- **Amélioration** : `cleanup_orphaned_ports`, `hotkey_manager`, `editor_manager_server`, `server_utils`, et le générateur HTML utilisent désormais la configuration pour déterminer les ports.
+- **Tests** : Ajout de tests unitaires pour la résolution des ports et la détection de processus.
+- **Docs** : `README.md` mis à jour avec un exemple `04_Configs/config.json`.
+
+**Fichiers modifiés :**
+- `main.py` (v1.2.23-Fix) : `cleanup_orphaned_ports` lit `orphaned_ports`, meilleure journalisation.
+- `ui/shared/hotkey_manager.py` (v1.2.23-Fix) : port par défaut lu depuis `hotkey_server_port`.
+- `ui/shared/editor_manager_server.py` (v1.2.23-Fix) : `run_server` résout `editor_server_port`.
+- `infrastructure/config/constants.py` (v1.2.23-Fix) : nouvelles clés de config par défaut.
+- `infrastructure/helpers/server_utils.py` (v1.2.23-Fix) : utilitaires acceptent `port=None` et lisent config.
+- `core/services/reporting/html_report_generator.py` (v1.2.23-Fix) : injection de `window.RENEXTRACT_SERVER_URL` basée sur la config.
+- `README.md` (v1.2.23-Fix) : documentation et exemple de `config.json`.
+- `Z_Ne_Pas_supprimer/tests/` (v1.2.23-Fix) : tests ajoutés/ajustés pour ports et détection.
+
+**Impact** : Empêche la fermeture involontaire d'applications tierces au démarrage et rend les ports configurables via le fichier `04_Configs/config.json`.
 
 ## 2025-12-23 (v1.2.22)
 

@@ -2307,52 +2307,136 @@ def paste_menu_choice_vf(main_interface, index):
         log_message("ERREUR", f"Erreur collage choix VF: {e}", category="realtime_editor")
 
 def save_all_menu_choices(main_interface):
-    """Sauvegarde tous les choix modifiés"""
+    """Sauvegarde tous les choix modifiés (exécuté en arrière-plan pour ne pas bloquer l'UI)
+
+    - Désactive le bouton pendant l'opération
+    - Sauvegarde chaque choix modifié
+    - Nettoie les entrées correspondantes dans `biz.pending_modifications` si la sauvegarde a réussi
+    - Met à jour le fichier JSON des modifications en attente
+    - Met à jour le statut et notifie l'utilisateur (toujours via le thread UI)
+    """
     try:
         if not hasattr(main_interface, 'menu_vf_widgets'):
             main_interface._show_notification("Aucun choix à sauvegarder", "warning")
             return
-        
+
         biz = main_interface._get_realtime_editor_business()
-        saved_count = 0
-        error_count = 0
-        
-        for i, vf_widget in enumerate(main_interface.menu_vf_widgets):
-            if vf_widget and vf_widget.winfo_exists():
+
+        # Trouver le bouton pour le désactiver pendant la sauvegarde (sécurisé)
+        save_btn = None
+        try:
+            # La structure de l'UI place le bouton dans right_buttons_frame; on recherche un bouton avec le texte attendu
+            for child in main_interface.realtime_edit_main.winfo_children():
+                for sub in child.winfo_children():
+                    if isinstance(sub, tk.Button) and sub.cget('text') == 'Enregistrer Tous les Choix':
+                        save_btn = sub
+                        break
+                if save_btn: break
+        except Exception:
+            save_btn = None
+
+        def _worker():
+            saved_count = 0
+            error_count = 0
+            try:
+                for i, vf_widget in enumerate(list(main_interface.menu_vf_widgets)):
+                    if not (vf_widget and vf_widget.winfo_exists()):
+                        continue
+                    try:
+                        new_text = vf_widget.get('1.0', tk.END).strip()
+                        choice_info = getattr(vf_widget, 'choice_info', {})
+
+                        # Vérifier s'il y a eu une modification
+                        if new_text != choice_info.get('translated_text', ''):
+                            result = biz.save_choice_translation(
+                                choice_info,
+                                new_text,
+                                main_interface.current_project_path
+                            )
+
+                            if result.get('success'):
+                                saved_count += 1
+                                # Mettre à jour le texte dans les infos UI
+                                choice_info['translated_text'] = new_text
+
+                                # Nettoyer l'entrée correspondante dans pending_modifications si elle existe
+                                try:
+                                    key = f"{choice_info.get('tl_file','')}|{choice_info.get('tl_line',0)}"
+                                    if hasattr(biz, 'pending_modifications') and key in biz.pending_modifications:
+                                        del biz.pending_modifications[key]
+                                except Exception as e:
+                                    log_message('ATTENTION', f"Impossible de nettoyer pending_modifications pour {key}: {e}", category='realtime_editor')
+
+                            else:
+                                error_count += 1
+                                log_message('ATTENTION', f"Erreur sauvegarde choix {i+1}: {result.get('errors')}", category='realtime_editor')
+
+                    except Exception as e:
+                        error_count += 1
+                        log_message("ERREUR", f"Erreur sauvegarde choix {i+1}: {e}", category="realtime_editor")
+
+                # Après traitement, persister le fichier pending_modifications (si présent)
                 try:
-                    new_text = vf_widget.get('1.0', tk.END).strip()
-                    choice_info = vf_widget.choice_info
-                    
-                    # Vérifier s'il y a eu une modification
-                    if new_text != choice_info.get('translated_text', ''):
-                        result = biz.save_choice_translation(
-                            choice_info,
-                            new_text,
-                            main_interface.current_project_path
-                        )
-                        
-                        if result.get('success'):
-                            saved_count += 1
-                            # Mettre à jour le texte original dans les infos
-                            choice_info['translated_text'] = new_text
+                    if hasattr(biz, 'pending_modifications_file') and biz.pending_modifications_file:
+                        if not biz.pending_modifications:
+                            with open(biz.pending_modifications_file, 'w', encoding='utf-8') as f:
+                                f.write('{}')
                         else:
-                            error_count += 1
-                            
+                            import json
+                            with open(biz.pending_modifications_file, 'w', encoding='utf-8') as f:
+                                json.dump(biz.pending_modifications, f, indent=2, ensure_ascii=False, default=str)
                 except Exception as e:
-                    error_count += 1
-                    log_message("ERREUR", f"Erreur sauvegarde choix {i+1}: {e}", category="realtime_editor")
-        
-        if saved_count > 0:
-            main_interface._update_status(f"{saved_count} choix sauvegardés")
-            main_interface._show_notification(
-                f"{saved_count} choix sauvegardés !\nAppuyez sur Maj+R dans le jeu pour voir les changements.",
-                "success"
-            )
-        elif error_count > 0:
-            main_interface._show_notification(f"Erreurs lors de la sauvegarde", "error")
-        else:
-            main_interface._show_notification("Aucune modification détectée", "info")
-            
+                    log_message('ATTENTION', f"Erreur persistance fichier pending après sauvegarde choix: {e}", category='realtime_editor')
+
+            finally:
+                # Retourner les résultats vers l'UI thread
+                def _on_complete():
+                    if saved_count > 0:
+                        main_interface._update_status(f"{saved_count} choix sauvegardés")
+                        main_interface._show_notification(
+                            f"{saved_count} choix sauvegardés !\nAppuyez sur Maj+R dans le jeu pour voir les changements.",
+                            "success"
+                        )
+                    elif error_count > 0:
+                        main_interface._show_notification("Erreurs lors de la sauvegarde", "error")
+                    else:
+                        main_interface._show_notification("Aucune modification détectée", "info")
+
+                    # Mettre à jour le statut des modifications en attente visuel
+                    update_status_with_pending_count(main_interface)
+
+                    # Forcer un check léger du fichier log pour s'assurer que la surveillance reprend
+                    try:
+                        if hasattr(biz, '_check_for_dialogues') and main_interface.current_project_path:
+                            log_message("INFO", "Forcer resync dialogues après sauvegarde des choix", category="realtime_editor")
+                            log_file_path = os.path.join(main_interface.current_project_path, "renextract_dialogue_log.txt")
+                            main_interface.window.after(150, lambda: biz._check_for_dialogues(log_file_path))
+                    except Exception as e:
+                        log_message("ATTENTION", f"Impossible de forcer resync: {e}", category="realtime_editor")
+
+                    # Ré-activer le bouton
+                    try:
+                        if save_btn:
+                            save_btn.config(state='normal')
+                    except Exception:
+                        pass
+
+                try:
+                    main_interface.window.after(0, _on_complete)
+                except Exception:
+                    _on_complete()
+
+        # Désactiver le bouton et lancer le worker en arrière-plan
+        try:
+            if save_btn:
+                save_btn.config(state='disabled')
+        except Exception:
+            pass
+
+        import threading
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+
     except Exception as e:
         log_message("ERREUR", f"Erreur sauvegarde choix: {e}", category="realtime_editor")
         main_interface._show_notification(f"Erreur: {e}", "error")

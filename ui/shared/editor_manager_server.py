@@ -460,8 +460,17 @@ class _Handler(BaseHTTPRequestHandler):
 def is_server_running():
     return _SERVER_RUNNING
 
-def run_server(host="127.0.0.1", port=8765):
+def run_server(host="127.0.0.1", port: int | None = None):
+    """Démarre le serveur HTTP local. Si `port` est None, récupère la valeur depuis la configuration."""
     global _SERVER_RUNNING
+    # Résolution du port depuis la configuration si nécessaire
+    if port is None:
+        try:
+            from infrastructure.config.config import config_manager
+            port = int(config_manager.get('editor_server_port', 8765))
+        except Exception:
+            port = 8765
+
     httpd = HTTPServer((host, port), _Handler)
     _SERVER_RUNNING = True
     
