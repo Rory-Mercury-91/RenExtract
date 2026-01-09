@@ -509,7 +509,7 @@ def cleanup_orphaned_ports():
                                 if _is_renextract_process(proc_name, cmdline_text):
                                     subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True, creationflags=creationflags)
                                     cleaned_ports.append(port)
-                                    log_message("DEBUG", f"Port {port} nettoy e9 (PID: {pid}, proc: {proc_name}, cmd: {cmdline_text})", category="main")
+                                    log_message("DEBUG", f"Port {port} nettoye9 (PID: {pid}, proc: {proc_name}, cmd: {cmdline_text})", category="main")
                                 else:
                                     log_message("DEBUG", f"Saut nettoyage port {port} (PID {pid}, proc: {proc_name}, cmd: {cmdline_text})", category="main")
                                 break
@@ -542,7 +542,7 @@ def cleanup_orphaned_ports():
                                 if _is_renextract_process('', proc_cmd):
                                     subprocess.run(['kill', '-9', pid], capture_output=True)
                                     cleaned_ports.append(port)
-                                    log_message("DEBUG", f"Port {port} nettoy e9 (PID: {pid}, cmd: {proc_cmd})", category="main")
+                                    log_message("DEBUG", f"Port {port} nettoye9 (PID: {pid}, cmd: {proc_cmd})", category="main")
                                 else:
                                     log_message("DEBUG", f"Saut nettoyage port {port} (PID {pid}, cmd: {proc_cmd})", category="main")
                         except subprocess.CalledProcessError:
@@ -569,7 +569,7 @@ def cleanup_orphaned_ports():
                                         if _is_renextract_process('', proc_cmd):
                                             subprocess.run(['kill', '-9', pid], capture_output=True)
                                             cleaned_ports.append(port)
-                                            log_message("DEBUG", f"Port {port} nettoy e9 (PID: {pid}, cmd: {proc_cmd})", category="main")
+                                            log_message("DEBUG", f"Port {port} nettoye9 (PID: {pid}, cmd: {proc_cmd})", category="main")
                                         else:
                                             log_message("DEBUG", f"Saut nettoyage port {port} (PID {pid}, cmd: {proc_cmd})", category="main")
                             except subprocess.CalledProcessError:
