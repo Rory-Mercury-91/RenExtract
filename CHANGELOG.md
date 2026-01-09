@@ -1,35 +1,21 @@
 # 📝 CHANGELOG - RenExtract
 
-## 2026-01-09 (v1.2.23)
+## 2026-01-10 (v1.2.23)
 
-### 🛡️ Sécurité & stabilité des ports
-- **Correction** : RenExtract ne tue plus d'autres applications au démarrage lors du nettoyage des ports. L'outil vérifie désormais le **nom du processus** et la **ligne de commande** avant d'exécuter `taskkill`/`kill` ; les processus non identifiés sont ignorés et loggés.
-- **Amélioration** : Logs explicites lorsque le nettoyage d'un port est sauté (ex: `Saut nettoyage port 8766 (PID 8448, proc: electron.exe, cmd: )`).
-- **Impact** : Empêche la fermeture involontaire d'applications tierces (ex: Le Nexus) lorsque RenExtract démarre.
-
-**Fichiers modifiés :**
-- `main.py` (v1.2.23) (`cleanup_orphaned_ports`) : vérification du nom de processus / ligne de commande avant kill, et logging lors des sauts.
-
-## 2026-01-10 (v1.2.23-Fix)
-
-### 🐛 Ports configurables & sécurité
-- **Correction** : Lecture des ports depuis la configuration (`editor_server_port`, `hotkey_server_port`, `orphaned_ports`) ; le nettoyage n'essaie de fermer un processus que si celui-ci est identifié comme RenExtract (nom ou ligne de commande).
-- **Changement** : Port hotkey par défaut modifié en **45000** (modifiable via `hotkey_server_port`).
-- **Amélioration** : `cleanup_orphaned_ports`, `hotkey_manager`, `editor_manager_server`, `server_utils`, et le générateur HTML utilisent désormais la configuration pour déterminer les ports.
-- **Tests** : Ajout de tests unitaires pour la résolution des ports et la détection de processus.
-- **Docs** : `README.md` mis à jour avec un exemple `04_Configs/config.json`.
+### 🛡️ Sécurité & Stabilité des ports (Configurables)
+- **Correction Critique** : RenExtract ne tue plus d'autres applications au démarrage. L'outil vérifie désormais le **nom du processus** et la **ligne de commande** avant d'exécuter un `kill` ; les processus non identifiés sont ignorés et loggés.
+- **Ports Configurables** : Lecture des ports depuis la configuration (`editor_server_port`, `hotkey_server_port`, `orphaned_ports`).
+- **Nouveau Standard** : Port hotkey par défaut modifié en **45000** (toujours modifiable via `config.json`).
+- **Amélioration Logs** : Journalisation explicite lorsque le nettoyage d'un port est sauté (ex: `Saut nettoyage port 8766 (PID 8448, proc: electron.exe)`).
+- **Tests & Docs** : Ajout de tests unitaires pour la détection de processus et mise à jour du `README.md` avec un exemple de `04_Configs/config.json`.
 
 **Fichiers modifiés :**
-- `main.py` (v1.2.23-Fix) : `cleanup_orphaned_ports` lit `orphaned_ports`, meilleure journalisation.
-- `ui/shared/hotkey_manager.py` (v1.2.23-Fix) : port par défaut lu depuis `hotkey_server_port`.
-- `ui/shared/editor_manager_server.py` (v1.2.23-Fix) : `run_server` résout `editor_server_port`.
-- `infrastructure/config/constants.py` (v1.2.23-Fix) : nouvelles clés de config par défaut.
-- `infrastructure/helpers/server_utils.py` (v1.2.23-Fix) : utilitaires acceptent `port=None` et lisent config.
-- `core/services/reporting/html_report_generator.py` (v1.2.23-Fix) : injection de `window.RENEXTRACT_SERVER_URL` basée sur la config.
-- `README.md` (v1.2.23-Fix) : documentation et exemple de `config.json`.
-- `Z_Ne_Pas_supprimer/tests/` (v1.2.23-Fix) : tests ajoutés/ajustés pour ports et détection.
+- `main.py`, `ui/shared/hotkey_manager.py`, `ui/shared/editor_manager_server.py`
+- `infrastructure/config/constants.py`, `infrastructure/helpers/server_utils.py`
+- `core/services/reporting/html_report_generator.py`, `ui/tab_tools/realtime_editor_tab.py`
+- `README.md`, `scripts/git_push_fix.sh`, `Z_Ne_Pas_supprimer/tests/`
 
-**Impact** : Empêche la fermeture involontaire d'applications tierces au démarrage et rend les ports configurables via le fichier `04_Configs/config.json`.
+**Impact** : Empêche la fermeture involontaire d'applications tierces (ex: Le Nexus) et permet une personnalisation totale de l'infrastructure réseau de l'outil.
 
 ## 2025-12-23 (v1.2.22)
 
