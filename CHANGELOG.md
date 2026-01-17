@@ -1,5 +1,17 @@
 # 📝 CHANGELOG - RenExtract
 
+## 2026-01-17 (v1.2.23-Fix)
+
+### 🐛 Corrections de linting
+- **Correction f-string JavaScript** : Résolution des erreurs de linting dans `html_report_generator.py` causées par l'interprétation incorrecte des accolades JavaScript dans une f-string Python.
+- **Solution** : Remplacement de la f-string par une chaîne normale avec injection de variable via `.replace()`, permettant de conserver toutes les accolades JavaScript sans conflit avec le parser Python.
+- **Suppression guillemet orphelin** : Nettoyage d'un guillemet restant qui cassait la syntaxe de la f-string.
+
+**Fichiers modifiés :**
+- `core/services/reporting/html_report_generator.py`
+
+**Impact** : Résolution de toutes les erreurs de linting liées aux expressions f-string, amélioration de la maintenabilité du code JavaScript généré.
+
 ## 2026-01-10 (v1.2.23)
 
 ### 🛡️ Sécurité & Stabilité des ports (Configurables)
