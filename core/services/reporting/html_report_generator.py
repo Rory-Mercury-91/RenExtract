@@ -240,23 +240,23 @@ class HtmlCleanupReportGenerator:
             server_port = 8765
         server_url = f"http://127.0.0.1:{server_port}"
 
-        return f"""
+        js_template = """
         <script>
-        (function() {{
+        (function() {
             // URL du serveur d'édition (configurable)
-            window.RENEXTRACT_SERVER_URL = '{server_url}';
+            window.RENEXTRACT_SERVER_URL = '{SERVER_URL}';
 
             // Gestion du thème
             const savedTheme = localStorage.getItem('renextract_report_theme') || 'dark';
             if (savedTheme === 'light') document.body.classList.add('light');
             
-            function toggleTheme() {{
+            function toggleTheme() {
                 const isLight = document.body.classList.toggle('light');
                 localStorage.setItem('renextract_report_theme', isLight ? 'light' : 'dark');
                 document.getElementById('themeBtn').textContent = 
                     'Thème: ' + (isLight ? 'Clair' : 'Sombre');
-            }}
-"            
+            }
+            
             // Fonction pour copier un bloc
             window.copyBlock = function(blockId) {
                 const element = document.getElementById(blockId);
@@ -486,6 +486,8 @@ class HtmlCleanupReportGenerator:
         })();
         </script>
         """
+        
+        return js_template.replace('{SERVER_URL}', server_url)
     
     def generate_cleanup_report(self, results: Dict[str, Any], project_path: str, 
                             execution_time: str) -> Optional[str]:
