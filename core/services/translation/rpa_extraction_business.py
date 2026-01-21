@@ -138,10 +138,11 @@ class RPAExtractionBusiness:
             # Télécharger unrpyc pour Ren'Py 8+ (Python 3)
             unrpyc_v2_result = self.downloader.download_and_extract_zip(
                 # url="https://github.com/CensoredUsername/unrpyc/archive/refs/heads/master.zip",
-                url="https://github.com/madeddy/unrpyc/archive/refs/heads/renpy_v8.4_code_change_fixes.zip",
+                # url="https://github.com/madeddy/unrpyc/archive/refs/heads/renpy_v8.4_code_change_fixes.zip",
+                url="https://github.com/CensoredUsername/unrpyc/archive/refs/heads/dev.zip",  # Corrigé pour v2
                 dest_path=os.path.join(self.unrpyc_dir, "v2"),
                 # zip_root_dir="unrpyc-master"
-                zip_root_dir="unrpyc-renpy_v8.4_code_change_fixes"
+                zip_root_dir="unrpyc-dev"
             )
             
             if not unrpyc_v2_result['success']:

@@ -1,4 +1,20 @@
+
 # 📝 CHANGELOG - RenExtract
+
+## 2026-01-21 (v1.2.23-Fix2)
+
+### 🚨 Fix urgent téléchargement v2 unrenpyc
+- **Problème** : Erreur critique lors du téléchargement de la version v2 de unrenpyc.
+- **Correction** : Mise à jour de la logique de téléchargement dans `core/services/translation/rpa_extraction_business.py` pour pointer vers la bonne version.
+- **Mise à jour** : Changement de la version dans les constantes concernées.
+
+**Fichiers modifiés :**
+- `core/services/translation/rpa_extraction_business.py`
+- `infrastructure/config/constants.py`
+
+**Impact** : Téléchargement de la version correcte de unrenpyc v2, extraction RPA fonctionnelle à nouveau.
+
+---
 
 ## 2026-01-17 (v1.2.23-Fix)
 

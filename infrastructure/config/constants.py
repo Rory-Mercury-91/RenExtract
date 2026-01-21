@@ -71,8 +71,8 @@ def get_version():
         pass
     
     # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    # Version : 1.2.23-Fix (17-01-2026)
-    return "RenExtract v1.2.23-Fix"
+    # Version : 1.2.23-Fix2 (21-01-2026)
+    return "RenExtract v1.2.23-Fix2"
 
 def increment_build_number():
     """
