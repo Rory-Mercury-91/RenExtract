@@ -18,6 +18,8 @@
 
 ### Corrections
 - **Extraction** : distinction entre la directive Ren'Py `old "..."` et un locuteur dont le nom contient « old » (ex. `oldman "..."`). Seules les lignes commençant par `old ` (avec espace) sont ignorées comme directive, afin de ne pas exclure les dialogues de personnages comme « oldman ».
+- **Démarrage Windows** : correction de l’erreur « Descripteur non valide » (WinError 6 / SystemError) lors de la vérification du verrou singleton (processus déjà en cours).
+- **Fenêtres CMD en flash** : tous les appels subprocess au démarrage et à l’usage (git, netstat, taskkill, explorer, test éditeur) utilisent désormais `CREATE_NO_WINDOW` sous Windows pour ne plus afficher de console.
 
 ---
 
