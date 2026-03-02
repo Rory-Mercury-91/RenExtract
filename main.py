@@ -617,7 +617,7 @@ def main():
             with open(lock_file_path, 'r') as f:
                 old_pid = int(f.read().strip())
             
-            # Vérifier si le processus existe encore
+            # Vérifier si le processus existe encore (sous Windows os.kill peut lever WinError 6 → SystemError)
             try:
                 os.kill(old_pid, 0)  # Signal 0 pour tester l'existence
                 # Processus existe encore, vraie instance multiple
@@ -632,10 +632,10 @@ def main():
                 except Exception:
                     pass  # Message déjà affiché dans la messagebox
                 sys.exit(1)
-            except (OSError, ProcessLookupError):
-                # Processus n'existe plus, fichier de verrou orphelin
-                log_message("DEBUG", f"Fichier de verrou orphelin détecté (PID {old_pid} n'existe plus)", category="main")
+            except (OSError, ProcessLookupError, SystemError):
+                # Processus n'existe plus ou vérification impossible (ex. WinError 6 sous Windows) → verrou orphelin
                 try:
+                    log_message("DEBUG", f"Fichier de verrou orphelin détecté (PID {old_pid} n'existe plus)", category="main")
                     os.remove(lock_file_path)
                     log_message("DEBUG", "Fichier de verrou orphelin nettoyé", category="main")
                 except Exception as e:
