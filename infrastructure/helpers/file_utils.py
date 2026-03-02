@@ -12,7 +12,12 @@ Utilitaires pour la gestion des fichiers et dossiers
 import os
 import subprocess
 import platform
+import sys
 from infrastructure.logging.logging import log_message
+
+def _subprocess_flags():
+    """Flags pour masquer la fenêtre console sous Windows."""
+    return subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 def open_folder_in_explorer(folder_path):
     """
@@ -35,8 +40,12 @@ def open_folder_in_explorer(folder_path):
         system = platform.system()
         
         if system == "Windows":
-            # Windows
-            subprocess.Popen(['explorer', normalized_path], shell=True)
+            # Windows (sans fenêtre CMD)
+            subprocess.Popen(
+                ['explorer', normalized_path],
+                shell=True,
+                creationflags=_subprocess_flags()
+            )
         elif system == "Darwin":
             # macOS
             subprocess.Popen(['open', normalized_path])
@@ -73,8 +82,12 @@ def open_file_in_explorer(file_path):
         system = platform.system()
         
         if system == "Windows":
-            # Windows - sélectionne le fichier
-            subprocess.Popen(['explorer', '/select,', normalized_path], shell=True)
+            # Windows - sélectionne le fichier (sans fenêtre CMD)
+            subprocess.Popen(
+                ['explorer', '/select,', normalized_path],
+                shell=True,
+                creationflags=_subprocess_flags()
+            )
         elif system == "Darwin":
             # macOS - révèle le fichier dans le Finder
             subprocess.Popen(['open', '-R', normalized_path])

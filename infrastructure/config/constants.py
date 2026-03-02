@@ -36,6 +36,7 @@ def get_version():
             pass
     
     # PRIORITÉ 2 : Essayer de lire depuis Git (si disponible en développement)
+    _creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
         # Essayer de récupérer le dernier tag Git
         result = subprocess.run(
@@ -44,7 +45,8 @@ def get_version():
             capture_output=True,
             text=True,
             timeout=2,
-            check=False
+            check=False,
+            creationflags=_creationflags
         )
         if result.returncode == 0 and result.stdout.strip():
             tag = result.stdout.strip()
@@ -63,7 +65,8 @@ def get_version():
             capture_output=True,
             text=True,
             timeout=2,
-            check=False
+            check=False,
+            creationflags=_creationflags
         )
         if result.returncode == 0 and result.stdout.strip():
             return f"dev-{result.stdout.strip()}"

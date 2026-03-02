@@ -37,13 +37,15 @@ def find_server_pid(port: int | None = None) -> Optional[int]:
         except Exception:
             port = 8765
     try:
+        _creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         if sys.platform.startswith('win'):
             # Windows: utiliser netstat
             result = subprocess.run(
                 ['netstat', '-ano'],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
+                creationflags=_creationflags
             )
             for line in result.stdout.splitlines():
                 if f':{port}' in line and 'LISTENING' in line:
@@ -78,11 +80,13 @@ def stop_server(port: int | None = None) -> bool:
             return False
         
         if sys.platform.startswith('win'):
-            # Windows: utiliser taskkill
+            # Windows: utiliser taskkill (sans fenêtre CMD)
+            _creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
             subprocess.run(
                 ['taskkill', '/F', '/PID', str(pid)],
                 capture_output=True,
-                timeout=5
+                timeout=5,
+                creationflags=_creationflags
             )
         else:
             # Linux/Mac: utiliser kill
