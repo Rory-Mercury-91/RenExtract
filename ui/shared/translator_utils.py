@@ -8,7 +8,7 @@ import urllib.parse
 from infrastructure.logging.logging import log_message
 
 
-def get_translator_url(translator, text, source_lang="auto", target_lang="fr"):
+def get_translator_url(translator, text, source_lang="auto", target_lang="fr", max_length=None):
     """
     Génère l'URL pour le traducteur spécifié
     
@@ -17,6 +17,7 @@ def get_translator_url(translator, text, source_lang="auto", target_lang="fr"):
         text: Texte à traduire
         source_lang: Langue source (par défaut "auto")
         target_lang: Langue cible (par défaut "fr")
+        max_length: Limite de caractères (défaut 500; traduction en lot: 5000 Google, 1500 DeepL)
     
     Returns:
         str: URL complète du traducteur avec le texte pré-rempli
@@ -29,27 +30,23 @@ def get_translator_url(translator, text, source_lang="auto", target_lang="fr"):
         
         # Encoder le texte selon le traducteur
         if translator == "Google":
-            # Limiter pour Google (URLs très longues peuvent poser problème)
-            max_length = 500
-            if len(clean_text) > max_length:
-                clean_text = clean_text[:max_length] + "..."
+            limit = max_length if max_length is not None else 500
+            if len(clean_text) > limit:
+                clean_text = clean_text[:limit] + "..."
             encoded_text = urllib.parse.quote(clean_text, safe='')
             return f"https://translate.google.com/?sl={source_lang}&tl={target_lang}&text={encoded_text}&op=translate"
             
         elif translator == "Yandex":
-            # Limiter pour Yandex
-            max_length = 500
-            if len(clean_text) > max_length:
-                clean_text = clean_text[:max_length] + "..."
+            limit = max_length if max_length is not None else 10000
+            if len(clean_text) > limit:
+                clean_text = clean_text[:limit] + "..."
             encoded_text = urllib.parse.quote(clean_text, safe='')
             return f"https://translate.yandex.com/?lang={source_lang}-{target_lang}&text={encoded_text}"
             
         elif translator == "DeepL":
-            # DeepL utilise le format #source/target/texte
-            # Limiter à 500 caractères pour éviter les URLs trop longues
-            max_length = 500
-            if len(clean_text) > max_length:
-                clean_text = clean_text[:max_length] + "..."
+            limit = max_length if max_length is not None else 500
+            if len(clean_text) > limit:
+                clean_text = clean_text[:limit] + "..."
             # Encoder en préservant les antislashs (comme la version qui marchait)
             encoded_text = urllib.parse.quote(clean_text, safe='\\')
             # DeepL préfère 'en' à 'auto' pour la détection automatique
@@ -57,10 +54,9 @@ def get_translator_url(translator, text, source_lang="auto", target_lang="fr"):
             return f"https://www.deepl.com/translator#{deepl_source}/{target_lang}/{encoded_text}"
             
         elif translator == "Microsoft":
-            # Limiter pour Microsoft
-            max_length = 500
-            if len(clean_text) > max_length:
-                clean_text = clean_text[:max_length] + "..."
+            limit = max_length if max_length is not None else 1000
+            if len(clean_text) > limit:
+                clean_text = clean_text[:limit] + "..."
             encoded_text = urllib.parse.quote(clean_text, safe='')
             return f"https://www.bing.com/translator?from={source_lang}&to={target_lang}&text={encoded_text}"
             

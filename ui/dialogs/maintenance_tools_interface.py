@@ -24,9 +24,9 @@ from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox, show_custom_askyesnocancel
 from ui.widgets.spinner import Spinner
 
-# Support Drag & Drop si disponible
+# Support Drag & Drop si disponible (tkinterdnd2 n'a pas de stubs, le checker ne peut pas le résoudre)
 try:
-    from tkinterdnd2 import DND_FILES
+    from tkinterdnd2 import DND_FILES  # type: ignore[reportMissingImports]
     HAS_DND = True
 except ImportError:
     HAS_DND = False
@@ -140,6 +140,7 @@ class MaintenanceToolsInterface:
             self.check_isolated_percent_var = tk.BooleanVar(value=True)
             self.check_line_structure_var = tk.BooleanVar(value=True)
             self.check_length_difference_var = tk.BooleanVar(value=True)
+            self.coherence_untranslated_threshold_var = tk.IntVar(value=80)  # Seuil % similarité pour lignes partiellement non traduites (50-100)
             self.coherence_excluded_files_var = tk.StringVar(value="common.rpy")
             self.custom_exclusions_var = tk.StringVar(value="")
             
@@ -640,6 +641,7 @@ class MaintenanceToolsInterface:
             self.check_deepl_ellipsis_var.set(config_manager.get('coherence_check_deepl_ellipsis', True))
             self.check_isolated_percent_var.set(config_manager.get('coherence_check_isolated_percent', True))
             self.check_line_structure_var.set(config_manager.get('coherence_check_line_structure', True))
+            self.coherence_untranslated_threshold_var.set(max(50, min(100, config_manager.get('coherence_untranslated_threshold_percent', 80))))
             
             # Exclusions cohérence
             coherence_exclusions = config_manager.get('coherence_excluded_files', 'common.rpy')
@@ -881,6 +883,7 @@ class MaintenanceToolsInterface:
                 config_manager.set('coherence_check_tags_content', self.check_tags_content_var.get())
                 config_manager.set('coherence_check_special_codes', self.check_special_codes_var.get())
                 config_manager.set('coherence_check_untranslated', self.check_untranslated_var.get())
+                config_manager.set('coherence_untranslated_threshold_percent', max(50, min(100, self.coherence_untranslated_threshold_var.get())))
                 config_manager.set('coherence_excluded_files', self.coherence_excluded_files_var.get())
                 
                 # 🆕 NE PLUS sauvegarder coherence_custom_exclusions ici

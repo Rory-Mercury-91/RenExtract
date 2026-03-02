@@ -49,6 +49,8 @@ class UnifiedCoherenceChecker:
         
         # === CONTRÔLES DE TRADUCTION ===
         self.check_untranslated = config_manager.get('coherence_check_untranslated', True)        # Lignes potentiellement non traduites
+        # Seuil de similarité (0-100) : alerter si au moins X % de la ligne (en mots) est inchangé (défaut 80)
+        self.untranslated_threshold_percent = max(50, min(100, config_manager.get('coherence_untranslated_threshold_percent', 80)))
         
         # === CONTRÔLES DE FORMATAGE ===
         self.check_ellipsis = config_manager.get('coherence_check_ellipsis', True)                # Ellipses (-- → ...)
@@ -356,11 +358,16 @@ class UnifiedCoherenceChecker:
             return issues  # Ligne exclue, ignorer toutes les vérifications
         
         # 1. Vérifier les lignes non traduites (si activé) - PRIORITÉ MAXIMALE
-        if self.check_untranslated and self._is_untranslated_line(old_text, new_text, file_path, new_line_num):
+        is_untranslated, percent_unchanged = self._is_untranslated_line(old_text, new_text, file_path, new_line_num)
+        if self.check_untranslated and is_untranslated:
+            if percent_unchanged is not None:
+                desc = f"Ligne partiellement non traduite ({percent_unchanged} % du contenu inchangé)"
+            else:
+                desc = "Ligne potentiellement non traduite (contenu identique)"
             issues.append({
                 'line': new_line_num,
                 'type': 'UNTRANSLATED_LINE',
-                'description': "Ligne potentiellement non traduite (contenu identique)",
+                'description': desc,
                 'old_content': old_text,
                 'new_content': new_text
             })
@@ -494,26 +501,40 @@ class UnifiedCoherenceChecker:
     
     def _is_untranslated_line(self, old_text, new_text, file_path, line_num):
         """
-        Vérifie si une ligne est probablement non traduite.
+        Vérifie si une ligne est probablement non traduite (exactement ou partiellement).
         
-        Note: Les exclusions précises (projet+fichier+ligne+texte) sont déjà vérifiées
-        dans _is_excluded_line() AVANT l'appel de cette fonction. Pas besoin de re-vérifier ici.
+        Retourne (is_untranslated: bool, percent_unchanged: int|None).
+        - Si contenu identique : (True, None) après auto-exclusions.
+        - Si contenu différent mais ratio de mots inchangés >= seuil : (True, percent).
+        - Sinon : (False, None).
+        
+        Le seuil est configurable via coherence_untranslated_threshold_percent (ex. 80 = alerter si ≥80 % des mots inchangés).
         """
-        if old_text.strip() != new_text.strip():
-            return False
-        
-        text = old_text.strip()
+        old_stripped = old_text.strip()
+        new_stripped = new_text.strip()
+        text = old_stripped
         
         # Auto-exclusions (patterns techniques : ellipsis, variables, balises seules, etc.)
         if self._is_auto_excluded(text):
-            return False
+            return (False, None)
         
-        # Si le texte est court et contient peu de mots, probablement OK
-        if len(text) <= 3 or len(text.split()) <= 1:
-            return False
+        # Cas 1 : contenu exactement identique
+        if old_stripped == new_stripped:
+            if len(text) <= 3 or len(text.split()) <= 1:
+                return (False, None)
+            return (True, None)
         
-        # Sinon, considérer comme non traduit
-        return True
+        # Cas 2 : contenu différent — calcul du pourcentage de mots inchangés (même position)
+        old_words = old_stripped.split()
+        new_words = new_stripped.split()
+        if len(old_words) < 2:
+            return (False, None)
+        matches = sum(1 for i in range(min(len(old_words), len(new_words))) if old_words[i] == new_words[i])
+        percent_unchanged = round(100 * matches / len(old_words)) if old_words else 0
+        threshold = self.untranslated_threshold_percent
+        if percent_unchanged >= threshold:
+            return (True, percent_unchanged)
+        return (False, None)
     
     def _get_relative_file_path(self, file_path):
         """Retourne le chemin relatif du fichier depuis le dossier tl"""
@@ -1569,6 +1590,7 @@ def get_coherence_options():
         'check_deepl_ellipsis': config_manager.get('coherence_check_deepl_ellipsis', True),
         'check_isolated_percent': config_manager.get('coherence_check_isolated_percent', True),
         'check_line_structure': config_manager.get('coherence_check_line_structure', True),
+        'untranslated_threshold_percent': config_manager.get('coherence_untranslated_threshold_percent', 80),
         'custom_exclusions': config_manager.get('coherence_custom_exclusions', {}),  # 🆕 Dictionnaire (projet → exclusions)
         'auto_open_report': config_manager.is_coherence_auto_open_report_enabled()
     }
@@ -1584,6 +1606,7 @@ def set_coherence_options(options):
     config_manager.set('coherence_check_tags', options.get('check_tags', True))
     config_manager.set('coherence_check_special_codes', options.get('check_special_codes', True))
     config_manager.set('coherence_check_untranslated', options.get('check_untranslated', True))
+    config_manager.set('coherence_untranslated_threshold_percent', max(50, min(100, options.get('untranslated_threshold_percent', 80))))
     config_manager.set('coherence_check_ellipsis', options.get('check_ellipsis', True))
     config_manager.set('coherence_check_escape_sequences', options.get('check_escape_sequences', True))
     config_manager.set('coherence_check_percentages', options.get('check_percentages', True))

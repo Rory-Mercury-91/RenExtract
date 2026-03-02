@@ -338,6 +338,9 @@ class ConfigManager:
     def set_coherence_auto_open_report(self, enabled): self.set("coherence_auto_open_report", enabled)
     def toggle_coherence_auto_open_report(self): v = not self.is_coherence_auto_open_report_enabled(); self.set_coherence_auto_open_report(v); return v
 
+    def is_coherence_reuse_translate_tab_enabled(self): return self.config.get("coherence_reuse_translate_tab", True)
+    def set_coherence_reuse_translate_tab(self, enabled): self.set("coherence_reuse_translate_tab", enabled)
+
     # --- exclusions Ren'Py ---
     def get_renpy_excluded_files_as_string(self):
         default = "common.rpy"

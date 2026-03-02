@@ -153,6 +153,35 @@ def _create_coherence_content(parent, main_interface):
     for col in range(grid_columns):
         options_container.grid_columnconfigure(col, weight=1)
     
+    # Seuil de similarité pour lignes partiellement non traduites
+    threshold_frame = tk.Frame(parent, bg=theme["bg"])
+    threshold_frame.pack(fill='x', padx=20, pady=(8, 5))
+    tk.Label(
+        threshold_frame,
+        text="Seuil de similarité (lignes non traduites) : alerter si au moins",
+        font=('Segoe UI', 9),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    ).pack(side='left')
+    threshold_spin = tk.Spinbox(
+        threshold_frame,
+        from_=50,
+        to=100,
+        textvariable=main_interface.coherence_untranslated_threshold_var,
+        width=4,
+        font=('Segoe UI', 9),
+        bg=theme.get("entry_bg", theme["bg"]),
+        fg=theme.get("entry_fg", theme["fg"])
+    )
+    threshold_spin.pack(side='left', padx=6)
+    tk.Label(
+        threshold_frame,
+        text="% des mots sont inchangés (50–100)",
+        font=('Segoe UI', 9),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    ).pack(side='left')
+    
     # Boutons de contrôle des options
     buttons_controls_frame = tk.Frame(parent, bg=theme["bg"])
     buttons_controls_frame.pack(fill='x', padx=20, pady=(10, 20))
@@ -575,12 +604,17 @@ def _coherence_analysis_error(main_interface, error_message):
 
 def _get_coherence_analysis_options(main_interface):
     """Retourne les options d'analyse actuelles pour l'analyseur"""
+    try:
+        threshold = max(50, min(100, main_interface.coherence_untranslated_threshold_var.get()))
+    except (ValueError, tk.TclError):
+        threshold = 80
     return {
         'check_variables': main_interface.check_variables_var.get(),
         'check_tags': main_interface.check_tags_var.get(),
         'check_tags_content': main_interface.check_tags_content_var.get(),
         'check_special_codes': main_interface.check_special_codes_var.get(),
         'check_untranslated': main_interface.check_untranslated_var.get(),
+        'untranslated_threshold_percent': threshold,
         'check_ellipsis': main_interface.check_ellipsis_var.get(),
         'check_escape_sequences': main_interface.check_escape_sequences_var.get(),
         'check_percentages': main_interface.check_percentages_var.get(),
@@ -826,7 +860,10 @@ def _save_coherence_options(main_interface):
         config_manager.set('coherence_check_isolated_percent', main_interface.check_isolated_percent_var.get())
         config_manager.set('coherence_check_line_structure', main_interface.check_line_structure_var.get())
         config_manager.set('coherence_check_length_difference', main_interface.check_length_difference_var.get())
-        
+        try:
+            config_manager.set('coherence_untranslated_threshold_percent', max(50, min(100, main_interface.coherence_untranslated_threshold_var.get())))
+        except (ValueError, tk.TclError):
+            pass
         # Sauvegarder les exclusions de fichiers
         config_manager.set('coherence_excluded_files', main_interface.coherence_excluded_files_var.get())
         
@@ -891,7 +928,8 @@ def _setup_auto_save_coherence_options(main_interface):
         (main_interface.check_deepl_ellipsis_var, 'coherence_check_deepl_ellipsis'),
         (main_interface.check_isolated_percent_var, 'coherence_check_isolated_percent'),
         (main_interface.check_line_structure_var, 'coherence_check_line_structure'),
-        (main_interface.check_length_difference_var, 'coherence_check_length_difference')
+        (main_interface.check_length_difference_var, 'coherence_check_length_difference'),
+        (main_interface.coherence_untranslated_threshold_var, 'coherence_untranslated_threshold_percent')
     ]
     
     # Configurer la sauvegarde automatique pour chaque variable
@@ -912,6 +950,9 @@ def _setup_auto_save_coherence_options(main_interface):
 def _auto_save_coherence_option(main_interface, config_key, value):
     """Sauvegarde automatique d'une option de cohérence"""
     try:
+        # Pour le seuil %, borner entre 50 et 100
+        if isinstance(value, int):
+            value = max(50, min(100, value))
         # Sauvegarder dans la config
         config_manager.set(config_key, value)
         
@@ -935,14 +976,18 @@ def _auto_save_coherence_option(main_interface, config_key, value):
             'coherence_check_deepl_ellipsis': 'Ellipses DeepL',
             'coherence_check_isolated_percent': 'Pourcentages isolés',
             'coherence_check_line_structure': 'Structure des lignes',
-            'coherence_check_length_difference': 'Différence de longueur'
+            'coherence_check_length_difference': 'Différence de longueur',
+            'coherence_untranslated_threshold_percent': 'Seuil similarité (lignes non traduites)'
         }
         
         option_name = option_translations.get(config_key, config_key.replace('coherence_check_', '').replace('_', ' ').title())
-        if value:
-            _show_toast(main_interface, f"✅ {option_name} activé", "success")
-        else:
-            _show_toast(main_interface, f"⚠️ {option_name} désactivé", "warning")
+        if isinstance(value, bool):
+            if value:
+                _show_toast(main_interface, f"✅ {option_name} activé", "success")
+            else:
+                _show_toast(main_interface, f"⚠️ {option_name} désactivé", "warning")
+        elif isinstance(value, int):
+            _show_toast(main_interface, f"✅ {option_name} : {value} %", "success")
             
     except Exception as e:
         log_message("ERREUR", f"Erreur sauvegarde automatique {config_key}: {e}", category="coherence_tab")

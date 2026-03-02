@@ -1,6 +1,26 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-02 (v1.2.24)
+
+### Nouvelle fonctionnalité : Traduction par lot
+- **Système de traduction par lot** dans le rapport de cohérence : panneau dédié (repliable, fermé par défaut) pour traduire plusieurs lignes en une fois.
+- Étapes : choix du traducteur, sélection des lignes (case « Ancien », limites selon traducteur), **Copier tout** → traduction externe (Google/DeepL, etc.) → **Coller tout** → **Appliquer** → **Enregistrer tout** dans le bandeau (évite de sauvegarder ligne par ligne).
+- Bouton **Focus Traduction par Lot** dans les filtres : ouvre le panneau et scroll jusqu’à « Résumé Global » pour l’afficher.
+
+### Paramètres (Cohérence / Traduction)
+- **Seuil de similarité (lignes non traduites)** : alerter si au moins X % des mots sont inchangés entre ancien et nouveau (réglable 50–100 %, ex. 87 %).
+- **Réutiliser le même onglet navigateur** pour la traduction (Google/DeepL) lors de traduction consécutive multiple.
+
+### Modification : Bloc Fonctionnalités du rapport
+- **Bloc « Fonctionnalités présentes »** : panneau repliable (fermé par défaut) listant toutes les fonctionnalités du rapport (résumé, filtres, thème, édition en ligne, traduction assistée, exclusions, traduction en lot).
+- **Lignes non traduites** : dans le rapport, affichage du pourcentage de contenu inchangé pour les lignes partiellement non traduites (ex. « Ligne partiellement non traduite (X % du contenu inchangé) »).
+
+### Corrections
+- **Extraction** : distinction entre la directive Ren'Py `old "..."` et un locuteur dont le nom contient « old » (ex. `oldman "..."`). Seules les lignes commençant par `old ` (avec espace) sont ignorées comme directive, afin de ne pas exclure les dialogues de personnages comme « oldman ».
+
+---
+
 ## 2026-01-21 (v1.2.23-Fix2)
 
 ### 🚨 Fix urgent téléchargement v2 unrenpyc

@@ -1596,6 +1596,48 @@ Configuration :
                 )
                 checkbox.pack(anchor='w', pady=5)
             
+            # Seuil de similarité pour lignes partiellement non traduites
+            threshold_frame = tk.Frame(settings_window, bg=theme["bg"])
+            threshold_frame.pack(fill='x', padx=20, pady=(15, 5))
+            threshold_label = tk.Label(
+                threshold_frame,
+                text="Seuil de similarité (lignes non traduites) : alerter si au moins X % des mots sont inchangés (50–100) :",
+                font=('Segoe UI', 10),
+                bg=theme["bg"],
+                fg=theme["fg"],
+                wraplength=520,
+                justify='left'
+            )
+            threshold_label.pack(anchor='w')
+            threshold_var = tk.IntVar(value=max(50, min(100, config_manager.get('coherence_untranslated_threshold_percent', 80))))
+            threshold_spin = tk.Spinbox(
+                threshold_frame,
+                from_=50,
+                to=100,
+                textvariable=threshold_var,
+                width=5,
+                font=('Segoe UI', 10),
+                bg=theme.get("input_bg", theme["bg"]),
+                fg=theme["fg"]
+            )
+            threshold_spin.pack(anchor='w', pady=(5, 0))
+            
+            # Réutiliser le même onglet pour la traduction (rapport cohérence)
+            reuse_tab_var = tk.BooleanVar(value=config_manager.get('coherence_reuse_translate_tab', True))
+            reuse_tab_cb = tk.Checkbutton(
+                settings_window,
+                text="Réutiliser le même onglet navigateur pour la traduction (Google/DeepL)",
+                variable=reuse_tab_var,
+                font=('Segoe UI', 10),
+                bg=theme["bg"],
+                fg=theme["fg"],
+                selectcolor=theme["bg"],
+                activebackground=theme["bg"],
+                activeforeground=theme["fg"],
+                anchor='w'
+            )
+            reuse_tab_cb.pack(anchor='w', padx=20, pady=(10, 0))
+            
             # Boutons
             buttons_frame = tk.Frame(settings_window, bg=theme["bg"])
             buttons_frame.pack(fill='x', pady=20, padx=20)
@@ -1628,7 +1670,7 @@ Configuration :
             save_btn = tk.Button(
                 buttons_frame,
                 text="💾 Sauvegarder",
-                command=lambda: self._save_coherence_settings(check_vars, settings_window),
+                command=lambda: self._save_coherence_settings(check_vars, settings_window, threshold_var, reuse_tab_var),
                 bg=theme["button_secondary_bg"],
                 fg="#000000",
                 font=('Segoe UI', 10, 'bold'),
@@ -1640,15 +1682,21 @@ Configuration :
             log_message("ERREUR", f"Erreur création fenêtre cohérence: {e}", category="ui_settings")
             self._show_toast("❌ Erreur création fenêtre", "error")
     
-    def _save_coherence_settings(self, check_vars, window):
+    def _save_coherence_settings(self, check_vars, window, threshold_var=None, reuse_tab_var=None):
         """Sauvegarde les paramètres de cohérence"""
         try:
             for config_key, var in check_vars.items():
                 config_manager.set(config_key, var.get())
-            
+            if threshold_var is not None:
+                try:
+                    v = int(threshold_var.get())
+                    config_manager.set('coherence_untranslated_threshold_percent', max(50, min(100, v)))
+                except (ValueError, tk.TclError):
+                    pass
+            if reuse_tab_var is not None:
+                config_manager.set_coherence_reuse_translate_tab(reuse_tab_var.get())
             self._show_toast("✅ Paramètres de cohérence sauvegardés", "success")
             window.destroy()
-            
         except Exception as e:
             log_message("ERREUR", f"Erreur sauvegarde cohérence: {e}", category="ui_settings")
             self._show_toast("❌ Erreur sauvegarde", "error")

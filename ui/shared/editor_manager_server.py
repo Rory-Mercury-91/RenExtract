@@ -291,6 +291,7 @@ class _Handler(BaseHTTPRequestHandler):
                 text = data.get('text', '').strip()
                 translator = data.get('translator', 'Google').strip()
                 target_lang = data.get('target_lang', 'fr').strip()
+                max_length = data.get('max_length')  # optionnel : traduction en lot (5000 Google, 1500 DeepL)
                 
                 log_message("DEBUG", f"POST /translate - translator={translator}, target_lang={target_lang}", category="coherence_api")
                 
@@ -308,8 +309,8 @@ class _Handler(BaseHTTPRequestHandler):
                     log_message("INFO", f"✅ Traduction réussie: {translator}", category="coherence_translate")
                     self._send_json_response({'ok': True, 'translation': translation, 'service': translator})
                 else:
-                    # Fallback: retourner l'URL du traducteur web
-                    url = get_translator_url(translator, text, target_lang=target_lang)
+                    # Fallback: retourner l'URL du traducteur web (max_length pour traduction en lot)
+                    url = get_translator_url(translator, text, 'auto', target_lang, max_length=max_length)
                     if url:
                         log_message("INFO", f"ℹ️ URL traducteur générée: {translator}", category="coherence_translate")
                         self._send_json_response({'ok': True, 'url': url, 'service': translator})
@@ -367,7 +368,7 @@ class _Handler(BaseHTTPRequestHandler):
                     return
                 
                 # Valider que le traducteur est dans la liste autorisée
-                valid_translators = ["Google", "DeepL", "Groq AI", "Microsoft", "Yandex"]
+                valid_translators = ["Google", "DeepL", "Microsoft", "Yandex"]
                 if translator not in valid_translators:
                     self._send_json_response({'ok': False, 'error': 'Traducteur invalide'}, 400)
                     return

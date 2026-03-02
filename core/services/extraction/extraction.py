@@ -655,8 +655,10 @@ class TextExtractor:
         # Ignorer les commentaires
         if stripped_line.startswith('#'):
             return False
-        # Ignorer les directives Ren'Py
-        if stripped_line.lower().startswith(('translate', 'old', 'voice')):
+        # Ignorer les directives Ren'Py (old/voice avec espace pour ne pas exclure un locuteur "oldman")
+        if stripped_line.lower().startswith(('translate', 'voice')):
+            return False
+        if stripped_line.lower().startswith('old ') or stripped_line.lower() == 'old':
             return False
         # Traiter les lignes new (pour les choix)
         if stripped_line.startswith('new '):
@@ -957,8 +959,13 @@ class TextExtractor:
             self.extracted_texts = [content + '\n' for content in self.all_contents_linear]
 
     def _is_dialogue_line(self, line):
-        # Ignorer les commentaires, directives et old
-        if line.startswith('#') or line.lower().startswith(('translate', 'old', 'voice')):
+        # Ignorer les commentaires et directives Ren'Py (old/voice avec espace pour ne pas exclure un locuteur "oldman")
+        if line.startswith('#'):
+            return False
+        low = line.strip().lower()
+        if low.startswith(('translate', 'voice')):
+            return False
+        if low.startswith('old ') or low == 'old':
             return False
         
         stripped = line.strip()

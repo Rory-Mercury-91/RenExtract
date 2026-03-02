@@ -297,6 +297,8 @@ class HtmlCoherenceReportGenerator:
           .filter-group { display: flex; gap: 8px; align-items: center; }
           .filter-group label { font-size: 0.9rem; font-weight: 500; }
           
+          .bulk-translate-header:hover { background: var(--hover-bg); border-radius: 8px 8px 0 0; }
+          
           select, input {
             background: var(--bg); color: var(--fg); border: 1px solid var(--sep);
             padding: 6px 10px; border-radius: 6px; outline: none; transition: border-color 0.2s;
@@ -368,10 +370,11 @@ class HtmlCoherenceReportGenerator:
         server_host_client = '127.0.0.1' if server_host_config in ('0.0.0.0', '::') else server_host_config
         server_url = f"http://{server_host_client}:{server_port_config}"
         
-        # Obtenir le traducteur par défaut
+        # Obtenir le traducteur par défaut et l'option "réutiliser même onglet"
         default_translator = get_default_translator()
+        reuse_translate_tab = config_manager.get('coherence_reuse_translate_tab', True)
         
-        log_message("DEBUG", f"🎯 Génération JavaScript rapport : server_url={server_url}, default_translator={default_translator}", category="report")
+        log_message("DEBUG", f"🎯 Génération JavaScript rapport : server_url={server_url}, default_translator={default_translator}, reuse_translate_tab={reuse_translate_tab}", category="report")
         
         return f"""
         <script>
@@ -379,6 +382,7 @@ class HtmlCoherenceReportGenerator:
             // URL du serveur d'édition (configurable pour support WSL)
             window.RENEXTRACT_SERVER_URL = '{server_url}';
             window.RENEXTRACT_LANGUAGE = '{language}';
+            window.RENEXTRACT_REUSE_TRANSLATE_TAB = {str(reuse_translate_tab).lower()};
             
             // Informations sur la sélection harmonisée
             window.coherenceSelectionInfo = {{
@@ -422,13 +426,12 @@ class HtmlCoherenceReportGenerator:
                     const translatorSelect = document.getElementById('translatorSelect');
                     if (!translatorSelect) return;
                     
-                    // Charger depuis la config (via window.coherenceSelectionInfo)
+                    // Charger depuis la config (Google, DeepL, Microsoft, Yandex uniquement)
                     const defaultTranslator = window.coherenceSelectionInfo.default_translator || 'Google';
-                    
-                    // Définir la valeur du select
-                    translatorSelect.value = defaultTranslator;
-                    
-                    console.log(`✅ Traducteur chargé: ${{defaultTranslator}}`);
+                    const validTranslators = ['Google', 'DeepL', 'Microsoft', 'Yandex'];
+                    const translator = validTranslators.indexOf(defaultTranslator) >= 0 ? defaultTranslator : 'Google';
+                    translatorSelect.value = translator;
+                    console.log(`✅ Traducteur chargé: ${{translator}}`);
                 }} catch (error) {{
                     console.error('❌ Erreur chargement traducteur:', error);
                 }}
@@ -845,9 +848,10 @@ class HtmlCoherenceReportGenerator:
                             showGlobalMessage(`✅ Traduction réussie avec ${{data.service}}`, 'success', 3000);
                             console.log(`✅ Traduction réussie avec ${{data.service}}`);
                         }} else if (data.url) {{
-                            // Ouvrir l'URL du traducteur web
-                            window.open(data.url, '_blank');
-                            showGlobalMessage(`🌐 Traducteur ${{data.service}} ouvert dans un nouvel onglet`, 'info', 3000);
+                            // Ouvrir l'URL du traducteur web (réutiliser même onglet si config activée)
+                            const targetWindow = (window.RENEXTRACT_REUSE_TRANSLATE_TAB !== false) ? 'ren extract_translate' : '_blank';
+                            window.open(data.url, targetWindow);
+                            showGlobalMessage(`🌐 Traducteur ${{data.service}} ouvert` + (targetWindow === 'ren extract_translate' ? ' (même onglet)' : ' dans un nouvel onglet'), 'info', 3000);
                             console.log(`🌐 Ouverture de ${{data.service}}`);
                         }} else {{
                             showGlobalMessage('❌ Traduction non disponible pour ce service', 'error', 4000);
@@ -1097,6 +1101,207 @@ class HtmlCoherenceReportGenerator:
                 if (saveAllBtn) {{
                     saveAllBtn.addEventListener('click', saveAll);
                 }}
+
+                // ===== Traduction en lot (RENEXTRACT_001, RENEXTRACT_002, …) =====
+                function getBulkLimit() {{
+                    const sel = document.getElementById('translatorSelect');
+                    if (!sel) return 5000;
+                    switch (sel.value) {{
+                        case 'DeepL': return 1500;
+                        case 'Microsoft': return 1000;
+                        case 'Yandex': return 10000;
+                        default: return 5000;
+                    }}
+                }}
+                function updateBulkUI() {{
+                    const limit = getBulkLimit();
+                    const countEl = document.getElementById('bulkCharCount');
+                    if (!countEl) return;
+                    const checkboxes = Array.from(document.querySelectorAll('.bulk-checkbox')).filter(cb => {{
+                        const item = cb.closest('.issue-item');
+                        return item && item.style.display !== 'none';
+                    }});
+                    let total = 0;
+                    const checked = [];
+                    checkboxes.forEach(cb => {{
+                        if (cb.checked) {{
+                            const len = (cb.getAttribute('data-old-content') || '').length;
+                            total += len;
+                            checked.push(cb);
+                        }}
+                    }});
+                    const atLimit = total >= limit;
+                    checkboxes.forEach(cb => {{
+                        if (!cb.checked) cb.disabled = atLimit;
+                    }});
+                    countEl.textContent = total + ' / ' + limit + ' caractères';
+                }}
+                function copyBulk() {{
+                    const checkboxes = Array.from(document.querySelectorAll('.bulk-checkbox')).filter(cb => {{
+                        if (!cb.checked) return false;
+                        const item = cb.closest('.issue-item');
+                        if (!item) return false;
+                        const style = window.getComputedStyle(item);
+                        return style.display !== 'none' && style.visibility !== 'hidden';
+                    }});
+                    if (checkboxes.length === 0) {{
+                        showGlobalMessage('⚠️ Cochez au moins une ligne (section Ancien)', 'warning', 3000);
+                        return;
+                    }}
+                    const parts = [];
+                    checkboxes.forEach((cb, i) => {{
+                        const content = (cb.getAttribute('data-old-content') || '').replace(/\\s+/g, ' ').trim();
+                        parts.push('RENEXTRACT_' + String(i + 1).padStart(3, '0') + '\\n' + content);
+                    }});
+                    const text = parts.join('\\n\\n');
+                    const pasteArea = document.getElementById('bulkPasteArea');
+                    if (pasteArea) pasteArea.value = text;
+                    if (navigator.clipboard && navigator.clipboard.writeText) {{
+                        navigator.clipboard.writeText(text).then(() => {{
+                            showGlobalMessage('✅ Texte copié (' + checkboxes.length + ' bloc(s)) — collez-le dans Google/DeepL, puis remplacez cette zone par la traduction et cliquez Appliquer', 'success', 5000);
+                        }}).catch(() => {{
+                            showGlobalMessage('✅ Sélection affichée ci-dessous (' + checkboxes.length + ' bloc(s)) — copiez-la dans Google/DeepL puis remplacez par la traduction et cliquez Appliquer', 'info', 5000);
+                        }});
+                    }} else {{
+                        showGlobalMessage('✅ Sélection affichée ci-dessous (' + checkboxes.length + ' bloc(s)) — copiez-la dans Google/DeepL puis remplacez par la traduction et cliquez Appliquer', 'success', 5000);
+                    }}
+                }}
+                async function pasteBulk() {{
+                    const pasteArea = document.getElementById('bulkPasteArea');
+                    if (!pasteArea) return;
+                    try {{
+                        if (navigator.clipboard && navigator.clipboard.readText) {{
+                            const text = await navigator.clipboard.readText();
+                            pasteArea.value = text;
+                            showGlobalMessage('✅ Contenu du presse-papier collé dans la zone', 'success', 3000);
+                        }} else {{
+                            showGlobalMessage('⚠️ Coller manuellement (Ctrl+V) dans la zone — accès presse-papier non disponible', 'warning', 4000);
+                        }}
+                    }} catch (err) {{
+                        showGlobalMessage('⚠️ Accès au presse-papier refusé. Collez manuellement (Ctrl+V) dans la zone.', 'warning', 4000);
+                    }}
+                }}
+                function applyBulk() {{
+                    const textarea = document.getElementById('bulkPasteArea');
+                    const text = (textarea && textarea.value) ? textarea.value.trim() : '';
+                    if (!text) {{
+                        showGlobalMessage('⚠️ Coller d\\'abord les traductions dans la zone ci-dessus', 'warning', 3000);
+                        return;
+                    }}
+                    const checkboxes = Array.from(document.querySelectorAll('.bulk-checkbox:checked')).filter(cb => {{
+                        const item = cb.closest('.issue-item');
+                        return item && item.style.display !== 'none';
+                    }});
+                    const regex = /RENEXTRACT_\\d+\\s*([\\s\\S]*?)(?=RENEXTRACT_\\d+|$)/g;
+                    const blocks = [];
+                    let m;
+                    while ((m = regex.exec(text)) !== null) {{
+                        blocks.push(m[1].trim());
+                    }}
+                    if (blocks.length !== checkboxes.length) {{
+                        showGlobalMessage('❌ Nombre de blocs incorrect (attendu: ' + checkboxes.length + ', reçu: ' + blocks.length + '). Vérifiez que les marqueurs RENEXTRACT_001, etc. n\\'ont pas été supprimés par le traducteur.', 'error', 8000);
+                        return;
+                    }}
+                    checkboxes.forEach((cb, i) => {{
+                        const editId = cb.getAttribute('data-edit-field');
+                        const field = document.getElementById(editId);
+                        if (field) field.value = blocks[i];
+                    }});
+                    showGlobalMessage('✅ ' + blocks.length + ' traduction(s) appliquée(s). Pensez à enregistrer.', 'success', 4000);
+                }}
+                async function translateBulk() {{
+                    const pasteArea = document.getElementById('bulkPasteArea');
+                    const text = (pasteArea && pasteArea.value) ? pasteArea.value.trim() : '';
+                    if (!text) {{
+                        showGlobalMessage('⚠️ Cliquez d\\'abord sur « Copier tout » pour remplir la zone, ou collez le texte à traduire.', 'warning', 4000);
+                        return;
+                    }}
+                    const translatorSelect = document.getElementById('translatorSelect');
+                    const translator = (translatorSelect && translatorSelect.value) ? translatorSelect.value : 'Google';
+                    const targetWindow = (window.RENEXTRACT_REUSE_TRANSLATE_TAB !== false) ? 'ren extract_translate' : '_blank';
+                    const btn = document.getElementById('bulkTranslateBtn');
+                    if (btn) {{ btn.disabled = true; btn.textContent = '⏳ Ouverture…'; }}
+                    try {{
+                        const response = await fetch(window.RENEXTRACT_SERVER_URL + '/api/coherence/translate', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ text: text, translator: translator, target_lang: 'fr', max_length: getBulkLimit() }})
+                        }});
+                        const data = response.ok ? await response.json() : null;
+                        if (data && data.url) {{
+                            window.open(data.url, targetWindow);
+                            showGlobalMessage('🌐 ' + (data.service || translator) + ' ouvert avec le contenu de la zone', 'success', 3000);
+                        }} else if (data && data.translation) {{
+                            if (pasteArea) pasteArea.value = data.translation;
+                            showGlobalMessage('✅ Traduction insérée (' + (data.service || translator) + ')', 'success', 3000);
+                        }} else {{
+                            showGlobalMessage('⚠️ Pour la traduction en lot, choisissez Google ou DeepL dans le menu Traducteur.', 'warning', 4000);
+                        }}
+                    }} catch (err) {{
+                        console.error(err);
+                        showGlobalMessage('⚠️ RenExtract doit rester ouvert pour ouvrir le traducteur.', 'error', 4000);
+                    }}
+                    if (btn) {{ btn.disabled = false; btn.textContent = '🌐 Traduire'; }}
+                }}
+                function initBulk() {{
+                    const translatorSelect = document.getElementById('translatorSelect');
+                    if (translatorSelect) translatorSelect.addEventListener('change', updateBulkUI);
+                    document.querySelectorAll('.bulk-checkbox').forEach(cb => cb.addEventListener('change', updateBulkUI));
+                    updateBulkUI();
+                }}
+                function toggleBulkSection() {{
+                    const content = document.getElementById('content_bulkTranslate');
+                    const icon = document.getElementById('icon_bulkTranslate');
+                    const header = document.getElementById('bulkTranslateHeader');
+                    if (!content || !icon) return;
+                    const isHidden = content.style.display === 'none' || !content.style.display;
+                    content.style.display = isHidden ? 'block' : 'none';
+                    icon.textContent = isHidden ? '▼' : '▶';
+                    if (header) header.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+                }}
+                function toggleFeaturesSection() {{
+                    const content = document.getElementById('content_features');
+                    const icon = document.getElementById('icon_features');
+                    const header = document.getElementById('featuresHeader');
+                    if (!content || !icon) return;
+                    const isHidden = content.style.display === 'none' || !content.style.display;
+                    content.style.display = isHidden ? 'block' : 'none';
+                    icon.textContent = isHidden ? '▼' : '▶';
+                    if (header) header.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+                }}
+                function focusBulkSection() {{
+                    const content = document.getElementById('content_bulkTranslate');
+                    const icon = document.getElementById('icon_bulkTranslate');
+                    const header = document.getElementById('bulkTranslateHeader');
+                    const anchor = document.getElementById('anchorResumeGlobal');
+                    if (!header) return;
+                    const wasHidden = content && (content.style.display === 'none' || !content.style.display);
+                    if (wasHidden) {{
+                        content.style.display = 'block';
+                        if (icon) icon.textContent = '▼';
+                        header.setAttribute('aria-expanded', 'true');
+                    }}
+                    var target = anchor || header;
+                    requestAnimationFrame(function() {{
+                        requestAnimationFrame(function() {{
+                            target.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+                        }});
+                    }});
+                }}
+                if (document.readyState === 'loading') {{
+                    document.addEventListener('DOMContentLoaded', initBulk);
+                }} else {{
+                    initBulk();
+                }}
+                document.body.addEventListener('click', function(e) {{
+                    if (e.target.id === 'focusBulkTranslateBtn' || e.target.closest('#focusBulkTranslateBtn')) {{ e.preventDefault(); focusBulkSection(); return false; }}
+                    if (e.target.id === 'featuresHeader' || e.target.closest('#featuresHeader')) {{ e.preventDefault(); toggleFeaturesSection(); return false; }}
+                    if (e.target.id === 'bulkTranslateHeader' || e.target.closest('#bulkTranslateHeader')) {{ e.preventDefault(); toggleBulkSection(); return false; }}
+                    if (e.target.id === 'bulkCopyBtn' || e.target.closest('#bulkCopyBtn')) {{ e.preventDefault(); copyBulk(); return false; }}
+                    if (e.target.id === 'bulkPasteBtn' || e.target.closest('#bulkPasteBtn')) {{ e.preventDefault(); pasteBulk(); return false; }}
+                    if (e.target.id === 'bulkTranslateBtn' || e.target.closest('#bulkTranslateBtn')) {{ e.preventDefault(); translateBulk(); return false; }}
+                    if (e.target.id === 'bulkApplyBtn' || e.target.closest('#bulkApplyBtn')) {{ e.preventDefault(); applyBulk(); return false; }}
+                }});
 
                 // Bouton thème
                 const themeBtn = document.getElementById('themeBtn');
@@ -1358,6 +1563,7 @@ class HtmlCoherenceReportGenerator:
                 # Contenu principal
                 f.write(self._generate_summary_section(results))
                 f.write(self._generate_filters_section(results))
+                f.write(self._generate_bulk_translate_panel())
                 f.write(self._generate_error_type_sections(results))
                 
                 # Pied de page
@@ -1416,7 +1622,6 @@ class HtmlCoherenceReportGenerator:
                         <select id="translatorSelect" class="btn" style="margin-right: 15px; padding: 6px 10px;">
                             <option value="Google">Google</option>
                             <option value="DeepL">DeepL</option>
-                            <option value="Groq AI">Groq AI</option>
                             <option value="Microsoft">Microsoft</option>
                             <option value="Yandex">Yandex</option>
                         </select>
@@ -1456,22 +1661,10 @@ class HtmlCoherenceReportGenerator:
         # Trier par nombre d'erreurs (décroissant)
         type_stats.sort(key=lambda x: x['count'], reverse=True)
         
-        # Bannière d'information pour les exclusions et édition interactives
-        info_banner = """
-        <div class="info-banner">
-            💡 <strong>Nouvelles fonctionnalités :</strong>
-            <ul style="margin: 5px 0; padding-left: 20px;">
-                <li><strong>Édition en ligne :</strong> Modifiez les traductions directement depuis ce rapport ! Corrigez le texte et cliquez sur "Enregistrer".</li>
-                <li><strong>Traduction assistée :</strong> Utilisez le bouton "Traduire" pour obtenir une suggestion de traduction automatique.</li>
-                <li><strong>Exclusions :</strong> Cochez "✓ Ignoré" pour exclure une ligne des prochaines analyses.</li>
-            </ul>
-        </div>
-        """
-        
-        html = info_banner + """
+        html = self._generate_features_panel() + """
         <div class="summary-cards">
             <div class="card">
-                <h3>📊 Résumé Global</h3>
+                <h3 id="anchorResumeGlobal">📊 Résumé Global</h3>
                 <div class="stat">
                     <span>Fichiers analysés</span>
                     <span class="stat-value">{}</span>
@@ -1541,9 +1734,69 @@ class HtmlCoherenceReportGenerator:
             </div>
             
             <button id="resetFilters" class="reset-filters-btn">🔄 Réinitialiser</button>
+            <button type="button" id="focusBulkTranslateBtn" class="btn" style="padding: 6px 12px; white-space: nowrap;" title="Aller à la section Traduction en lot et l'ouvrir">📋 Focus Traduction par Lot</button>
             
             <div class="filter-group" style="margin-left: auto;">
                 <span id="filterInfo" style="font-style: italic; opacity: 0.8;"></span>
+            </div>
+        </div>
+        """
+    
+    def _generate_bulk_translate_panel(self) -> str:
+        """Panneau traduction en lot : repliable, fermé par défaut ; copier sélection avec RENEXTRACT_001…, coller résultat, appliquer."""
+        return """
+        <div id="bulkTranslatePanel" class="bulk-translate-panel" style="margin: 15px 20px; background: var(--card-bg); border: 1px solid var(--sep); border-radius: 10px;">
+            <div id="bulkTranslateHeader" class="bulk-translate-header" style="display: flex; align-items: center; gap: 8px; padding: 12px 15px; cursor: pointer; user-select: none;" role="button" tabindex="0" aria-expanded="false" title="Cliquer pour ouvrir ou fermer">
+                <span id="icon_bulkTranslate" style="font-size: 0.85rem;">▶</span>
+                <h3 style="margin: 0; font-size: 1rem;">📋 Traduction en lot</h3>
+            </div>
+            <div id="content_bulkTranslate" style="display: none; padding: 0 15px 15px 15px;">
+            <div id="bulkTranslateConsignes" style="margin: 0 0 10px 0; font-size: 0.85rem; opacity: 0.95; line-height: 1.5;">
+                <strong>Étapes :</strong>
+                <ol style="margin: 6px 0 0 0; padding-left: 20px;">
+                    <li>Sélectionnez votre traducteur dans le bandeau en haut (Google, DeepL, Microsoft ou Yandex).</li>
+                    <li>Cochez les lignes à traduire dans les sections <strong>Ancien</strong> (limite selon le traducteur : voir le compteur).</li>
+                    <li>Cliquez <strong>« Copier tout »</strong> : le texte apparaît ci-dessous et est copié dans le presse-papier.</li>
+                    <li>Collez ce contenu dans votre traducteur (bouton <strong>Traduire</strong> pour ouvrir Google/DeepL, ou un autre outil) et traduisez.</li>
+                    <li>Après traduction, cliquez <strong>« Coller tout »</strong> : le contenu de la zone ci-dessous est remplacé par votre traduction (conservez les marqueurs RENEXTRACT_001, etc.).</li>
+                    <li>Cliquez <strong>« Appliquer »</strong> pour réinjecter les traductions dans les lignes.</li>
+                    <li>Cliquez sur <strong>« Enregistrer tout »</strong> dans le bandeau en haut pour sauvegarder les modifications (évite de sauvegarder ligne par ligne).</li>
+                </ol>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
+                <span id="bulkCharCount" style="font-weight: 600; font-size: 0.9rem;">0 / 5000 caractères</span>
+                <button type="button" id="bulkCopyBtn" class="btn" style="padding: 6px 12px; background: var(--info); color: white;">📤 Copier tout</button>
+                <button type="button" id="bulkPasteBtn" class="btn" style="padding: 6px 12px; background: #6c757d; color: white;" title="Coller le contenu du presse-papier dans la zone">📥 Coller tout</button>
+                <button type="button" id="bulkTranslateBtn" class="btn" style="padding: 6px 12px; background: #4a90e2; color: white;" title="Ouvrir Google ou DeepL avec le contenu de la zone ci-dessous">🌐 Traduire</button>
+            </div>
+            <textarea id="bulkPasteArea" placeholder="Après « Copier tout », le texte à traduire s'affiche ici. Après traduction, remplacez tout par la traduction (en gardant RENEXTRACT_001, RENEXTRACT_002…) puis cliquez Appliquer." style="width: 100%; min-height: 100px; padding: 10px; border-radius: 6px; border: 1px solid var(--sep); background: var(--bg); color: var(--fg); font-family: monospace; font-size: 0.9rem; resize: vertical;"></textarea>
+            <p style="margin: 8px 0 10px 0; font-size: 0.8rem; opacity: 0.85;">⚠️ Vérifiez que le nombre de blocs en sortie correspond au nombre de blocs copiés (DeepL/Google ne doivent pas supprimer les marqueurs RENEXTRACT_001, etc.).</p>
+            <button type="button" id="bulkApplyBtn" class="btn" style="padding: 8px 16px; background: var(--success); color: white; font-weight: 600;">✅ Appliquer</button>
+            </div>
+        </div>
+        """
+    
+    def _generate_features_panel(self) -> str:
+        """Panneau « Fonctionnalités présentes » : rappel de toutes les fonctionnalités du rapport, repliable, fermé par défaut."""
+        return """
+        <div id="featuresPanel" class="bulk-translate-panel" style="margin: 15px 20px; background: var(--card-bg); border: 1px solid var(--sep); border-radius: 10px;">
+            <div id="featuresHeader" class="bulk-translate-header" style="display: flex; align-items: center; gap: 8px; padding: 12px 15px; cursor: pointer; user-select: none;" role="button" tabindex="0" aria-expanded="false" title="Cliquer pour ouvrir ou fermer">
+                <span id="icon_features" style="font-size: 0.85rem;">▶</span>
+                <h3 style="margin: 0; font-size: 1rem;">📌 Fonctionnalités présentes</h3>
+            </div>
+            <div id="content_features" style="display: none; padding: 0 15px 15px 15px;">
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.6; font-size: 0.9rem;">
+                    <li><strong>Résumé global :</strong> Cartes avec fichiers analysés, total des erreurs et répartition par type.</li>
+                    <li><strong>Filtres :</strong> Par type d'erreur, par fichier ; bouton Réinitialiser ; case « Ancien » ; bouton « Focus Traduction par Lot » pour accéder au panneau en lot.</li>
+                    <li><strong>Thème :</strong> Bascule entre affichage clair et sombre.</li>
+                    <li><strong>Tout déplier / Tout replier :</strong> Ouvrir ou fermer toutes les sections d'erreurs d'un coup.</li>
+                    <li><strong>Traducteur :</strong> Choix Google, DeepL, Microsoft ou Yandex (traduction assistée et panneau en lot).</li>
+                    <li><strong>Enregistrer tout :</strong> Enregistre les modifications (éditions et exclusions). RenExtract doit rester ouvert.</li>
+                    <li><strong>Édition en ligne :</strong> Modifiez le texte directement dans le rapport puis cliquez sur « Enregistrer » sur la ligne.</li>
+                    <li><strong>Traduction assistée :</strong> Bouton « Traduire » sur une ligne pour obtenir une suggestion de traduction automatique.</li>
+                    <li><strong>Exclusions :</strong> Cochez « ✓ Ignoré » pour exclure une ligne des prochaines analyses.</li>
+                    <li><strong>Traduction en lot :</strong> Panneau dédié (Copier tout, traduction externe, Coller tout, Appliquer) pour traduire plusieurs lignes en une fois.</li>
+                </ul>
             </div>
         </div>
         """
@@ -1850,8 +2103,20 @@ class HtmlCoherenceReportGenerator:
         </div>
         """
 
+        # Case à cocher "traduction en lot" pour lignes non traduites / contenu balise non traduit
+        bulk_checkbox_html = ''
+        if issue_type in ('UNTRANSLATED_LINE', 'TAG_CONTENT_UNTRANSLATED'):
+            old_content_attr_escaped = _html.escape(old_content_raw).replace('"', '&quot;').replace('\n', ' ').replace('\r', ' ')
+            bulk_checkbox_html = f'''
+                    <div class="bulk-checkbox-wrap" style="margin-bottom: 8px;">
+                        <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem;">
+                            <input type="checkbox" class="bulk-checkbox" data-edit-field="editField-{unique_id}" data-file="{escaped_file}" data-line="{line}" data-old-content="{old_content_attr_escaped}" style="cursor: pointer;">
+                            <span>Inclure dans traduction en lot</span>
+                        </label>
+                    </div>'''
+        
         return f"""
-        <div class="issue-item" data-unique-id="{unique_id}">
+        <div class="issue-item" data-unique-id="{unique_id}" data-issue-type="{issue_type}">
             <div class="issue-header">
                 <div class="issue-line">Ligne {line}</div>
                 {btn_html}
@@ -1867,6 +2132,7 @@ class HtmlCoherenceReportGenerator:
                             📋 Copier
                         </button>
                     </div>
+                    {bulk_checkbox_html}
                     <div>{old_content_highlighted if old_content_highlighted else '<em>Vide</em>'}</div>
                 </div>
                 <div class="content-block new-content">

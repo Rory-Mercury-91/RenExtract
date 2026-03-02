@@ -71,8 +71,8 @@ def get_version():
         pass
     
     # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    # Version : 1.2.23-Fix2 (21-01-2026)
-    return "RenExtract v1.2.23-Fix2"
+    # Version : 1.2.24 (02-03-2026)
+    return "RenExtract v1.2.24"
 
 def increment_build_number():
     """
@@ -321,7 +321,7 @@ DEFAULT_CONFIG = {
     "extraction_detect_duplicates":True,"default_save_mode":"overwrite",
     "extraction_excluded_files":"",
     "cleanup_excluded_files":"common.rpy",
-    "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_check_ellipsis":True,
+    "coherence_check_variables":True,"coherence_check_tags":True,"coherence_check_special_codes":True,"coherence_check_untranslated":True,"coherence_untranslated_threshold_percent":80,"coherence_check_ellipsis":True,
 
     # --- Ports configurables ---
     # Port du serveur éditeur HTTP (utilisé par l'UI / rapport)
@@ -334,7 +334,7 @@ DEFAULT_CONFIG = {
     "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_line_structure":True,"coherence_check_length_difference":True,
     "coherence_custom_exclusions":{},
     "coherence_excluded_files":"",
-    "coherence_auto_open_report":True,
+    "coherence_auto_open_report":True,"coherence_reuse_translate_tab":True,
     "realtime_editor_enabled":True,"realtime_monitoring_interval":200,"realtime_auto_backup":True,"realtime_default_language":"french",
     "editor_font_size":9,"realtime_log_retention_days":7,"realtime_max_log_size_mb":10,"default_online_translator":"Google","groq_api_key":"","groq_custom_instructions":"","groq_translation_style":"Naturel","groq_game_context":"Général","groq_temperature":0.3,
     "current_renpy_project":"","renpy_sdk_path":"","renpy_default_language":"french","renpy_auto_open_folder":True,"renpy_show_results_popup":True,
