@@ -789,13 +789,12 @@ def setup_gui_font_combos(main_interface, font_combos):
 
 # REMPLACEMENT pour une grille bien alignée dans create_generation_tab()
 
-def create_generation_tab_aligned(parent_notebook, main_interface):
-    """Crée l'onglet de génération avec grille alignée 2x3"""
+def create_generation_tab_aligned(parent, main_interface):
+    """Crée l'onglet de génération - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
-    # Frame principal
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="Génération")
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # Container principal avec espacement optimisé
     main_container = tk.Frame(tab_frame, bg=theme["bg"])

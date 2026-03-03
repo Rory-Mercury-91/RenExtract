@@ -75,30 +75,17 @@ def update_status_with_pending_count(main_interface):
     except Exception as e:
         log_message("ERREUR", f"Erreur mise à jour statut pending: {e}", category="realtime_editor")
 
-def create_realtime_editor_tab(parent_notebook, main_interface):
-    """Crée l'onglet d'édition temps réel avec interface optimisée."""
+def create_realtime_editor_tab(parent, main_interface):
+    """Crée l'onglet d'édition temps réel - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
     # Frame principal
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="⚡ Éditeur Temps Réel")
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
-    # Header avec titre centré et bouton d'aide à droite
+    # Header : phrase et bouton d'aide sur la même ligne
     header_frame = tk.Frame(tab_frame, bg=theme["bg"])
     header_frame.pack(fill='x', padx=20, pady=(15, 10))
-    
-    # Titre descriptif centré
-    desc_label = tk.Label(
-        header_frame,
-        text="Édition temps réel des traductions avec surveillance automatique et SDK Ren'Py intégré",
-        font=('Segoe UI', 10, 'bold'),
-        justify='center',
-        bg=theme["bg"],
-        fg=theme["accent"]
-    )
-    desc_label.pack(fill='x', anchor='center')
-    
-    # Bouton d'aide aligné à droite
     help_btn = tk.Button(
         header_frame,
         text="À quoi ça sert ?",
@@ -111,7 +98,16 @@ def create_realtime_editor_tab(parent_notebook, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    help_btn.pack(anchor='e', pady=(10, 0))
+    help_btn.pack(side='right')
+    desc_label = tk.Label(
+        header_frame,
+        text="Édition temps réel des traductions avec surveillance automatique et SDK Ren'Py intégré",
+        font=('Segoe UI', 10, 'bold'),
+        justify='center',
+        bg=theme["bg"],
+        fg=theme["accent"]
+    )
+    desc_label.pack(side='left', fill='x', expand=True, anchor='center')
 
     # Variables de fenêtre détachée et police (inchangées)
     if not hasattr(main_interface, 'detached_editor_window'):
@@ -204,13 +200,21 @@ def create_realtime_editor_tab(parent_notebook, main_interface):
     # 1) au moment de la création (si un projet est déjà restauré)
     _auto_scan_realtime_if_ready()
 
-    # 2) quand l'onglet devient actif
+    # 2) quand l'onglet devient actif (onglet = wrapper scrollable, tab_frame est dedans)
     def _on_tab_changed_realtime(event=None):
-        current = parent_notebook.nametowidget(parent_notebook.select())
-        if current is tab_frame:
-            _auto_scan_realtime_if_ready()
+        nb = getattr(main_interface, "notebook", None)
+        if not nb:
+            return
+        current = nb.nametowidget(nb.select())
+        w = tab_frame
+        while w:
+            if w == current:
+                _auto_scan_realtime_if_ready()
+                break
+            w = getattr(w, "master", None)
 
-    parent_notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_realtime)
+    if getattr(main_interface, "notebook", None):
+        main_interface.notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_realtime)
 
     # 3) Hook pour resync forcé depuis la fenêtre principale
     main_interface.realtime_resync = _auto_scan_realtime_if_ready

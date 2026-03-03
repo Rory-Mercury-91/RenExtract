@@ -18,10 +18,11 @@ from infrastructure.helpers.unified_functions import show_custom_messagebox
 
 
 def create_colors_tab(parent, settings_instance):
-    """Crée l'onglet de personnalisation des couleurs avec presets"""
+    """Crée l'onglet Couleurs - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
     tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # En-tête moderne avec titre et bouton d'aide
     header_frame = tk.Frame(tab_frame, bg=theme["bg"])
@@ -65,8 +66,6 @@ def create_colors_tab(parent, settings_instance):
     
     # === SECTION 2: Personnalisation des couleurs ===
     _create_color_customization_section(main_container, settings_instance)
-    
-    return tab_frame
 
 
 def _create_separator(parent):

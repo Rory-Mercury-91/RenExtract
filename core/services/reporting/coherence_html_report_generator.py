@@ -160,11 +160,23 @@ class HtmlCoherenceReportGenerator:
           }
           
           .issue-item {
-            padding: 15px; border-bottom: 1px solid var(--sep);
+            padding: 0; border-bottom: 1px solid var(--sep);
             transition: background 0.2s, opacity 0.3s;
           }
           .issue-item:hover { background: var(--hover-bg); }
           .issue-item:last-child { border-bottom: none; }
+          .issue-item .issue-header {
+            cursor: pointer; user-select: none; padding: 15px;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+          }
+          .issue-item .issue-header .issue-toggle-icon {
+            font-size: 0.75rem; transition: transform 0.2s; flex-shrink: 0;
+          }
+          .issue-item .issue-item-content {
+            padding: 0 15px 15px 15px; border-top: 1px solid var(--sep);
+          }
+          .issue-item.collapsed .issue-item-content { display: none !important; }
+          .issue-item.collapsed .issue-header .issue-toggle-icon { transform: rotate(-90deg); }
           .issue-item.excluded {
             opacity: 0.5;
             background: rgba(72, 187, 120, 0.1);
@@ -899,29 +911,27 @@ class HtmlCoherenceReportGenerator:
                             const issueHeader = issueItem ? issueItem.querySelector('.issue-header') : null;
                             
                             if (issueItem) {{
-                                // Ajouter la classe "saved" pour le style persistant
                                 issueItem.classList.add('saved');
-                                
-                                // Ajouter un badge "Enregistré" dans le header (si pas déjà présent)
                                 if (issueHeader && !issueHeader.querySelector('.saved-badge')) {{
                                     const badge = document.createElement('span');
                                     badge.className = 'saved-badge';
                                     badge.innerHTML = '✅ Enregistré';
                                     issueHeader.appendChild(badge);
                                 }}
+                                const bulkCb = issueItem.querySelector('.bulk-checkbox');
+                                if (bulkCb) {{ bulkCb.checked = false; bulkCb.disabled = true; }}
+                                const uid = issueItem.getAttribute('data-unique-id');
+                                if (uid && typeof collapseIssueItem === 'function') collapseIssueItem(uid);
                             }}
-                            
-                            // Afficher le statut de succès temporaire
+                            document.querySelectorAll('.edit-field').forEach(f => {{
+                                if (f.getAttribute('data-file') === file && parseInt(f.getAttribute('data-line'), 10) === line) f._originalValue = f.value;
+                            }});
                             if (statusSpan) {{
                                 statusSpan.textContent = '✅ Enregistré';
                                 statusSpan.style.display = 'inline';
-                                
-                                // Masquer après 3 secondes
-                                setTimeout(() => {{
-                                    statusSpan.style.display = 'none';
-                                }}, 3000);
+                                setTimeout(() => {{ statusSpan.style.display = 'none'; }}, 3000);
                             }}
-                            
+                            if (typeof updateBulkUI === 'function') updateBulkUI();
                             console.log(`✅ Ligne enregistrée: ${{file}}:${{line}}`);
                             return true;
                         }} else {{
@@ -940,25 +950,33 @@ class HtmlCoherenceReportGenerator:
                 }}
             }}
             
+            // Conserver la valeur initiale de chaque champ pour n'enregistrer que les lignes modifiées
+            function initEditFieldsOriginalValue() {{
+                document.querySelectorAll('.edit-field').forEach(field => {{
+                    if (field._originalValue === undefined) field._originalValue = field.value;
+                }});
+            }}
             // ===== NOUVEAU : Enregistrement global =====
             async function saveAll() {{
                 try {{
                     const project = window.coherenceSelectionInfo.project_path;
+                    initEditFieldsOriginalValue();
                     
-                    // Collecter toutes les modifications
+                    // Collecter uniquement les lignes réellement modifiées
                     const modifications = [];
                     document.querySelectorAll('.edit-field').forEach(field => {{
                         const file = field.getAttribute('data-file');
                         const line = parseInt(field.getAttribute('data-line'));
                         const new_content = field.value.trim();
+                        const original = (field._originalValue != null ? field._originalValue : field.value).trim();
                         
-                        if (file && line && new_content) {{
+                        if (file && line && new_content && new_content !== original) {{
                             modifications.push({{ file, line, new_content }});
                         }}
                     }});
                     
                     if (modifications.length === 0) {{
-                        showGlobalMessage('⚠️ Aucune modification à enregistrer', 'warning', 3000);
+                        showGlobalMessage('⚠️ Aucune modification à enregistrer (seules les lignes modifiées sont prises en compte)', 'warning', 3000);
                         return;
                     }}
                     
@@ -982,39 +1000,43 @@ class HtmlCoherenceReportGenerator:
                             showGlobalMessage(message, 'success', 5000);
                             console.log(`✅ Enregistrement global: ${{data.success_count}} succès, ${{data.failed_count}} échecs`);
                             
-                            // 🆕 Marquer visuellement TOUTES les lignes comme enregistrées (PERSISTANT)
+                            // Mettre à jour _originalValue pour les champs enregistrés (évite de les renvoyer au prochain "Enregistrer tout")
+                            const savedFiles = new Set(modifications.map(m => m.file + ':' + m.line));
                             document.querySelectorAll('.edit-field').forEach(field => {{
+                                const file = field.getAttribute('data-file');
+                                const line = parseInt(field.getAttribute('data-line'));
+                                if (file && line && savedFiles.has(file + ':' + line)) field._originalValue = field.value;
+                            }});
+                            // 🆕 Marquer visuellement les lignes enregistrées et désactiver les cases traduction en lot
+                            document.querySelectorAll('.edit-field').forEach(field => {{
+                                const file = field.getAttribute('data-file');
+                                const line = parseInt(field.getAttribute('data-line'));
+                                if (!file || !line || !savedFiles.has(file + ':' + line)) return;
                                 const issueItem = field.closest('.issue-item');
                                 const issueHeader = issueItem ? issueItem.querySelector('.issue-header') : null;
                                 
                                 if (issueItem) {{
-                                    // Ajouter la classe "saved" pour le style persistant
                                     issueItem.classList.add('saved');
-                                    
-                                    // Ajouter un badge "Enregistré" dans le header (si pas déjà présent)
                                     if (issueHeader && !issueHeader.querySelector('.saved-badge')) {{
                                         const badge = document.createElement('span');
                                         badge.className = 'saved-badge';
                                         badge.innerHTML = '✅ Enregistré';
                                         issueHeader.appendChild(badge);
                                     }}
+                                    const bulkCb = issueItem.querySelector('.bulk-checkbox');
+                                    if (bulkCb) {{ bulkCb.checked = false; bulkCb.disabled = true; }}
                                 }}
-                                
-                                // Statut temporaire
                                 const statusId = issueItem ? issueItem.querySelector('.exclusion-status')?.id : null;
                                 if (statusId) {{
                                     const statusSpan = document.getElementById(statusId);
                                     if (statusSpan) {{
                                         statusSpan.textContent = '✅ Enregistré';
                                         statusSpan.style.display = 'inline';
-                                        
-                                        // Masquer après 3 secondes
-                                        setTimeout(() => {{
-                                            statusSpan.style.display = 'none';
-                                        }}, 3000);
+                                        setTimeout(() => {{ statusSpan.style.display = 'none'; }}, 3000);
                                     }}
                                 }}
                             }});
+                            if (typeof updateBulkUI === 'function') updateBulkUI();
                         }} else {{
                             showGlobalMessage("❌ Erreur lors de l\'enregistrement global", 'error', 5000);
                         }}
@@ -1043,7 +1065,7 @@ class HtmlCoherenceReportGenerator:
             
             // Initialisation
             document.addEventListener('DOMContentLoaded', function() {{
-                // Charger les exclusions existantes
+                initEditFieldsOriginalValue();
                 loadExclusions();
                 
                 // Délégation: clic sur boutons "open in editor"
@@ -1181,6 +1203,22 @@ class HtmlCoherenceReportGenerator:
                         showGlobalMessage('⚠️ Accès au presse-papier refusé. Collez manuellement (Ctrl+V) dans la zone.', 'warning', 4000);
                     }}
                 }}
+                function toggleIssueItem(uniqueId) {{
+                    const issueItem = document.getElementById('issue-' + uniqueId) || document.querySelector('.issue-item[data-unique-id="' + uniqueId + '"]');
+                    if (!issueItem) return;
+                    const isCollapsed = issueItem.classList.toggle('collapsed');
+                    const icon = document.getElementById('icon_issue_' + uniqueId);
+                    if (icon) icon.textContent = isCollapsed ? '▶' : '▼';
+                    issueItem.querySelector('.issue-header')?.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+                }}
+                function collapseIssueItem(uniqueId) {{
+                    const issueItem = document.getElementById('issue-' + uniqueId) || document.querySelector('.issue-item[data-unique-id="' + uniqueId + '"]');
+                    if (!issueItem || issueItem.classList.contains('collapsed')) return;
+                    issueItem.classList.add('collapsed');
+                    const icon = document.getElementById('icon_issue_' + uniqueId);
+                    if (icon) icon.textContent = '▶';
+                    issueItem.querySelector('.issue-header')?.setAttribute('aria-expanded', 'false');
+                }}
                 function applyBulk() {{
                     const textarea = document.getElementById('bulkPasteArea');
                     const text = (textarea && textarea.value) ? textarea.value.trim() : '';
@@ -1207,7 +1245,17 @@ class HtmlCoherenceReportGenerator:
                         const field = document.getElementById(editId);
                         if (field) field.value = blocks[i];
                     }});
-                    showGlobalMessage('✅ ' + blocks.length + ' traduction(s) appliquée(s). Pensez à enregistrer.', 'success', 4000);
+                    // Décocher les cases appliquées et fermer les tuiles
+                    checkboxes.forEach(cb => {{
+                        cb.checked = false;
+                        const issueItem = cb.closest('.issue-item');
+                        if (issueItem) {{
+                            const uid = issueItem.getAttribute('data-unique-id');
+                            if (uid) collapseIssueItem(uid);
+                        }}
+                    }});
+                    if (typeof updateBulkUI === 'function') updateBulkUI();
+                    showGlobalMessage('✅ ' + blocks.length + ' traduction(s) appliquée(s). Lignes décochées et repliées. Pensez à enregistrer.', 'success', 4000);
                 }}
                 async function translateBulk() {{
                     const pasteArea = document.getElementById('bulkPasteArea');
@@ -1294,6 +1342,14 @@ class HtmlCoherenceReportGenerator:
                     initBulk();
                 }}
                 document.body.addEventListener('click', function(e) {{
+                    const issueHeader = e.target.closest('.issue-item .issue-header');
+                    if (issueHeader && !e.target.closest('button') && !e.target.closest('.open-in-editor')) {{
+                        const issueItem = issueHeader.closest('.issue-item');
+                        if (issueItem) {{
+                            const uid = issueItem.getAttribute('data-unique-id');
+                            if (uid) {{ e.preventDefault(); toggleIssueItem(uid); return false; }}
+                        }}
+                    }}
                     if (e.target.id === 'focusBulkTranslateBtn' || e.target.closest('#focusBulkTranslateBtn')) {{ e.preventDefault(); focusBulkSection(); return false; }}
                     if (e.target.id === 'featuresHeader' || e.target.closest('#featuresHeader')) {{ e.preventDefault(); toggleFeaturesSection(); return false; }}
                     if (e.target.id === 'bulkTranslateHeader' || e.target.closest('#bulkTranslateHeader')) {{ e.preventDefault(); toggleBulkSection(); return false; }}
@@ -2116,38 +2172,41 @@ class HtmlCoherenceReportGenerator:
                     </div>'''
         
         return f"""
-        <div class="issue-item" data-unique-id="{unique_id}" data-issue-type="{issue_type}">
-            <div class="issue-header">
+        <div class="issue-item" data-unique-id="{unique_id}" data-issue-type="{issue_type}" id="issue-{unique_id}">
+            <div class="issue-header" role="button" tabindex="0" aria-expanded="true" title="Cliquer pour ouvrir ou fermer">
+                <span class="issue-toggle-icon" id="icon_issue_{unique_id}">▼</span>
                 <div class="issue-line">Ligne {line}</div>
                 {btn_html}
             </div>
-            <div class="issue-description">{description}</div>
-            <div class="content-comparison">
-                <div class="content-block old-content">
-                    <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Ancien</span>
-                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText(`{old_content_js_escaped}`).then(() => {{ const btn = this; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }}).catch(() => {{ alert('Erreur lors de la copie'); }})" 
-                            style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
-                            title="Copier le texte original">
-                            📋 Copier
-                        </button>
+            <div class="issue-item-content" id="content_issue_{unique_id}">
+                <div class="issue-description">{description}</div>
+                <div class="content-comparison">
+                    <div class="content-block old-content">
+                        <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Ancien</span>
+                            <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText(`{old_content_js_escaped}`).then(() => {{ const btn = this; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }}).catch(() => {{ alert('Erreur lors de la copie'); }})" 
+                                style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
+                                title="Copier le texte original">
+                                📋 Copier
+                            </button>
+                        </div>
+                        {bulk_checkbox_html}
+                        <div>{old_content_highlighted if old_content_highlighted else '<em>Vide</em>'}</div>
                     </div>
-                    {bulk_checkbox_html}
-                    <div>{old_content_highlighted if old_content_highlighted else '<em>Vide</em>'}</div>
-                </div>
-                <div class="content-block new-content">
-                    <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Nouveau</span>
-                        <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText(`{new_content_js_escaped}`).then(() => {{ const btn = this; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }}).catch(() => {{ alert('Erreur lors de la copie'); }})" 
-                            style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
-                            title="Copier le texte traduit">
-                            📋 Copier
-                        </button>
+                    <div class="content-block new-content">
+                        <div class="content-label" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Nouveau</span>
+                            <button type="button" class="copy-btn btn" onclick="navigator.clipboard.writeText(`{new_content_js_escaped}`).then(() => {{ const btn = this; const orig = btn.innerHTML; btn.innerHTML = '✅ Copié'; setTimeout(() => btn.innerHTML = orig, 1500); }}).catch(() => {{ alert('Erreur lors de la copie'); }})" 
+                                style="padding: 4px 8px; background: var(--info); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;"
+                                title="Copier le texte traduit">
+                                📋 Copier
+                            </button>
+                        </div>
+                        <div>{new_content_highlighted if new_content_highlighted else '<em>Vide</em>'}</div>
                     </div>
-                    <div>{new_content_highlighted if new_content_highlighted else '<em>Vide</em>'}</div>
                 </div>
+                {edit_interface_html}
             </div>
-            {edit_interface_html}
         </div>
         """
 

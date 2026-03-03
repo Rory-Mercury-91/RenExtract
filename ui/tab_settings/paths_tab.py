@@ -87,10 +87,11 @@ def get_editor_name_from_path(editor_path):
 
 
 def create_paths_tab(parent, settings_instance):
-    """Crée l'onglet Chemins d'accès (SDK + Éditeur personnalisé)"""
+    """Crée l'onglet Chemins d'accès - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
     tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # Header avec titre centré et bouton d'aide à droite
     header_frame = tk.Frame(tab_frame, bg=theme["bg"])
@@ -134,8 +135,6 @@ def create_paths_tab(parent, settings_instance):
     
     # === SECTION 2: Éditeur personnalisé ===
     _create_custom_editor_section(main_container, settings_instance)
-    
-    return tab_frame
 
 
 def _create_separator(parent):

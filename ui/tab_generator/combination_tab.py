@@ -72,13 +72,12 @@ def _create_combination_backup(source_folder, output_file, main_interface):
         log_message("ERREUR", f"Erreur création sauvegarde combinaison: {e}", category="renpy_generator_combine_tl")
         # Ne pas bloquer la combinaison en cas d'erreur de backup
 
-def create_combination_tab(parent_notebook, main_interface):
-    """Crée l'onglet de combinaison/division - VERSION AVEC VARIABLE UNIFIÉE"""
+def create_combination_tab(parent, main_interface):
+    """Crée l'onglet de combinaison/division - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
-    # Frame avec thème
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="Combinaison & Division")
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # Container principal avec espacement optimisé
     main_container = tk.Frame(tab_frame, bg=theme["bg"])

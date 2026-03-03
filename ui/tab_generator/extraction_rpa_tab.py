@@ -18,13 +18,12 @@ from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from core.services.translation.rpa_extraction_business import RPAExtractionBusiness
 
-def create_extraction_tab(parent_notebook, main_interface):
-    """Crée l'onglet d'extraction AVEC construction RPA + AUTO-SCAN CORRIGÉ"""
+def create_extraction_tab(parent, main_interface):
+    """Crée l'onglet d'extraction - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
-    # Appliquer le thème dès la création
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="📦 " + 'Extraction & Compilation RPA / RPYC')
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # Container principal avec espacement optimisé
     main_container = tk.Frame(tab_frame, bg=theme["bg"])
@@ -290,27 +289,28 @@ def create_extraction_tab(parent_notebook, main_interface):
     # Déclenchement initial avec délai
     main_interface.window.after(100, trigger_initial_scan)
 
-    # PROBLÈME 4: Événement changement d'onglet avec protection d'erreur
+    # Événement changement d'onglet (onglet = wrapper scrollable, tab_frame est dedans)
     def on_tab_changed_extraction(event=None):
         try:
-            current_tab = parent_notebook.nametowidget(parent_notebook.select())
-            if current_tab is tab_frame:
-                log_message("DEBUG", "Onglet 1 activé - Déclenchement auto-scan", category="auto_scan")
-                # Petit délai pour s'assurer que l'onglet est complètement chargé
-                main_interface.window.after(50, auto_scan_with_combo)
+            nb = getattr(main_interface, "notebook", None)
+            if not nb:
+                return
+            current_tab = nb.nametowidget(nb.select())
+            w = tab_frame
+            while w:
+                if w == current_tab:
+                    log_message("DEBUG", "Onglet 1 activé - Déclenchement auto-scan", category="auto_scan")
+                    main_interface.window.after(50, auto_scan_with_combo)
+                    break
+                w = getattr(w, "master", None)
         except Exception as e:
             log_message("DEBUG", f"Erreur événement onglet 1: {e}", category="auto_scan")
 
-    # PROBLÈME 5: Unique binding par onglet (éviter les doublons)
-    # Créer un identifiant unique pour ce binding
     extraction_tab_id = f"extraction_tab_{id(tab_frame)}"
-    
-    # Stocker le binding dans main_interface pour éviter les conflits
     if not hasattr(main_interface, '_tab_bindings'):
         main_interface._tab_bindings = {}
-    
-    if extraction_tab_id not in main_interface._tab_bindings:
-        parent_notebook.bind("<<NotebookTabChanged>>", on_tab_changed_extraction, add='+')
+    if extraction_tab_id not in main_interface._tab_bindings and getattr(main_interface, "notebook", None):
+        main_interface.notebook.bind("<<NotebookTabChanged>>", on_tab_changed_extraction, add='+')
         main_interface._tab_bindings[extraction_tab_id] = on_tab_changed_extraction
 
     # Hook de resync accessible globalement

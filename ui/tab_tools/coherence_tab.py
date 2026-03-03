@@ -21,30 +21,17 @@ from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
 
-def create_coherence_tab(parent_notebook, main_interface):
-    """Crée l'onglet de vérification de cohérence"""
+def create_coherence_tab(parent, main_interface):
+    """Crée l'onglet de vérification de cohérence - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
     # Frame principal de l'onglet
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="🧪 Vérification Cohérence")
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
-    # Header avec titre centré et bouton d'aide à droite
+    # Header : phrase et bouton d'aide sur la même ligne
     help_frame = tk.Frame(tab_frame, bg=theme["bg"])
     help_frame.pack(fill='x', padx=20, pady=(15, 10))
-    
-    # Titre descriptif centré
-    desc_label = tk.Label(
-        help_frame,
-        text="Vérification de cohérence des traductions avec détection d'incohérences",
-        font=('Segoe UI', 10, 'bold'),
-        justify='center',
-        bg=theme["bg"],
-        fg=theme["accent"]
-    )
-    desc_label.pack(fill='x', anchor='center')
-    
-    # Bouton d'aide aligné à droite
     help_btn = tk.Button(
         help_frame,
         text="À quoi ça sert ?",
@@ -57,7 +44,16 @@ def create_coherence_tab(parent_notebook, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    help_btn.pack(anchor='e', pady=(10, 0))
+    help_btn.pack(side='right')
+    desc_label = tk.Label(
+        help_frame,
+        text="Vérification de cohérence des traductions avec détection d'incohérences",
+        font=('Segoe UI', 10, 'bold'),
+        justify='center',
+        bg=theme["bg"],
+        fg=theme["accent"]
+    )
+    desc_label.pack(side='left', fill='x', expand=True, anchor='center')
     
     # Contenu principal
     _create_coherence_content(tab_frame, main_interface)

@@ -17,10 +17,11 @@ from infrastructure.logging.logging import log_message
 
 
 def create_application_tab(parent, settings_instance):
-    """Crée l'onglet Interface & Application"""
+    """Crée l'onglet Interface & Application - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
     tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # En-tête moderne avec titre
     header_frame = tk.Frame(tab_frame, bg=theme["bg"])
@@ -62,7 +63,6 @@ def create_application_tab(parent, settings_instance):
     # === SECTION 4: Actions système ===
     _create_system_actions_section(main_container, settings_instance)
     
-    return tab_frame
 
 
 def _create_separator(parent):

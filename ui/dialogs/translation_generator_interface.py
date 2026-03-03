@@ -19,6 +19,7 @@ from core.services.translation.combination_business import CombinationBusiness
 from core.services.tools.realtime_editor_business import RealTimeEditorBusiness
 from tkinter import ttk, filedialog
 from ui.themes import theme_manager
+from ui.shared.scrollable_tab import make_scrollable_tab_container
 from ui.notification_manager import NotificationManager
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
@@ -77,6 +78,7 @@ class TranslationGeneratorInterface:
         self.lang_scrollable_frame = None
         self.lang_checkboxes_frame = None
         
+        self._tab_mousewheel_binders = []
         # Widgets de l'interface
         self.status_label = None
         self.notebook = None
@@ -645,29 +647,49 @@ class TranslationGeneratorInterface:
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         self.notebook.pack(fill='both', expand=True)
         
-        # Créer les onglets dans l'ordre (avec gestion d'erreur pour chacun)
+        # Créer les onglets dans un conteneur scrollable chacun (barre seulement si contenu dépasse)
         try:
-            create_extraction_tab(self.notebook, self)          # Onglet 1: RPA/RPYC
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="📦 " + "Extraction & Compilation RPA / RPYC")
+            create_extraction_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet 1: {e}", category="ui")
         
         try:
-            create_generation_tab_aligned(self.notebook, self)          # Onglet 2: Génération SDK
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="Génération")
+            create_generation_tab_aligned(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet 2: {e}", category="ui")
         
         try:
-            create_extraction_config_tab(self.notebook, self)   # Onglet 3: Config extraction
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="📁 Extraction - Config")
+            create_extraction_config_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet 3: {e}", category="ui")
         
         try:
-            create_extraction_results_tab(self.notebook, self)  # Onglet 4: Résultats extraction
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="📊 Extraction - Résultats", state='disabled')
+            create_extraction_results_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet 4: {e}", category="ui")
         
         try:
-            create_combination_tab(self.notebook, self)         # Onglet 5: Combinaison
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="Combinaison & Division")
+            create_combination_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet 6: {e}", category="ui")
     
@@ -730,6 +752,14 @@ class TranslationGeneratorInterface:
             state='disabled'
         )
         self.cancel_operation_btn.pack(side='right', padx=(0, 10))
+
+    def refresh_tab_mousewheel(self):
+        """Relie la molette à tout le contenu des onglets (utile après ajout de widgets dynamiques)."""
+        for binder in getattr(self, '_tab_mousewheel_binders', []):
+            try:
+                binder()
+            except Exception:
+                pass
 
     def _load_config(self):
         """Charge la configuration depuis config_manager - VERSION CORRIGÉE"""

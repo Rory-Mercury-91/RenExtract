@@ -18,6 +18,7 @@ from typing import Dict, Any, Optional, List
 
 from core.services.tools.realtime_editor_business import RealTimeEditorBusiness
 from ui.themes import theme_manager
+from ui.shared.scrollable_tab import make_scrollable_tab_container
 from ui.notification_manager import NotificationManager
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
@@ -55,6 +56,7 @@ class MaintenanceToolsInterface:
         self.is_operation_running = False
         self._is_updating_from_sync = False  # Protection contre les boucles de synchronisation
         self.project_manager = None  # Référence au ProjectManager pour communication bidirectionnelle
+        self._tab_mousewheel_binders = []  # callbacks pour lier la molette après contenu dynamique
         
         # Initialiser TOUTES les variables dès le début
         self._init_all_variables()
@@ -471,8 +473,16 @@ class MaintenanceToolsInterface:
             self.project_info_label.config(text="❌ Erreur Drag & Drop", fg='#ff8379')
             log_message("ERREUR", error_msg, category="maintenance_tools")
 
+    def refresh_tab_mousewheel(self):
+        """Relie la molette à tout le contenu des onglets (utile après ajout de widgets dynamiques)."""
+        for binder in getattr(self, '_tab_mousewheel_binders', []):
+            try:
+                binder()
+            except Exception:
+                pass
+
     def _create_main_content(self):
-        """Crée le contenu principal avec les 3 onglets"""
+        """Crée le contenu principal avec les 3 onglets (contenu scrollable par onglet)."""
         theme = theme_manager.get_theme()
         
         # Frame principal
@@ -501,22 +511,35 @@ class MaintenanceToolsInterface:
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         self.notebook.pack(fill='both', expand=True)
         
-        # Créer les 3 onglets (imports différés pour éviter les imports lourds au démarrage)
+        # Créer les 3 onglets dans un conteneur scrollable chacun (footer toujours visible)
         try:
             from ui.tab_tools.cleaning_tab import create_cleaning_tab
-            create_cleaning_tab(self.notebook, self)            # Onglet 1: Nettoyage
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="🧹 Nettoyage intelligent")
+            create_cleaning_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet nettoyage: {e}", category="maintenance_tools")
         
         try:
             from ui.tab_tools.realtime_editor_tab import create_realtime_editor_tab
-            create_realtime_editor_tab(self.notebook, self)     # Onglet 2: Éditeur Temps Réel
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="⚡ Éditeur Temps Réel")
+            self.editor_tab = wrapper  # pour notebook.select(editor_tab)
+            create_realtime_editor_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet éditeur: {e}", category="maintenance_tools")
         
         try:
             from ui.tab_tools.coherence_tab import create_coherence_tab
-            create_coherence_tab(self.notebook, self)           # Onglet 3: Cohérence
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="🧪 Vérification Cohérence")
+            create_coherence_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglet cohérence: {e}", category="maintenance_tools")
 

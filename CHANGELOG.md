@@ -1,6 +1,25 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-03 (v1.2.25)
+
+### Interface : barres de défilement par onglet
+- **Outils de maintenance** (Nettoyage, Éditeur temps réel, Vérification cohérence) : contenu de chaque onglet dans une zone scrollable ; barre de défilement affichée **uniquement si le contenu dépasse** la zone visible ; molette (Windows + Linux) sur toute la zone.
+- **Générateur de traductions** et **Paramètres** : même logique appliquée à tous les onglets (scroll par onglet, barre seulement si nécessaire, molette).
+- Module partagé `ui/shared/scrollable_tab.py` pour éviter la duplication de code.
+
+### Rapport de cohérence : tuiles et enregistrement
+- **Tuiles réductibles** : chaque ligne d’erreur est une tuile ouvrable/fermable (ouverte par défaut) ; clic sur l’en-tête (Ligne X) pour replier ou déplier.
+- **Appliquer tout** : après application des traductions en lot, les cases sont **décochées** et les tuiles concernées **fermées** automatiquement.
+- **Enregistrer tout** (bandeau) : ne sauvegarde **que les lignes réellement modifiées** (comparaison avec la valeur initiale).
+- **Bouton Enregistrer** (par ligne) : après enregistrement, la tuile se **ferme** et la case « Inclure dans traduction en lot » est **désactivée**.
+- **Lignes enregistrées** : la case « Inclure dans traduction en lot » est **décochée et désactivée** (enregistrement ligne par ligne ou via Enregistrer tout).
+
+### Interface des onglets
+- **Bouton « À quoi ça sert ? »** aligné sur la **même ligne** que la phrase descriptive dans les onglets Nettoyage, Éditeur temps réel et Vérification cohérence.
+
+---
+
 ## 2026-03-02 (v1.2.24)
 
 ### Nouvelle fonctionnalité : Traduction par lot

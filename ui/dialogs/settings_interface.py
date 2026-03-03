@@ -15,6 +15,7 @@ import sys
 import os
 import subprocess
 from ui.themes import theme_manager
+from ui.shared.scrollable_tab import make_scrollable_tab_container
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox, show_custom_messagebox
@@ -45,6 +46,7 @@ class UnifiedSettingsInterface:
         self.operation_buttons = []
         self.cancel_operation_btn = None
         
+        self._tab_mousewheel_binders = []
         # Variables pour les onglets
         self.color_buttons = {}
         self.editor_path_vars = {}
@@ -214,28 +216,45 @@ class UnifiedSettingsInterface:
         # Les onglets seront créés après l'initialisation complète
 
     def _create_tabs(self):
-        """Crée tous les onglets en utilisant les modules séparés"""
+        """Crée tous les onglets dans un conteneur scrollable chacun (barre seulement si contenu dépasse)."""
         try:
-            # Onglet 1: Interface & Application (première)
-            application_tab = create_application_tab(self.notebook, self)
-            self.notebook.add(application_tab, text="🎨 Interface & Application")
-            
-            # Onglet 2: Extraction & Protection (deuxième)
-            extraction_tab = create_extraction_tab(self.notebook, self)
-            self.notebook.add(extraction_tab, text="Extraction & Protection")
-            
-            # Onglet 3: Couleurs des boutons (troisième)
-            colors_tab = create_colors_tab(self.notebook, self)
-            self.notebook.add(colors_tab, text="🎨 Couleurs des boutons")
-            
-            # Onglet 4: Chemins d'accès (dernière)
-            paths_tab = create_paths_tab(self.notebook, self)
-            self.notebook.add(paths_tab, text="🛠️ Chemins d'accès")
-            
+            main_frame = self.notebook.master
+            # Onglet 1: Interface & Application
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="🎨 Interface & Application")
+            create_application_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
+            # Onglet 2: Extraction & Protection
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="Extraction & Protection")
+            create_extraction_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
+            # Onglet 3: Couleurs des boutons
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="🎨 Couleurs des boutons")
+            create_colors_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
+            # Onglet 4: Chemins d'accès
+            wrapper, inner, bind_mousewheel = make_scrollable_tab_container(main_frame)
+            self.notebook.add(wrapper, text="🛠️ Chemins d'accès")
+            create_paths_tab(inner, self)
+            bind_mousewheel()
+            self._tab_mousewheel_binders.append(bind_mousewheel)
         except Exception as e:
             log_message("ERREUR", f"Erreur création onglets: {e}", category="settings")
             import traceback
             log_message("ERREUR", f"Traceback: {traceback.format_exc()}", category="settings")
+
+    def refresh_tab_mousewheel(self):
+        """Relie la molette à tout le contenu des onglets (utile après ajout de widgets dynamiques)."""
+        for binder in getattr(self, '_tab_mousewheel_binders', []):
+            try:
+                binder()
+            except Exception:
+                pass
 
     def _create_footer(self):
         """Crée le pied de page avec les boutons"""

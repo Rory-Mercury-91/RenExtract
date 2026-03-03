@@ -19,13 +19,12 @@ from infrastructure.helpers.unified_functions import show_translated_messagebox
 from core.models.files.file_manager import FileOpener
 from core.services.translation.text_extraction_results_business import TextExtractionResultsBusiness
 
-def create_extraction_results_tab(parent_notebook, main_interface):
-    """Crée l'onglet de résultats d'extraction des textes oubliés"""
+def create_extraction_results_tab(parent, main_interface):
+    """Crée l'onglet de résultats d'extraction - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
-    # Frame avec thème
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="📊 Extraction - Résultats", state='disabled')  # Désactivé initialement
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # Container principal avec espacement optimisé
     main_container = tk.Frame(tab_frame, bg=theme["bg"])

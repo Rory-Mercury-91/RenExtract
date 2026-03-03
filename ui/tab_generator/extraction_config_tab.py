@@ -18,13 +18,12 @@ from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
 
-def create_extraction_config_tab(parent_notebook, main_interface):
-    """Crée l'onglet de configuration d'extraction des textes oubliés"""
+def create_extraction_config_tab(parent, main_interface):
+    """Crée l'onglet de configuration d'extraction - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
-    # Frame avec thème
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="📁 Extraction - Config")
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # Container principal avec espacement optimisé
     main_container = tk.Frame(tab_frame, bg=theme["bg"])
@@ -115,13 +114,21 @@ def create_extraction_config_tab(parent_notebook, main_interface):
 
     def _on_tab_changed_config(event=None):
         try:
-            current = parent_notebook.nametowidget(parent_notebook.select())
-            if current is tab_frame:
-                _auto_scan_config_if_ready()
+            nb = getattr(main_interface, "notebook", None)
+            if not nb:
+                return
+            current = nb.nametowidget(nb.select())
+            w = tab_frame
+            while w:
+                if w == current:
+                    _auto_scan_config_if_ready()
+                    break
+                w = getattr(w, "master", None)
         except Exception:
             pass
 
-    parent_notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_config)
+    if getattr(main_interface, "notebook", None):
+        main_interface.notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_config)
     main_interface.extraction_config_resync = _auto_scan_config_if_ready
     # FIN DE LA FONCTION create_extraction_config_tab
 

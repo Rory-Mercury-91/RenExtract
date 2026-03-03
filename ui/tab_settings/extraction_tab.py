@@ -18,10 +18,11 @@ from infrastructure.logging.logging import log_message
 
 
 def create_extraction_tab(parent, settings_instance):
-    """Crée l'onglet Extraction & Protection"""
+    """Crée l'onglet Extraction & Protection - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
     tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
     # En-tête moderne avec titre et bouton d'aide
     header_frame = tk.Frame(tab_frame, bg=theme["bg"])
@@ -55,8 +56,6 @@ def create_extraction_tab(parent, settings_instance):
     
     # Contenu principal sans sections
     _create_protection_options(tab_frame, settings_instance)
-    
-    return tab_frame
 
 
 def _create_protection_options(parent, settings_instance):

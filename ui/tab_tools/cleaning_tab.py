@@ -18,29 +18,16 @@ from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from core.services.tools.cleaning_business import UnifiedCleaner, unified_clean_all_translations
 
-def create_cleaning_tab(parent_notebook, main_interface):
-    """Crée l'onglet de nettoyage TL - VERSION AMÉLIORÉE"""
+def create_cleaning_tab(parent, main_interface):
+    """Crée l'onglet de nettoyage TL - parent = frame scrollable (ajout au notebook fait par l'interface)."""
     theme = theme_manager.get_theme()
     
-    tab_frame = tk.Frame(parent_notebook, bg=theme["bg"])
-    parent_notebook.add(tab_frame, text="🧹 Nettoyage intelligent")
+    tab_frame = tk.Frame(parent, bg=theme["bg"])
+    tab_frame.pack(fill='both', expand=True)
     
-    # Header avec titre centré et bouton d'aide à droite
+    # Header : phrase et bouton d'aide sur la même ligne
     header_frame = tk.Frame(tab_frame, bg=theme["bg"])
     header_frame.pack(fill='x', padx=20, pady=(15, 10))
-    
-    # Titre descriptif centré
-    desc_label = tk.Label(
-        header_frame,
-        text="Nettoyage intelligent des traductions orphelines avec SDK Ren'Py intégré",
-        font=('Segoe UI', 10, 'bold'),
-        justify='center',
-        bg=theme["bg"],
-        fg=theme["accent"]
-    )
-    desc_label.pack(fill='x', anchor='center')
-    
-    # Bouton d'aide aligné à droite
     help_btn = tk.Button(
         header_frame,
         text="À quoi ça sert ?",
@@ -53,7 +40,16 @@ def create_cleaning_tab(parent_notebook, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    help_btn.pack(anchor='e', pady=(10, 0))
+    help_btn.pack(side='right')
+    desc_label = tk.Label(
+        header_frame,
+        text="Nettoyage intelligent des traductions orphelines avec SDK Ren'Py intégré",
+        font=('Segoe UI', 10, 'bold'),
+        justify='center',
+        bg=theme["bg"],
+        fg=theme["accent"]
+    )
+    desc_label.pack(side='left', fill='x', expand=True, anchor='center')
     
     # Container principal avec espacement optimisé
     main_container = tk.Frame(tab_frame, bg=theme["bg"])
@@ -204,13 +200,21 @@ def create_cleaning_tab(parent_notebook, main_interface):
     # 1) au moment de la création (si un projet est déjà restauré)
     _auto_scan_cleaning_if_ready()
 
-    # 2) quand l'onglet devient actif
+    # 2) quand l'onglet devient actif (onglet = wrapper scrollable, tab_frame est dedans)
     def _on_tab_changed_cleaning(event=None):
-        current = parent_notebook.nametowidget(parent_notebook.select())
-        if current is tab_frame:
-            _auto_scan_cleaning_if_ready()
+        nb = getattr(main_interface, "notebook", None)
+        if not nb:
+            return
+        current = nb.nametowidget(nb.select())
+        w = tab_frame
+        while w:
+            if w == current:
+                _auto_scan_cleaning_if_ready()
+                break
+            w = getattr(w, "master", None)
 
-    parent_notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_cleaning)
+    if getattr(main_interface, "notebook", None):
+        main_interface.notebook.bind("<<NotebookTabChanged>>", _on_tab_changed_cleaning)
 
     # 3) Expose un hook pour que la fenêtre principale puisse forcer un resync
     main_interface.cleaning_resync = _auto_scan_cleaning_if_ready
@@ -608,6 +612,8 @@ def create_language_checkboxes(main_interface):
         
         # Mise à jour de l'affichage
         main_interface.lang_checkboxes_frame.update_idletasks()
+        # Relier la molette aux nouveaux widgets (zone scrollable de l'onglet)
+        getattr(main_interface, 'refresh_tab_mousewheel', lambda: None)()
         
         # Activer les notifications après un court délai pour éviter les notifications pendant l'initialisation
         def enable_notifications():
