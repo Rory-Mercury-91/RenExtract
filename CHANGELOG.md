@@ -1,6 +1,25 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-05 (v1.2.26)
+
+### Validation des fichiers de traduction (fichier unique / liste projet)
+- **Règles d’acceptation** : seuls les fichiers contenant au moins un bloc reconnu sont acceptés : `translate <langue> <id>:` (dialogues) ou `translate <langue> strings:` (choix/strings). Tout le reste est considéré comme technique.
+- **Détection en début de ligne** : les blocs `translate` et le code technique (init, define, screen, default) ne sont reconnus qu’en début de ligne, pour éviter les faux positifs dans les commentaires ou chaînes (ex. « touchscreen »).
+- **Ordre translate / technique** : si du code technique (init, define, screen, etc.) apparaît **avant** le premier bloc `translate`, le fichier est refusé (ex. `Z_LangSelect.rpy`, écrans de préférences).
+- **Support `init +1:`** : le motif technique prend en charge `init +1:` en plus de `init 999:` et `init python:`.
+- **Retour visuel en cas de rejet** : dans le popup (sélection fichier, glisser-déposer, presse-papiers), affichage de « Ce qui a coincé » (détail du rejet) pour faciliter la correction.
+- **Cache et version de validation** : une version de cache (`VALIDATION_CACHE_VERSION = 2`) invalide les anciennes listes de fichiers ; au prochain accès au projet/langue, un rescan applique la nouvelle logique et exclut correctement les fichiers techniques.
+
+**Fichiers modifiés :**
+- `core/services/extraction/validation.py` (règles, patterns, rejection_details)
+- `ui/content_frame.py`, `ui/shared/project_widgets.py` (affichage du détail du rejet)
+- `ui/shared/project_utils.py` (passage de la version de validation au cache)
+- `core/models/cache/project_scan_cache.py` (min_validation_version, validation_version)
+- `infrastructure/config/constants.py` (VALIDATION_CACHE_VERSION, fallback version v1.2.26)
+
+---
+
 ## 2026-03-03 (v1.2.25)
 
 ### Interface : barres de défilement par onglet

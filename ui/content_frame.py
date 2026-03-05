@@ -177,7 +177,8 @@ class ContentFrame(tk.Frame):
                     'is_valid': validation_result['overall_valid'],
                     'file_type': validation_result['file_type'],
                     'user_message': validation_result['user_message'],
-                    'details': validation_result.get('content_validation', {})
+                    'details': validation_result.get('content_validation', {}),
+                    'rejection_details': validation_result.get('rejection_details', [])
                 }
                 
             finally:
@@ -197,18 +198,24 @@ class ContentFrame(tk.Frame):
             }
 
     def _show_technical_content_dialog(self, content, validation_result):
-        """Affiche un dialogue pour le contenu technique dans le presse-papier"""
+        """Affiche un dialogue pour le contenu technique dans le presse-papier, avec détail de ce qui a coincé."""
         try:
             from infrastructure.helpers.unified_functions import show_translated_messagebox
             
-            # Analyser le type de contenu
+            # Détail du rejet (ce qui a coincé) pour correction
+            details = validation_result.get('rejection_details') or []
+            if not details and validation_result.get('content_validation'):
+                details = validation_result['content_validation'].get('rejection_details') or []
+            details_text = "\n    • ".join(details) if details else "Aucun détail disponible."
+            
             content_preview = content[:200] + "..." if len(content) > 200 else content
             
-            message = f"""⚠️ Contenu technique détecté dans le presse-papier
+            message = f"""⚠️ Contenu non reconnu comme traduction (presse-papier)
 
-    Ce contenu semble contenir du code d'interface plutôt que des traductions.
+    Ce qui a coincé :
+    • {details_text}
 
-    Aperçu :
+    Aperçu du contenu :
     {content_preview}
 
     Voulez-vous continuer le traitement ?

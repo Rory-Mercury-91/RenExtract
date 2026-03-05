@@ -74,8 +74,8 @@ def get_version():
         pass
     
     # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    # Version : 1.2.25 (03-03-2026)
-    return "RenExtract v1.2.25"
+    # Version : 1.2.26 (05-03-2026)
+    return "RenExtract v1.2.26"
 
 def increment_build_number():
     """
@@ -92,6 +92,10 @@ __version__ = VERSION  # Alias pour compatibilité avec les imports standards
 PROJECT_NAME = "RenExtract"
 AUTHOR = "Rory Mercury91"
 PROJECT_DESCRIPTION = "Outil d'extraction et de préparation à la traduction pour les jeux Ren'Py"
+
+# Version du cache des fichiers de traduction : incrémenter quand la logique de validation change
+# pour forcer un rescan et exclure les fichiers techniques correctement
+VALIDATION_CACHE_VERSION = 2
 
 # Dossiers/fichiers
 BASE_DIR = get_executable_dir()

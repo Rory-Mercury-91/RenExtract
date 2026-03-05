@@ -154,84 +154,68 @@ class FileValidator:
 
 class TranslationContentValidator:
     """
-    Validateur simplifié pour distinguer les VRAIS fichiers de traduction du code technique
-    RÈGLE SIMPLE: Seuls les fichiers avec patterns de traduction sont acceptés
+    Validateur pour distinguer les fichiers de traduction (dialogues/strings) du code technique.
+    RÈGLE: Seuls les fichiers contenant au moins un bloc reconnu sont acceptés :
+      - translate <langue> <ID>:  (dialogues)
+      - translate <langue> strings:  (choix / strings)
+    Tout le reste est considéré comme technique.
+
+    Structure typique d'un fichier de traduction accepté :
+      Ligne 1 : # TODO: Translation updated at YYYY-MM-DD ...
+      Ligne 2 : (vide)
+      Ligne 3 : # game/script.rpy:164  (localisation)
+      Ligne 4 : translate <langue> <id>:  ou  translate <langue> strings:
+    Les lignes # ne sont pas considérées comme "technique" ; seuls init/define/screen en début de ligne le sont.
     """
     
-    def __init__(self):
-        """Constructeur simplifié sans système d'exemption"""
-        # PATTERNS DE TRADUCTION (seuls autorisés)
-        self.TRANSLATION_PATTERNS = [
-            r'translate\s+\w+\s+\w+:',              # translate french label_start:
-            r'old\s+".*?"',                         # old "Hello"
-            r'new\s+".*?"',                         # new "Bonjour"
-            r'translate\s+\w+\s+strings:',          # translate french strings:
-            r'# TODO: Translation',                 # Commentaires de traduction
-            r'# game/.*\.rpy:\d+',                  # Références aux fichiers sources
-            r'# Fichier.*RenExtract',                       # Toute ligne mentionnant RenExtract
-            r'# Créé le:\s*\d{4}[-/]\d{2}[-/]\d{2}',       # Date flexible (- ou /)
-            r'# Nombre de fichiers.*:\s*\d+',               # Compteurs de fichiers
-            r'# Fichiers exclus.*:\s*\d+',                  # Fichiers exclus
-            r'# Généré.*par.*RenExtract',                   # Variante générique
-            r'# RenExtract\s*v?\d+\.\d+',                   # Version (flexible)            
-        ]
-        
-        # PATTERNS TECHNIQUES (refusés automatiquement)
-        self.TECHNICAL_PATTERNS = [
-            # Fichiers override/config
-            r'init\s+\d+\s*:',                      # init 5: (fichiers override)
-            r'init\s+python\s*:',                   # init python: (code Python)
-            r'define\s+\w+\s*=',                    # define config.xxx = (configurations)
-            r'default\s+\w+\s*=',                   # default persistent.xxx = (variables)
-            
-            # Interface utilisateur
-            r'screen\s+\w+\(\):',                   # Écrans d'interface
-            r'modal\s+True',                        # Écrans modaux
-            r'imagebutton:',                        # Boutons d'image
-            r'textbutton\s+.*:',                    # Boutons de texte
-            r'vpgrid:',                             # Grilles visuelles
-            r'hbox:',                               # Conteneurs horizontaux
-            r'vbox:',                               # Conteneurs verticaux
-            
-            # Éléments spécifiques détectés
-            r'at\s+delayed_blink',                  # Animations
-            r'if\s+_preferences\.language',         # Tests de langue
-            r'action\s+\w+',                        # Actions d'interface
-            r'transform\s+\w+:',                    # Transformations
-        ]
+    # Blocs de traduction acceptés : uniquement en DÉBUT DE LIGNE (évite faux positifs dans commentaires/chaînes)
+    # Ex. ligne 4 typique : "translate french splashscreen_4aafa53c:" ou "translate french strings:"
+    PATTERN_TRANSLATE_DIALOGUE = re.compile(
+        r'^\s*translate\s+\w+\s+\S+:',
+        re.IGNORECASE | re.MULTILINE
+    )
+    PATTERN_TRANSLATE_STRINGS = re.compile(
+        r'^\s*translate\s+\w+\s+strings\s*:',
+        re.IGNORECASE | re.MULTILINE
+    )
+    
+    # Patterns techniques : UNIQUEMENT en début de ligne (^\s*), pour comparer position avec premier translate
+    # init +1:, init 999:, init python:, define, default, screen
+    TECHNICAL_PATTERNS_DETECT = [
+        (r'^\s*init\s+python\s*:', 'init python:'),
+        (r'^\s*init\s+[\+]?\d+\s*:', 'init N: ou init +1:'),
+        (r'^\s*define\s+\w+\s*=', 'define config/var'),
+        (r'^\s*default\s+\w+\s*=', 'default persistent/var'),
+        (r'^\s*screen\s+\w+\s*\(', 'screen name():'),
+    ]
     
     def validate_translation_content(self, filepath):
         """
-        Validation STRICTE - AUCUNE EXEMPTION
+        Validation stricte : accepte uniquement si le fichier contient
+        translate <langue> <ID>: (dialogues) ou translate <langue> strings: (strings).
         
         Returns:
-            dict: {
-                'is_translation': bool,
-                'file_type': 'translation' | 'technical_code' | 'invalid',
-                'confidence': float,
-                'reason': str
-            }
+            dict: is_translation, file_type, reason, rejection_details (liste pour le popup)
         """
         try:
-            # Vérification extension de base
             if not filepath.lower().endswith('.rpy'):
                 return {
                     'is_translation': False,
                     'file_type': 'invalid',
                     'confidence': 0.0,
-                    'reason': 'Extension non .rpy'
+                    'reason': 'Extension non .rpy',
+                    'rejection_details': ['Seuls les fichiers .rpy sont acceptés.']
                 }
             
-            # Analyse du contenu (100 premières lignes max)
             analysis = self._fast_content_analysis(filepath)
             
-            # DÉCISION STRICTE - priorité aux patterns techniques
-            if analysis['technical_detected']:
+            if analysis.get('error'):
                 return {
                     'is_translation': False,
-                    'file_type': 'technical_code',
-                    'confidence': 90.0,
-                    'reason': f'Patterns techniques détectés: {analysis["technical_count"]}'
+                    'file_type': 'invalid',
+                    'confidence': 0.0,
+                    'reason': analysis['error'],
+                    'rejection_details': [f"Erreur à l'analyse : {analysis['error']}"]
                 }
             
             if analysis['translation_detected']:
@@ -239,77 +223,120 @@ class TranslationContentValidator:
                     'is_translation': True,
                     'file_type': 'translation',
                     'confidence': analysis['confidence'],
-                    'reason': f'Patterns de traduction trouvés: {analysis["translation_count"]}'
+                    'reason': analysis.get('reason', 'Bloc(s) de traduction reconnu(s).'),
+                    'rejection_details': []
                 }
-            else:
-                return {
-                    'is_translation': False,
-                    'file_type': 'technical_code',
-                    'confidence': 70.0,
-                    'reason': 'Aucun pattern de traduction détecté'
-                }
+            
+            # Rejet : détail pour le popup
+            return {
+                'is_translation': False,
+                'file_type': 'technical_code',
+                'confidence': 70.0,
+                'reason': analysis.get('reason', 'Contenu non reconnu comme traduction.'),
+                'rejection_details': analysis.get('rejection_details', [])
+            }
                 
         except Exception as e:
             return {
                 'is_translation': False,
                 'file_type': 'invalid',
                 'confidence': 0.0,
-                'reason': f'Erreur de validation: {e}'
+                'reason': str(e),
+                'rejection_details': [f'Erreur : {e}']
             }
     
     def _fast_content_analysis(self, filepath):
-        """Analyse ULTRA-RAPIDE - lit 5 lignes pour couvrir tous les cas"""
+        """
+        Analyse un échantillon du fichier.
+        Accepte uniquement si présence de :
+          - translate <lang> <id>:  (dialogues)
+          - translate <lang> strings:  (strings)
+        Retourne rejection_details pour affichage dans le popup (ce qui a coincé).
+        """
         try:
-            # Lecture limitée à 5 lignes (au lieu de 3)
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                lines = []
-                for i in range(20):  # Augmenté à 5 lignes
-                    try:
-                        line = f.readline().strip()
-                        # Nettoyer le BOM Unicode si présent
-                        if line.startswith('\ufeff'):
-                            line = line[1:]
-                        if line:
-                            lines.append(line)
-                    except:
-                        break
+                content_sample = f.read(12000)  # ~300–400 lignes typiques
             
-            if not lines:
+            if not content_sample.strip():
                 return {
                     'translation_detected': False,
-                    'technical_detected': True,
-                    'translation_count': 0,
-                    'technical_count': 1,
+                    'reason': 'Fichier vide ou sans contenu lisible.',
+                    'rejection_details': ['Fichier vide ou sans contenu lisible.'],
+                    'technical_found': [],
                     'confidence': 0,
-                    'lines_analyzed': 0
                 }
             
-            content_sample = '\n'.join(lines)
+            # Nettoyer BOM
+            if content_sample.startswith('\ufeff'):
+                content_sample = content_sample[1:]
             
-            # Compter "translate "
-            translation_count = content_sample.count('translate ')
+            # Position du premier "translate" en début de ligne (dialogues ou strings)
+            first_translate_pos = None
+            for m in self.PATTERN_TRANSLATE_DIALOGUE.finditer(content_sample):
+                first_translate_pos = m.start()
+                break
+            if first_translate_pos is None:
+                for m in self.PATTERN_TRANSLATE_STRINGS.finditer(content_sample):
+                    first_translate_pos = m.start()
+                    break
             
-            # Détecter patterns techniques
-            technical_patterns = ['init python:', 'screen ', 'define config', 'init ']
-            technical_count = sum(1 for pattern in technical_patterns if pattern in content_sample)
+            # Position du premier bloc technique en début de ligne (init, define, screen)
+            first_technical_pos = None
+            for pattern_re, label in self.TECHNICAL_PATTERNS_DETECT:
+                m = re.search(pattern_re, content_sample, re.MULTILINE | re.IGNORECASE)
+                if m and (first_technical_pos is None or m.start() < first_technical_pos):
+                    first_technical_pos = m.start()
+            
+            has_translate = first_translate_pos is not None
+            has_technical_before = (
+                first_technical_pos is not None
+                and (first_translate_pos is None or first_technical_pos < first_translate_pos)
+            )
+            # Accepter seulement si on a un bloc translate ET pas de code technique avant le premier translate
+            translation_detected = has_translate and not has_technical_before
+            
+            # Détail des patterns techniques trouvés (pour le retour visuel)
+            technical_found = []
+            for pattern_re, label in self.TECHNICAL_PATTERNS_DETECT:
+                if re.search(pattern_re, content_sample, re.MULTILINE | re.IGNORECASE):
+                    technical_found.append(label)
+            
+            rejection_details = []
+            if not translation_detected:
+                if not has_translate:
+                    rejection_details.append(
+                        "Aucun bloc 'translate <langue> <id>:' (dialogues) ni 'translate <langue> strings:' (choix/strings) trouvé."
+                    )
+                else:
+                    rejection_details.append(
+                        "Le fichier commence par du code technique (init, define, screen) avant tout bloc 'translate'."
+                    )
+                rejection_details.append(
+                    "Seuls les fichiers dont le contenu principal est de la traduction sont acceptés."
+                )
+            if technical_found:
+                rejection_details.append("Éléments de type code détectés : " + ", ".join(technical_found))
             
             return {
-                'translation_detected': translation_count >= 1,
-                'technical_detected': technical_count >= 1,
-                'translation_count': translation_count,
-                'technical_count': technical_count,
-                'confidence': 95.0 if translation_count > 0 else 0.0,
-                'lines_analyzed': len(lines)
+                'translation_detected': translation_detected,
+                'reason': 'Bloc(s) de traduction reconnu(s).' if translation_detected else (
+                    'Aucun bloc dialogue/strings reconnu.' + (
+                        f" Code détecté : {', '.join(technical_found)}" if technical_found else ''
+                    )
+                ),
+                'rejection_details': rejection_details,
+                'technical_found': technical_found,
+                'confidence': 95.0 if translation_detected else 0.0,
             }
             
         except Exception as e:
             return {
                 'translation_detected': False,
-                'technical_detected': True,
-                'translation_count': 0,
-                'technical_count': 1,
+                'reason': str(e),
+                'rejection_details': [f"Erreur à la lecture : {e}"],
+                'technical_found': [],
                 'confidence': 0,
-                'error': str(e)
+                'error': str(e),
             }
 
 # ✅ FONCTION PRINCIPALE SIMPLIFIÉE - REMPLACE L'ANCIENNE
@@ -326,6 +353,7 @@ def validate_file_for_translation_processing(filepath):
                 'file_type': 'invalid',
                 'processing_recommended': False,
                 'user_message': "❌ Seuls les fichiers .rpy sont acceptés",
+                'rejection_details': ['Seuls les fichiers .rpy sont acceptés.'],
                 'fast_validation': True
             }
         
@@ -343,24 +371,25 @@ def validate_file_for_translation_processing(filepath):
             'fast_validation': True
         }
         
-        # ✅ Messages selon le type
+        # ✅ Messages selon le type + détail du rejet pour le popup
         if content_validation['file_type'] == 'translation':
             result['user_message'] = f"✅ Fichier de traduction détecté: {filename}"
         else:
-            result['user_message'] = f"⚠️ Fichier technique non autorisé: {filename}"
+            result['user_message'] = f"⚠️ Fichier non autorisé: {filename}"
             result['warnings'] = ['Ajoutez ce fichier aux exemptions si nécessaire']
+            result['rejection_details'] = content_validation.get('rejection_details', [])
         
         return result
         
     except Exception as e:
         log_message("ERREUR", f"Erreur validation rapide: {e}", category="validation")
-        # Mode dégradé - REFUSER en cas d'erreur (plus sûr)
         return {
             'overall_valid': False,
             'file_type': 'invalid',
             'processing_recommended': False,
             'user_message': f"❌ Erreur de validation: {os.path.basename(filepath)}",
             'warnings': ['Fichier refusé par sécurité - erreur de validation'],
+            'rejection_details': [f'Erreur : {e}'],
             'fast_validation': True
         }
     

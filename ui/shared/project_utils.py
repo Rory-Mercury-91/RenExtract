@@ -7,6 +7,7 @@ import os
 import glob
 from typing import List, Dict, Optional, Tuple
 from infrastructure.logging.logging import log_message
+from infrastructure.config.constants import VALIDATION_CACHE_VERSION
 from core.models.cache.project_scan_cache import get_project_cache
 
 def validate_renpy_project(project_path: str) -> bool:
@@ -142,10 +143,13 @@ def scan_language_files(project_path: str, language: str, exclusions: List[str] 
         if not os.path.exists(language_path):
             return files
         
-        # Essayer de récupérer depuis le cache (invalidation granulaire par langue)
+        # Essayer de récupérer depuis le cache (invalidation par langue + version validation)
         cache = get_project_cache()
         if not force_refresh:
-            cached_files = cache.get_language_files(project_path, language, exclusions)
+            cached_files = cache.get_language_files(
+                project_path, language, exclusions,
+                min_validation_version=VALIDATION_CACHE_VERSION
+            )
             if cached_files is not None:
                 # Cache HIT : La langue n'a pas été modifiée
                 # Filtrer selon les exclusions actuelles
@@ -218,8 +222,8 @@ def scan_language_files(project_path: str, language: str, exclusions: List[str] 
         # Trier par nom de fichier
         files.sort(key=lambda x: x['name'].lower())
         
-        # Mettre en cache le résultat (tous les fichiers, les exclusions sont appliquées à la lecture)
-        cache.cache_language_files(project_path, language, files)
+        # Mettre en cache le résultat (avec version de validation pour invalidation future)
+        cache.cache_language_files(project_path, language, files, validation_version=VALIDATION_CACHE_VERSION)
         
         return files
        

@@ -305,24 +305,34 @@ class ProjectLanguageSelector:
             validation_result = validate_file_for_translation_processing(file_path)
             
             if not validation_result['overall_valid']:
-                # Fichier technique refusé
+                # Fichier refusé : afficher le détail (ce qui a coincé) dans un popup
                 filename = os.path.basename(file_path)
                 self._set_project_info(
-                    f"❌ Fichier technique refusé : {filename}", 
+                    f"❌ Fichier refusé : {filename}",
                     fg="#ff8379"
                 )
-                
-                # Afficher un message d'erreur plus détaillé dans les statuts
                 self.language_status_label.config(
                     text="❌ Ce fichier ne contient pas de traductions valides",
                     fg='#ff8379'
                 )
                 self.file_status_label.config(
-                    text="💡 Sélectionnez un fichier .rpy contenant des blocs 'translate'",
+                    text="💡 Fichier .rpy avec blocs 'translate <langue> <id>:' ou 'translate <langue> strings:'",
                     fg='#ff8379'
                 )
-                
-                log_message("INFO", f"Fichier technique refusé en mode unique : {filename}", category="project_widgets")
+                details = validation_result.get('rejection_details') or []
+                details_text = "\n• ".join(details) if details else "Aucun détail."
+                try:
+                    from infrastructure.helpers.unified_functions import show_translated_messagebox
+                    parent_win = self.parent_frame.winfo_toplevel() if self.parent_frame else None
+                    show_translated_messagebox(
+                        'info',
+                        f"Fichier refusé : {filename}",
+                        f"Ce qui a coincé :\n\n• {details_text}",
+                        parent=parent_win
+                    )
+                except Exception as e:
+                    log_message("ATTENTION", f"Popup détail rejet: {e}", category="project_widgets")
+                log_message("INFO", f"Fichier refusé en mode unique : {filename}", category="project_widgets")
                 return
             
             # Basculer en mode fichier unique (code existant)
@@ -618,13 +628,26 @@ class ProjectLanguageSelector:
                         self._set_single_file_mode(dropped_path)
                         return True
                     else:
-                        # Fichier technique refusé
+                        # Fichier refusé : popup avec détail (ce qui a coincé)
                         filename = os.path.basename(dropped_path)
                         self._set_project_info(
-                            f"❌ Fichier technique refusé : {filename}", 
+                            f"❌ Fichier refusé : {filename}",
                             fg="#ff8379"
                         )
-                        log_message("INFO", f"Fichier technique refusé via drag & drop : {filename}", category="project_widgets")
+                        details = validation_result.get('rejection_details') or []
+                        details_text = "\n• ".join(details) if details else "Aucun détail."
+                        try:
+                            from infrastructure.helpers.unified_functions import show_translated_messagebox
+                            parent_win = self.parent_frame.winfo_toplevel() if self.parent_frame else None
+                            show_translated_messagebox(
+                                'info',
+                                f"Fichier refusé : {filename}",
+                                f"Ce qui a coincé :\n\n• {details_text}",
+                                parent=parent_win
+                            )
+                        except Exception as e:
+                            log_message("ATTENTION", f"Popup détail rejet: {e}", category="project_widgets")
+                        log_message("INFO", f"Fichier refusé via drag & drop : {filename}", category="project_widgets")
                         return False
                 else:
                     log_message("ATTENTION", f"Type de fichier non supporté: {dropped_path}", category="project_widgets")

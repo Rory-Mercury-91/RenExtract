@@ -117,14 +117,17 @@ class ProjectScanCache:
         return languages
     
     def get_language_files(self, project_path: str, language: str, 
-                          exclusions: List[str] = None) -> Optional[List[Dict[str, Any]]]:
+                          exclusions: List[str] = None,
+                          min_validation_version: Optional[int] = None) -> Optional[List[Dict[str, Any]]]:
         """
-        Récupère les fichiers d'une langue depuis le cache avec invalidation granulaire
+        Récupère les fichiers d'une langue depuis le cache avec invalidation granulaire.
+        Si min_validation_version est fourni et que le cache a une version inférieure, retourne None (rescan).
         
         Args:
             project_path: Chemin du projet
             language: Nom de la langue
             exclusions: Fichiers à exclure
+            min_validation_version: Version minimale de la logique de validation (ex. 2)
             
         Returns:
             Liste des fichiers ou None si cache invalide pour cette langue
@@ -140,6 +143,13 @@ class ProjectScanCache:
             return None
         
         lang_cache = project_cache['languages'][language]
+        
+        # Invalidation par version de validation (logique de filtrage technique mise à jour)
+        if min_validation_version is not None:
+            cached_version = lang_cache.get('validation_version', 0)
+            if cached_version < min_validation_version:
+                log_message("DEBUG", f"Cache INVALIDATED: langue {language} (validation v{cached_version} < v{min_validation_version})", category="cache")
+                return None
         
         # Vérifier si le dossier de la langue a été modifié (invalidation granulaire)
         lang_path = os.path.join(project_path, "game", "tl", language)
@@ -194,14 +204,16 @@ class ProjectScanCache:
         self._save_cache()
         log_message("DEBUG", f"Cache UPDATE: {len(languages)} langues pour {os.path.basename(project_path)}", category="cache")
     
-    def cache_language_files(self, project_path: str, language: str, files: List[Dict[str, Any]]):
+    def cache_language_files(self, project_path: str, language: str, files: List[Dict[str, Any]],
+                             validation_version: Optional[int] = None):
         """
-        Met en cache les fichiers d'une langue avec invalidation granulaire
+        Met en cache les fichiers d'une langue avec invalidation granulaire.
         
         Args:
             project_path: Chemin du projet
             language: Nom de la langue
-            files: Liste des fichiers
+            files: Liste des fichiers (déjà filtrés par la validation en vigueur)
+            validation_version: Version de la logique de validation (pour invalidation future)
         """
         if project_path not in self._cache:
             self._cache[project_path] = {'languages': {}}
@@ -213,15 +225,18 @@ class ProjectScanCache:
         lang_path = os.path.join(project_path, "game", "tl", language)
         try:
             directory_mtime = os.path.getmtime(lang_path)
-        except:
+        except Exception:
             directory_mtime = time.time()
         
-        self._cache[project_path]['languages'][language].update({
+        update = {
             'files': files,
             'file_count': len(files),
             'directory_mtime': directory_mtime,
             'last_scan': time.strftime("%Y-%m-%d %H:%M:%S")
-        })
+        }
+        if validation_version is not None:
+            update['validation_version'] = validation_version
+        self._cache[project_path]['languages'][language].update(update)
         
         self._save_cache()
         log_message("DEBUG", f"Cache UPDATE: {len(files)} fichiers pour {language} (mtime: {directory_mtime})", category="cache")
