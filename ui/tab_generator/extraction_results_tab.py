@@ -74,6 +74,10 @@ def create_extraction_results_tab(parent, main_interface):
     
     _create_results_section(results_frame, main_interface)
     
+    # Frame pour les boutons "Tout cocher/décocher" par catégorie (rempli quand les résultats sont affichés)
+    main_interface.extraction_toggles_frame = tk.Frame(main_container, bg=theme["bg"])
+    main_interface.extraction_toggles_frame.pack(fill='x', pady=(5, 0))
+    
     # ===== SECTION ACTIONS =====
     actions_frame = tk.Frame(main_container, bg=theme["bg"])
     actions_frame.pack(fill='x', pady=(10, 0))
@@ -273,6 +277,10 @@ def display_extraction_results(main_interface):
         for widget in main_interface.extraction_results_scrollable_frame.winfo_children():
             widget.destroy()
         
+        # Vider la ligne des boutons "Tout cocher/décocher" (remplie uniquement quand il y a des résultats)
+        for w in main_interface.extraction_toggles_frame.winfo_children():
+            w.destroy()
+        
         if total_detected == 0:
             # Aucun résultat
             no_results = tk.Label(
@@ -289,8 +297,30 @@ def display_extraction_results(main_interface):
             # NOUVEAU : Préparer les sélections via le module métier
             main_interface.extraction_selections = main_interface.extraction_results_business.prepare_text_selections(results)
             
-            # Afficher les résultats par catégorie
-            _create_extraction_results_categories(main_interface, results)
+            # Afficher les résultats par catégorie et récupérer les callbacks "Tout cocher/décocher"
+            toggle_auto_safe, toggle_textbuttons, toggle_text_elements = _create_extraction_results_categories(main_interface, results)
+            # Boutons "Tout cocher/décocher" centrés sous chaque panneau (3 colonnes de même largeur)
+            theme = theme_manager.get_theme()
+            for label, toggle_cmd in [
+                ("🟢 Auto-safe : Tout cocher/décocher", toggle_auto_safe),
+                ("🟡 Textbuttons : Tout cocher/décocher", toggle_textbuttons),
+                ("🟡 Text elements : Tout cocher/décocher", toggle_text_elements),
+            ]:
+                col = tk.Frame(main_interface.extraction_toggles_frame, bg=theme["bg"])
+                col.pack(side='left', fill='x', expand=True, padx=(0, 3))
+                btn = tk.Button(
+                    col,
+                    text=label,
+                    command=toggle_cmd,
+                    bg=theme["button_utility_bg"],
+                    fg="#000000",
+                    font=('Segoe UI', 9),
+                    pady=3,
+                    padx=8,
+                    relief='flat',
+                    cursor='hand2'
+                )
+                btn.pack(anchor='center')
             main_interface.extraction_generate_btn.config(state='normal')
         
         log_message("INFO", f"✅ Résultats d'extraction affichés - {total_detected} textes détectés", category="extraction_results")
@@ -350,8 +380,7 @@ def _create_extraction_results_categories(main_interface, results):
         fg=theme["fg"]
     )
     auto_safe_frame.pack(side='left', fill='both', expand=True, padx=(0, 3))
-    
-    _create_extraction_section_content(auto_safe_frame, auto_safe_texts, True, "auto_safe", main_interface)
+    toggle_auto_safe = _create_extraction_section_content(auto_safe_frame, auto_safe_texts, True, "auto_safe", main_interface)
     
     # === SECTION 2: TEXTBUTTONS (au centre) ===
     textbutton_frame = tk.LabelFrame(
@@ -362,8 +391,7 @@ def _create_extraction_results_categories(main_interface, results):
         fg=theme["fg"]
     )
     textbutton_frame.pack(side='left', fill='both', expand=True, padx=(3, 3))
-    
-    _create_extraction_section_content(textbutton_frame, textbutton_texts, False, "textbuttons", main_interface)
+    toggle_textbuttons = _create_extraction_section_content(textbutton_frame, textbutton_texts, False, "textbuttons", main_interface)
     
     # === SECTION 3: TEXT ELEMENTS (à droite) ===
     text_elements_frame = tk.LabelFrame(
@@ -374,8 +402,8 @@ def _create_extraction_results_categories(main_interface, results):
         fg=theme["fg"]
     )
     text_elements_frame.pack(side='left', fill='both', expand=True, padx=(3, 0))
-    
-    _create_extraction_section_content(text_elements_frame, text_check_texts, False, "text_elements", main_interface)
+    toggle_text_elements = _create_extraction_section_content(text_elements_frame, text_check_texts, False, "text_elements", main_interface)
+    return toggle_auto_safe, toggle_textbuttons, toggle_text_elements
 
 def _create_extraction_section_content(parent_frame, texts, default_selected, section_id, main_interface):
     """Crée le contenu d'une section avec taille fixe, 2 colonnes, ET scroll + molette"""
@@ -400,7 +428,7 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
     )
     desc_label.pack(anchor='w', padx=8, pady=(5, 3))
     
-    # Bouton pour tout cocher/décocher cette section
+    # Callback pour tout cocher/décocher cette section (le bouton sera placé sous les panneaux, au niveau des actions)
     def toggle_section():
         section_texts = [t for t in texts if t in main_interface.extraction_selections]
         if section_texts:
@@ -408,7 +436,6 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
             new_state = not all_selected
         else:
             new_state = True
-        
         for text in texts:
             if text in main_interface.extraction_selections:
                 main_interface.extraction_selections[text] = new_state
@@ -416,40 +443,61 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
                     icon = "☑️" if new_state else "☐"
                     main_interface.extraction_buttons[text].config(text=f"{icon} {text}")
     
-    toggle_btn = tk.Button(
-        parent_frame,
-        text="☑️ Tout cocher/décocher",
-        command=toggle_section,
-        bg=theme["button_utility_bg"],   # MODIFIÉ - Utilitaires
-        fg="#000000",                    # MODIFIÉ - Texte noir uniforme
-        font=('Segoe UI', 9),
-        pady=2,
-        relief='flat',
-        cursor='hand2'
-    )
-    toggle_btn.pack(anchor='w', padx=8, pady=(0, 5))
-    
     # Zone scrollable pour cette section - TAILLE FIXE
     scroll_container = tk.Frame(parent_frame, bg=theme["bg"])
     scroll_container.pack(fill='both', expand=True, padx=5, pady=(0, 8))
     
-    scroll_container.configure(height=120, width=340)
+    section_scroll_height = 120
+    bottom_bar_height = 2
+    scroll_container.configure(height=section_scroll_height + bottom_bar_height, width=340)
     scroll_container.pack_propagate(False)
     
-    # Canvas à gauche (prend l'espace restant)
+    # Canvas (créé en premier car la scrollbar y est liée)
     canvas = tk.Canvas(scroll_container, bg=theme["bg"], highlightthickness=0)
-    canvas.pack(side="left", fill="both", expand=True)
     
-    # Frame pour la scrollbar : pas de pack_propagate(False) pour que fill="y" donne toute la hauteur (barre visible jusqu'en bas)
-    scrollbar_frame = tk.Frame(scroll_container, bg=theme["bg"], width=16)
+    scrollbar_trough = "#555555"
+    scrollbar_thumb = "#888888"
+    scrollbar_frame = tk.Frame(
+        scroll_container,
+        bg=scrollbar_trough,
+        width=24,
+        height=section_scroll_height,
+        highlightthickness=1,
+        highlightbackground="#444444"
+    )
     scrollbar_frame.pack(side="right", fill="y")
+    scrollbar_frame.pack_propagate(False)
     
-    scrollbar = ttk.Scrollbar(
+    # Flèche monter (visible)
+    def scroll_up():
+        canvas.yview_scroll(-3, "units")
+    btn_up = tk.Button(scrollbar_frame, text="▲", command=scroll_up, bg=scrollbar_trough, fg=scrollbar_thumb, relief="flat", font=("Segoe UI", 8), width=2, cursor="hand2")
+    btn_up.pack(fill="x", pady=(2, 0))
+    
+    scrollbar = tk.Scrollbar(
         scrollbar_frame,
         orient="vertical",
-        command=canvas.yview
+        command=canvas.yview,
+        bg=scrollbar_thumb,
+        troughcolor=scrollbar_trough,
+        activebackground="#aaaaaa",
+        width=12
     )
-    scrollbar.pack(fill="both", expand=True, padx=1, pady=1)
+    scrollbar.pack(fill="both", expand=True, padx=2, pady=2)
+    
+    # Flèche descendre (visible)
+    def scroll_down():
+        canvas.yview_scroll(3, "units")
+    btn_down = tk.Button(scrollbar_frame, text="▼", command=scroll_down, bg=scrollbar_trough, fg=scrollbar_thumb, relief="flat", font=("Segoe UI", 8), width=2, cursor="hand2")
+    btn_down.pack(fill="x", pady=(0, 2))
+    
+    # Canvas à gauche (prend l'espace restant)
+    canvas.pack(side="left", fill="both", expand=True)
+    
+    # Barre du bas du panneau (trait visible, pack en dernier pour être sous la zone scrollable)
+    bottom_bar = tk.Frame(scroll_container, bg=scrollbar_trough, height=bottom_bar_height)
+    bottom_bar.pack(side="bottom", fill="x")
+    bottom_bar.pack_propagate(False)
     
     scrollable_frame = tk.Frame(canvas, bg=theme["bg"])
     
@@ -558,6 +606,7 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
         canvas.configure(scrollregion=canvas.bbox("all"))
     parent_frame.after(100, _update_scroll_region)
     parent_frame.after(300, _update_scroll_region)
+    return toggle_section
 
 
 def _toggle_extraction_text_selection(main_interface, text):

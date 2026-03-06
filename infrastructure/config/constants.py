@@ -74,8 +74,8 @@ def get_version():
         pass
     
     # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    # Version : 1.2.27 (06-03-2026)
-    return "v1.2.27"
+    # Version : 1.2.28 (07-03-2026)
+    return "v1.2.28"
 
 def increment_build_number():
     """

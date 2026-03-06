@@ -1,6 +1,17 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-07 (v1.2.28)
+
+### Générateur de traductions : onglet Extraction - Résultats (suite)
+- **Scrollbars** : barres de défilement visibles (cadre gris, `tk.Scrollbar` avec couleurs explicites), **barre du bas** du panneau visible (trait 2 px), **flèches ▲ / ▼** pour monter/descendre (boutons au-dessus et en dessous de la scrollbar).
+- **Boutons « Tout cocher/décocher »** : déplacés **hors** de chaque panneau et placés **sous les panneaux**, au niveau de la section « Actions sur la sélection », un bouton par catégorie (Auto-safe, Textbuttons, Text elements).
+- **Centrage** : chaque bouton « Tout cocher/décocher » est **centré** sous son panneau (3 colonnes de même largeur).
+
+**Fichier modifié :** `ui/tab_generator/extraction_results_tab.py`.
+
+---
+
 ## 2026-03-06 (v1.2.27)
 
 ### Système de cohérence : déduplication des erreurs par (ligne, type)
