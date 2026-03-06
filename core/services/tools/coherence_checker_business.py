@@ -284,7 +284,34 @@ class UnifiedCoherenceChecker:
                 'new_content': ""
             })
         
+        # Déduplication : une seule entrée par (ligne, type), descriptions fusionnées si plusieurs occurrences
+        results['issues'] = self._deduplicate_issues_by_line_and_type(results['issues'])
         return results
+
+    def _deduplicate_issues_by_line_and_type(self, issues):
+        """
+        Retourne une liste d'erreurs où chaque (ligne, type) n'apparaît qu'une seule fois.
+        Si une même ligne a plusieurs fois le même type d'erreur, on garde une seule entrée
+        et on fusionne les descriptions avec " ; " pour ne pas perdre d'information.
+        """
+        if not issues:
+            return []
+        seen = {}  # (line, type) -> index dans deduped
+        deduped = []
+        for issue in issues:
+            line = issue.get('line', 0)
+            typ = issue.get('type', '')
+            key = (line, typ)
+            desc = (issue.get('description') or '').strip()
+            if key in seen:
+                idx = seen[key]
+                existing = deduped[idx]
+                if desc and desc != (existing.get('description') or '').strip():
+                    existing['description'] = (existing.get('description') or '').strip() + ' ; ' + desc
+            else:
+                seen[key] = len(deduped)
+                deduped.append(dict(issue))
+        return deduped
 
     def _is_voice_line(self, line):
         """Vérifie si une ligne contient une instruction voice"""

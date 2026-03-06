@@ -1,6 +1,26 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-06 (v1.2.27)
+
+### Système de cohérence : déduplication des erreurs par (ligne, type)
+- **Une seule entrée par (ligne, type)** : si une même ligne a plusieurs fois le même type d’erreur (ex. plusieurs « contenu de balise non traduit » sur la même ligne), une seule entrée est conservée dans le rapport.
+- **Descriptions fusionnées** : lorsque plusieurs occurrences du même type sont regroupées, les descriptions sont concaténées avec « ; » pour ne pas perdre d’information.
+- La priorisation existante (une seule catégorie d’erreur par ligne) est conservée ; la déduplication s’applique en plus aux doublons (ligne + type).
+
+**Fichier modifié :** `core/services/tools/coherence_checker_business.py` (`_deduplicate_issues_by_line_and_type`, appel dans `_analyze_single_file`).
+
+### Générateur de traductions : onglet Extraction - Résultats
+- **Défilement des panneaux internes** : la molette défile désormais correctement dans les sections (Auto-safe, Textbuttons, Text elements) sans faire défiler l’onglet parent (retour `"break"` dans le gestionnaire de molette des sections).
+- **Support Linux** : liaison de la molette sur les sections via `Button-4` / `Button-5` en plus de `MouseWheel`.
+- **Barres de défilement visibles jusqu’en bas** : le frame contenant la scrollbar n’utilise plus `pack_propagate(False)`, ce qui permet à la barre de prendre toute la hauteur du panneau (barre de fin visible).
+- **Hauteurs** : conteneur principal des résultats 200 px, chaque zone scrollable 120 px (inchangé par rapport à la préférence utilisateur).
+- **Scrollregion** : mise à jour après création du contenu (`update_idletasks` + `after` 100/300 ms) pour éviter un contenu coupé.
+
+**Fichier modifié :** `ui/tab_generator/extraction_results_tab.py`.
+
+---
+
 ## 2026-03-05 (v1.2.26)
 
 ### Validation des fichiers de traduction (fichier unique / liste projet)

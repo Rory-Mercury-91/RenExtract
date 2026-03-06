@@ -155,7 +155,6 @@ def _create_results_section(parent, main_interface):
     scroll_container = tk.Frame(parent, bg=theme["bg"])
     scroll_container.pack(fill='both', expand=True, pady=(0, 10))
     
-    # FORCER UNE HAUTEUR FIXE
     scroll_container.configure(height=200)
     scroll_container.pack_propagate(False)  # Empêche le redimensionnement automatique
     
@@ -434,28 +433,23 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
     scroll_container = tk.Frame(parent_frame, bg=theme["bg"])
     scroll_container.pack(fill='both', expand=True, padx=5, pady=(0, 8))
     
-    # Taille normale
     scroll_container.configure(height=120, width=340)
     scroll_container.pack_propagate(False)
     
-    # Canvas
+    # Canvas à gauche (prend l'espace restant)
     canvas = tk.Canvas(scroll_container, bg=theme["bg"], highlightthickness=0)
+    canvas.pack(side="left", fill="both", expand=True)
     
-    # Frame coloré pour scrollbar visible (couleur discrète)
-    scrollbar_frame = tk.Frame(scroll_container, bg='#666666', width=16)  # Gris discret
+    # Frame pour la scrollbar : pas de pack_propagate(False) pour que fill="y" donne toute la hauteur (barre visible jusqu'en bas)
+    scrollbar_frame = tk.Frame(scroll_container, bg=theme["bg"], width=16)
     scrollbar_frame.pack(side="right", fill="y")
-    scrollbar_frame.pack_propagate(False)
     
-    # Scrollbar dans le frame coloré
     scrollbar = ttk.Scrollbar(
-        scrollbar_frame, 
-        orient="vertical", 
+        scrollbar_frame,
+        orient="vertical",
         command=canvas.yview
     )
     scrollbar.pack(fill="both", expand=True, padx=1, pady=1)
-    
-    # Canvas occupe le reste
-    canvas.pack(side="left", fill="both", expand=True)
     
     scrollable_frame = tk.Frame(canvas, bg=theme["bg"])
     
@@ -467,16 +461,27 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
     
-    # Support molette sur TOUS les widgets de cette section
+    # Support molette sur TOUS les widgets de cette section (return "break" pour ne pas
+    # laisser l'onglet scrollable parent capturer l'événement et empêcher le scroll interne)
     def on_mousewheel(event):
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        delta = getattr(event, "delta", 0)
+        if not delta:
+            num = getattr(event, "num", None)
+            delta = 120 if num == 4 else (-120 if num == 5 else 0)
+        if delta:
+            canvas.yview_scroll(int(-1 * (delta / 120)), "units")
+        return "break"
     
-    # Lier molette au canvas
+    # Lier molette au canvas (Windows/Mac + Linux Button-4/5)
     canvas.bind("<MouseWheel>", on_mousewheel)
+    canvas.bind("<Button-4>", on_mousewheel)
+    canvas.bind("<Button-5>", on_mousewheel)
     
     # Fonction pour lier la molette récursivement à tous les enfants
     def bind_mousewheel_recursive(widget):
         widget.bind("<MouseWheel>", on_mousewheel, add="+")
+        widget.bind("<Button-4>", on_mousewheel, add="+")
+        widget.bind("<Button-5>", on_mousewheel, add="+")
         for child in widget.winfo_children():
             bind_mousewheel_recursive(child)
     
@@ -547,8 +552,12 @@ def _create_extraction_section_content(parent_frame, texts, default_selected, se
         col1.bind("<MouseWheel>", on_mousewheel, add="+")
         col2.bind("<MouseWheel>", on_mousewheel, add="+")
     
-    # FORCER LA MISE À JOUR INITIALE DU SCROLL
-    parent_frame.after(100, lambda: canvas.configure(scrollregion=canvas.bbox("all")))
+    # Forcer la mise à jour du scrollregion après création du contenu (évite contenu coupé)
+    def _update_scroll_region():
+        canvas.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
+    parent_frame.after(100, _update_scroll_region)
+    parent_frame.after(300, _update_scroll_region)
 
 
 def _toggle_extraction_text_selection(main_interface, text):
