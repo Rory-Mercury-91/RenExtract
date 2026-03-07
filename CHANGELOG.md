@@ -9,6 +9,7 @@
 - **Ordre de démarrage** : vérification instance unique en premier ; création du verrou (ou prise du mutex) immédiatement pour éviter qu'un second lancement ne passe (condition de course). `cleanup_orphaned_ports()` n'est plus exécuté avant la vérification, pour ne pas tuer l'instance déjà en cours.
 - **Linux / sandbox** : fallback par verrou fichier (APPDATA/RenExtract ou fichier local) conservé.
 - **Correction** : import explicite `from tkinter import messagebox` pour l'affichage de la messagebox (évite `AttributeError: module 'tkinter' has no attribute 'messagebox'`).
+- **Terminaison du 2ᵉ processus** : après clic sur OK, le lancement en double est bien terminé via `root.quit()` et `os._exit(1)` (évite que le processus reste actif avec Tk).
 
 ### Démarrage
 - **Ports orphelins** : timeout des sockets réduit (0,15 s au lieu de 0,5 s par port) pour limiter le délai au démarrage quand les ports sont libres.

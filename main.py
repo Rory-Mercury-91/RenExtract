@@ -50,7 +50,8 @@ if __name__ == "__main__":
             "RenExtract est déjà en cours d'exécution.\n\nFermez l'autre instance avant de relancer l'application."
         )
         root.destroy()
-        sys.exit(1)
+        root.quit()
+        os._exit(1)  # terminaison immédiate (sys.exit peut laisser le processus vivant avec Tk)
 
 
 from infrastructure.config.constants import VERSION
