@@ -22,7 +22,7 @@ from core.models.files.file_manager import file_manager, FileOpener
 # Imports utilitaires
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message, get_logger
-from infrastructure.config.constants import VERSION, FOLDERS, ensure_game_structure
+from infrastructure.config.constants import VERSION, WINDOW_TITLE, FOLDERS, ensure_game_structure
 from infrastructure.helpers.unified_functions import extract_game_name
 from ui.themes import theme_manager
 
@@ -1087,7 +1087,7 @@ class AppController:
             content_frame.clear_content()
 
         self.main_window.update_file_info(None, 0)
-        self.main_window.root.title(f'{VERSION}')
+        self.main_window.root.title(WINDOW_TITLE)
 
     def _validate_folder_files(self, files):
         """Valide les fichiers d'un dossier"""
@@ -1353,7 +1353,7 @@ class AppController:
 
     def _update_window_title(self, remaining_files=None):
         """Met à jour le titre de la fenêtre"""
-        base_title = f'{VERSION}'
+        base_title = WINDOW_TITLE
         if file_manager.is_folder_mode and remaining_files is not None:
             title = f"{base_title} - Mode Dossier ({remaining_files} fichiers restants)"
         else:

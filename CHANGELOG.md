@@ -1,6 +1,21 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-07 (v1.2.29)
+
+### Instance unique : une seule instance de l'application
+- **Windows** : vérification au **chargement du module** (avant tout log) via un **mutex nommé** (`CreateMutexW`). Si une instance tourne déjà, une **messagebox** « Instance Multiple » s'affiche (« RenExtract est déjà en cours d'exécution. Fermez l'autre instance avant de relancer l'application. ») puis le second lancement se ferme **sans toucher au fichier de log**.
+- **Log non régénéré** : la 2ᵉ tentative de lancement ne réinitialise plus le fichier de log (vérification et sortie avant `initialize_log()`).
+- **Ordre de démarrage** : vérification instance unique en premier ; création du verrou (ou prise du mutex) immédiatement pour éviter qu'un second lancement ne passe (condition de course). `cleanup_orphaned_ports()` n'est plus exécuté avant la vérification, pour ne pas tuer l'instance déjà en cours.
+- **Linux / sandbox** : fallback par verrou fichier (APPDATA/RenExtract ou fichier local) conservé.
+- **Correction** : import explicite `from tkinter import messagebox` pour l'affichage de la messagebox (évite `AttributeError: module 'tkinter' has no attribute 'messagebox'`).
+
+### Démarrage
+- **Ports orphelins** : timeout des sockets réduit (0,15 s au lieu de 0,5 s par port) pour limiter le délai au démarrage quand les ports sont libres.
+- **Imports** : chargement de l'interface (AppController, MainWindow, thèmes, tutoriel) reporté dans `RenExtractApp` (_create_ui / _finalize) pour alléger le chargement initial ; log « Processus démarré (avant chargement de l'interface) » ajouté.
+
+---
+
 ## 2026-03-07 (v1.2.28)
 
 ### Générateur de traductions : onglet Extraction - Résultats (suite)

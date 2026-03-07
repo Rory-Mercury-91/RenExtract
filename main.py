@@ -15,6 +15,44 @@ import subprocess
 import os
 import platform
 
+
+def _early_single_instance_win():
+    """
+    Vérification instance unique sous Windows AVANT tout log.
+    Si une instance tourne déjà, affiche la messagebox et quitte sans toucher au fichier de log.
+    Retourne True si on peut continuer, False si on doit quitter (2e instance).
+    """
+    if sys.platform != "win32":
+        return True
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        ERROR_ALREADY_EXISTS = 0x000000B7
+        mutex = kernel32.CreateMutexW(None, True, "RenExtract_SingleInstance_Mutex")
+        if mutex is None or mutex == 0:
+            return True
+        if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+            kernel32.CloseHandle(mutex)
+            return False
+        return True
+    except Exception:
+        return True
+
+
+# Vérification instance unique dès le chargement (avant initialize_log) pour ne pas régénérer le log
+if __name__ == "__main__":
+    if not _early_single_instance_win():
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showwarning(
+            "Instance Multiple",
+            "RenExtract est déjà en cours d'exécution.\n\nFermez l'autre instance avant de relancer l'application."
+        )
+        root.destroy()
+        sys.exit(1)
+
+
 from infrastructure.config.constants import VERSION
 
 # ✅ CORRECTION CRITIQUE : Charger le mode debug AVANT d'initialiser le logger
@@ -35,6 +73,7 @@ except Exception:
 from infrastructure.logging.logging import log_message, initialize_log, get_logger
 
 initialize_log(app_version=VERSION)
+log_message("INFO", "Processus démarré (avant chargement de l'interface)", category="main")
 
 # Forcer le mode debug si activé dans la config
 if _DEBUG_MODE:
@@ -132,15 +171,10 @@ def _log_health_summary():
 
 log_message("INFO", "=== Démarrage de {version} ===", version=VERSION, category="main")
 
-# IMPORTS CORRIGÉS - utilisation des nouvelles fonctions d'accès
+# Imports légers uniquement ; core / ui chargés plus tard pour accélérer l'affichage
 from infrastructure import get_config_manager
 from infrastructure.config.constants import ensure_folders_exist
 from infrastructure.helpers.unified_functions import show_translated_messagebox
-
-from core.app_controller import AppController
-from ui.tutorial import show_first_launch_popup, check_first_launch
-from ui.themes import theme_manager
-from ui.main_window import MainWindow
 
 try:
     import tkinterdnd2 as dnd2
@@ -200,6 +234,9 @@ class RenExtractApp:
 
     def _create_ui(self):
         try:
+            log_message("DEBUG", "Chargement de l'interface (core + ui)...", category="main")
+            from core.app_controller import AppController
+            from ui.main_window import MainWindow
             self.controller = AppController(None)
             self.window = MainWindow(self.root, self.controller)
             self.controller.main_window = self.window
@@ -322,7 +359,18 @@ class RenExtractApp:
             return False
 
     def _finalize(self):
+        """
+        Ordre avant affichage fenêtre (tout se fait avant deiconify) :
+        - _init_base : ensure_folders_exist() (dossiers), _preload_tutorial_images() (thread, non bloquant)
+        - _create_root : Tk() puis withdraw()
+        - _create_ui : AppController + MainWindow (construction UI = partie la plus longue)
+        - _finalize : apply_theme, center_window, puis deiconify() ci-dessous.
+        Aucun contrôle de présence de fichiers bloquant ; le délai vient surtout de la construction de MainWindow.
+        """
         try:
+            from ui.themes import theme_manager
+            from ui.tutorial import show_first_launch_popup, check_first_launch
+            # Thème et centrage avant affichage pour éviter que la fenêtre "saute" après apparition
             if hasattr(self.window, "apply_theme") and theme_manager is not None:
                 self.window.apply_theme()
             if hasattr(self.window, "center_window"):
@@ -445,11 +493,13 @@ def cleanup_orphaned_ports():
     except Exception:
         ports_to_check = [8765, 45000, 8767]
 
+    # Timeout court : sur localhost un port libre = refus immédiat ; 0.15s évite ~1.5s cumulés (3 ports × 0.5s)
+    socket_timeout = 0.15
     for port in ports_to_check:
         try:
             # Vérifier si le port est utilisé
             test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            test_socket.settimeout(0.5)
+            test_socket.settimeout(socket_timeout)
             result = test_socket.connect_ex(('127.0.0.1', port))
             test_socket.close()
             
@@ -584,6 +634,7 @@ def cleanup_orphaned_ports():
     
     return len(cleaned_ports)
 
+
 def main():
     # Détection du mode sandbox
     is_sandbox = (
@@ -597,67 +648,61 @@ def main():
     if is_sandbox:
         log_message("DEBUG", "Mode sandbox détecté - fonctionnalités limitées", category="main")
     
-    # Nettoyer les ports orphelins avant de démarrer
+    lock_file_path = None  # utilisé par le finally si verrou fichier (non-Windows)
+    # Instance unique : sous Windows déjà vérifiée au chargement du module (_early_single_instance_win)
+    if sys.platform != "win32" or is_sandbox:
+        # Fallback : verrou fichier (Linux, sandbox)
+        import tempfile
+        if is_sandbox:
+            lock_file_path = "renextract_app.lock"
+        else:
+            appdata = os.environ.get("APPDATA") or tempfile.gettempdir()
+            lock_dir = os.path.join(appdata, "RenExtract")
+            try:
+                os.makedirs(lock_dir, exist_ok=True)
+            except Exception:
+                lock_dir = tempfile.gettempdir()
+            lock_file_path = os.path.join(lock_dir, "renextract_app.lock")
+        
+        if os.path.exists(lock_file_path):
+            try:
+                with open(lock_file_path, 'r') as f:
+                    old_pid = int(f.read().strip())
+                try:
+                    os.kill(old_pid, 0)
+                    try:
+                        root = tk.Tk()
+                        root.withdraw()
+                        tk.messagebox.showwarning(
+                            "Instance Multiple",
+                            "RenExtract est déjà en cours d'exécution.\n\nFermez l'autre instance avant de relancer l'application."
+                        )
+                        root.destroy()
+                    except Exception:
+                        pass
+                    sys.exit(1)
+                except (OSError, ProcessLookupError, SystemError):
+                    try:
+                        os.remove(lock_file_path)
+                    except Exception:
+                        pass
+            except (ValueError, FileNotFoundError):
+                try:
+                    if os.path.exists(lock_file_path):
+                        os.remove(lock_file_path)
+                except Exception:
+                    pass
+        
+        try:
+            with open(lock_file_path, 'w') as f:
+                f.write(str(os.getpid()))
+        except Exception as e:
+            log_message("ERREUR", f"Erreur création verrou: {e}", category="main")
+            sys.exit(1)
+    
+    # Nettoyer d'éventuels ports orphelins (crash précédent)
     log_message("DEBUG", "Vérification des ports orphelins...", category="main")
     cleanup_orphaned_ports()
-    
-    # Système de singleton SIMPLE et IMMÉDIAT
-    import tempfile
-    
-    # Créer le verrou d'application IMMÉDIATEMENT
-    if is_sandbox:
-        lock_file_path = "renextract_app.lock"
-    else:
-        lock_file_path = os.path.join(tempfile.gettempdir(), "renextract_app.lock")
-    
-    # Vérifier si une instance est déjà en cours
-    if os.path.exists(lock_file_path):
-        # Vérifier si le processus du fichier de verrou existe encore
-        try:
-            with open(lock_file_path, 'r') as f:
-                old_pid = int(f.read().strip())
-            
-            # Vérifier si le processus existe encore (sous Windows os.kill peut lever WinError 6 → SystemError)
-            try:
-                os.kill(old_pid, 0)  # Signal 0 pour tester l'existence
-                # Processus existe encore, vraie instance multiple
-                try:
-                    root = tk.Tk()
-                    root.withdraw()
-                    tk.messagebox.showwarning(
-                        "Instance Multiple",
-                        "RenExtract est déjà en cours d'exécution.\n\nFermez l'autre instance avant de relancer l'application."
-                    )
-                    root.destroy()
-                except Exception:
-                    pass  # Message déjà affiché dans la messagebox
-                sys.exit(1)
-            except (OSError, ProcessLookupError, SystemError):
-                # Processus n'existe plus ou vérification impossible (ex. WinError 6 sous Windows) → verrou orphelin
-                try:
-                    log_message("DEBUG", f"Fichier de verrou orphelin détecté (PID {old_pid} n'existe plus)", category="main")
-                    os.remove(lock_file_path)
-                    log_message("DEBUG", "Fichier de verrou orphelin nettoyé", category="main")
-                except Exception as e:
-                    log_message("ERREUR", f"Impossible de supprimer le fichier de verrou: {e}", category="main")
-                    sys.exit(1)
-        except (ValueError, FileNotFoundError):
-            # Fichier corrompu ou inexistant, le supprimer
-            try:
-                if os.path.exists(lock_file_path):
-                    os.remove(lock_file_path)
-                log_message("DEBUG", "Fichier de verrou corrompu nettoyé", category="main")
-            except Exception as e:
-                log_message("ERREUR", f"Impossible de nettoyer le fichier de verrou: {e}", category="main")
-                sys.exit(1)
-    
-    # Créer le fichier de verrou
-    try:
-        with open(lock_file_path, 'w') as f:
-            f.write(str(os.getpid()))
-    except Exception as e:
-        log_message("ERREUR", f"Erreur création verrou: {e}", category="main")
-        sys.exit(1)
     
     try:
         log_message("DEBUG", "Instance unique vérifiée - démarrage autorisé", category="main")
@@ -679,11 +724,11 @@ def main():
         traceback.print_exc()
         sys.exit(1)
     finally:
-        # Nettoyer le verrou
+        # Nettoyer le verrou fichier (uniquement si on l'a utilisé, pas sous Windows mutex)
         try:
-            if os.path.exists(lock_file_path):
+            if lock_file_path and os.path.exists(lock_file_path):
                 os.remove(lock_file_path)
-        except:
+        except Exception:
             pass
         
         # 🆕 NETTOYAGE INTELLIGENT : Garder les polices utilisées, supprimer les autres

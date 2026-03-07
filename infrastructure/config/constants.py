@@ -88,6 +88,9 @@ def increment_build_number():
 VERSION = get_version()
 __version__ = VERSION  # Alias pour compatibilité avec les imports standards
 
+# Titre de la fenêtre principale (RenExtract + version, pas seulement la version)
+WINDOW_TITLE = f"RenExtract {VERSION}"
+
 # Métadonnées du projet
 PROJECT_NAME = "RenExtract"
 AUTHOR = "Rory Mercury91"
@@ -178,7 +181,7 @@ THEMES = {
 }
 
 # Fenêtre
-WINDOW_CONFIG = {"title": f"{VERSION}", "geometry": "1400x900", "min_size": (200, 100)}
+WINDOW_CONFIG = {"title": WINDOW_TITLE, "geometry": "1400x900", "min_size": (200, 100)}
 
 # Logging
 LOGGING_CONFIG = {

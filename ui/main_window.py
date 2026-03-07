@@ -31,7 +31,7 @@ from ui.notification_manager import NotificationManager
 # Imports utilitaires
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
-from infrastructure.config.constants import VERSION, WINDOW_CONFIG
+from infrastructure.config.constants import VERSION, WINDOW_TITLE, WINDOW_CONFIG
 from ui.themes import theme_manager
 
 class MainWindow:
@@ -82,7 +82,7 @@ class MainWindow:
 
     def _setup_window(self):
         """Configure la fenêtre principale"""
-        self.root.title(f"{VERSION}")
+        self.root.title(WINDOW_TITLE)
         self.root.geometry(WINDOW_CONFIG["geometry"])
         self.root.minsize(*WINDOW_CONFIG["min_size"])
         
@@ -371,7 +371,7 @@ class MainWindow:
         """Met à jour la langue de tous les composants"""
         try:
             # Mettre à jour le titre de la fenêtre
-            self.root.title(f"{VERSION}")
+            self.root.title(WINDOW_TITLE)
             
             # Mettre à jour tous les composants
             for component_name, component in self.components.items():
