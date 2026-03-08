@@ -46,7 +46,7 @@ class HeaderFrame(tk.Frame):
         # Titre principal
         self.title_label = tk.Label(
             title_frame,
-            text=f"🎮 {VERSION}",
+            text=f"🎮 RenExtract {VERSION}",
             font=('Segoe UI Emoji', 16, 'bold'),
             bg=theme["bg"],
             fg=theme["fg"]
@@ -183,7 +183,7 @@ class HeaderFrame(tk.Frame):
     def update_language(self):
         """Met à jour les textes (maintenu pour la structure mais textes en dur)"""
         if self.title_label:
-            self.title_label.config(text=f"🎮 {VERSION}")
+            self.title_label.config(text=f"🎮 RenExtract {VERSION}")
         if self.subtitle_label:
             self.subtitle_label.config(text="Extraction intelligente de scripts Ren'Py")
         if self.btn_settings:
