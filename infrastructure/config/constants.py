@@ -73,8 +73,7 @@ def get_version():
     except Exception:
         pass
     
-    # FALLBACK : Utiliser la date si rien d'autre n'est disponible
-    # Version : 1.2.28 (07-03-2026)
+    # FALLBACK : uniquement si version_build.py absent et git indisponible
     return "v1.2.28"
 
 def increment_build_number():
@@ -84,8 +83,21 @@ def increment_build_number():
     """
     return get_version()
 
-# Version actuelle (lecture seule)
-VERSION = get_version()
+
+def _load_version():
+    """
+    Version : priorité au fichier généré au build (version_build.py avec VERSION = tag),
+    sinon get_version() (VERSION.txt, git, fallback).
+    """
+    try:
+        from infrastructure.config import version_build
+        return getattr(version_build, "VERSION", None) or get_version()
+    except ImportError:
+        return get_version()
+
+
+# Version actuelle (lecture seule) — en build CI, version_build.py contient VERSION = tag
+VERSION = _load_version()
 __version__ = VERSION  # Alias pour compatibilité avec les imports standards
 
 # Titre de la fenêtre principale (RenExtract + version, pas seulement la version)

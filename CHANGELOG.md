@@ -1,6 +1,16 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-07 (v1.2.30)
+
+### Version : injectée au build depuis le tag
+- **version_build.py** : le workflow GitHub crée `infrastructure/config/version_build.py` avec `VERSION = "<tag>"` (ex. v1.2.30) avant chaque build. L’application charge cette valeur en priorité dans `constants.py` via `_load_version()`.
+- Plus besoin de s’appuyer sur VERSION.txt ou git dans l’exe : la version affichée est celle du tag au moment du build.
+- En développement (sans fichier généré), fallback inchangé : `get_version()` (VERSION.txt, git, fallback).
+- Fichier `version_build.py` ajouté au `.gitignore` (généré uniquement en CI).
+
+---
+
 ## 2026-03-07 (v1.2.29)
 
 ### Instance unique : une seule instance de l'application

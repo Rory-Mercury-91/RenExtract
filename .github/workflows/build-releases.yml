@@ -57,7 +57,12 @@ jobs:
             $version = "dev-$(Get-Date -Format 'yyyyMMdd')"
           }
           
-          # Créer le fichier VERSION.txt avec le tag Git pour l'application
+          # Écrire VERSION = tag dans version_build.py (constants.py le charge en priorité)
+          $content = "# Généré au build - ne pas committer`nVERSION = `"$version`""
+          Set-Content -Path "infrastructure/config/version_build.py" -Value $content -Encoding UTF8
+          echo "✅ infrastructure/config/version_build.py créé avec VERSION = $version"
+          
+          # Créer le fichier VERSION.txt (nom du zip, etc.)
           $version | Out-File -FilePath "VERSION.txt" -Encoding UTF8 -NoNewline
           echo "✅ Fichier VERSION.txt créé avec: $version"
           
@@ -221,11 +226,15 @@ jobs:
           echo "🔨 Construction de RenExtract pour Linux..."
           mkdir -p artifacts/linux
           
-          # Créer le fichier VERSION.txt avec le tag Git pour l'application
+          # Version depuis le tag
           VERSION="${{ env.RELEASE_NAME }}"
           if [[ ! "$VERSION" =~ ^v ]]; then
             VERSION="dev-$(date +%Y%m%d)"
           fi
+          # Écrire VERSION = tag dans version_build.py (constants.py le charge en priorité)
+          echo "# Généré au build - ne pas committer" > infrastructure/config/version_build.py
+          echo "VERSION = \"$VERSION\"" >> infrastructure/config/version_build.py
+          echo "✅ infrastructure/config/version_build.py créé avec VERSION = $VERSION"
           echo -n "$VERSION" > VERSION.txt
           echo "✅ Fichier VERSION.txt créé avec: $VERSION"
           
