@@ -3,6 +3,13 @@
 
 ## 2026-03-09 (v1.2.32)
 
+### Configuration (fichiers dédiés)
+- **config.json allégé** : les données volumineuses ou « projet » sont déplacées vers des fichiers dédiés dans **05_ConfigRenExtract** :
+  - **Exclusions de cohérence** → `coherence_exclusions.json` (exclusions par projet du rapport de cohérence).
+  - **Polices GUI + options screen** → `font_and_screen_options.json` (préférences polices, options avancées screen preferences pour la génération TL).
+- **Migration automatique** : au premier lancement après mise à jour, les clés concernées sont lues depuis `config.json`, enregistrées dans les nouveaux fichiers puis retirées de la config. Aucune action manuelle requise.
+- L’API reste inchangée : `get_font_preferences`, `set_font_preferences`, `get_advanced_screen_options`, `get_coherence_exclusions`, etc. continuent de fonctionner comme avant.
+
 ### Démarrage / fenêtre CMD
 - **Avertissement requests** : ajout de la dépendance **charset-normalizer** dans `requirements.txt` pour satisfaire la détection d’encodage de la bibliothèque `requests`. L’avertissement « Unable to find acceptable character detection dependency (chardet or charset_normalizer) » ne s’affiche plus dans la fenêtre de chargement CMD.
 

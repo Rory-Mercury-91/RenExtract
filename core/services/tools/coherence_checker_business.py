@@ -1618,7 +1618,7 @@ def get_coherence_options():
         'check_isolated_percent': config_manager.get('coherence_check_isolated_percent', True),
         'check_line_structure': config_manager.get('coherence_check_line_structure', True),
         'untranslated_threshold_percent': config_manager.get('coherence_untranslated_threshold_percent', 80),
-        'custom_exclusions': config_manager.get('coherence_custom_exclusions', {}),  # 🆕 Dictionnaire (projet → exclusions)
+        'custom_exclusions': config_manager.get_coherence_exclusions(),  # Fichier coherence_exclusions.json (projet → exclusions)
         'auto_open_report': config_manager.is_coherence_auto_open_report_enabled()
     }
 

@@ -127,7 +127,9 @@ FOLDERS = {"configs": os.path.join(BASE_DIR, CONFIG_DIR_NAME),
 FILE_NAMES = {"config": os.path.join(FOLDERS["configs"], "config.json"),
               "log": os.path.join(FOLDERS["configs"], "log.txt"),
               "tutorial_flag": os.path.join(FOLDERS["configs"], "tutorial_shown.flag"),
-              "languages": os.path.join(FOLDERS["configs"], "languages.json")}
+              "languages": os.path.join(FOLDERS["configs"], "languages.json"),
+              "coherence_exclusions": os.path.join(FOLDERS["configs"], "coherence_exclusions.json"),
+              "font_and_screen_options": os.path.join(FOLDERS["configs"], "font_and_screen_options.json")}
 
 def get_app_temp_dir():
     """Retourne un dossier temporaire dans l'application (05_ConfigRenExtract/temp). Utiliser plutôt que tempfile.gettempdir() pour garder les téléchargements/extractions sur le même disque que l'app (souvent plus rapide sur SSD)."""
@@ -372,7 +374,6 @@ DEFAULT_CONFIG = {
     "orphaned_ports": [8765, 45000, 8767],
     "coherence_check_escape_sequences":True,"coherence_check_percentages":True,"coherence_check_quotations":True,"coherence_check_parentheses":True,
     "coherence_check_syntax":True,"coherence_check_deepl_ellipsis":True,"coherence_check_isolated_percent":True,"coherence_check_line_structure":True,"coherence_check_length_difference":True,
-    "coherence_custom_exclusions":{},
     "coherence_excluded_files":"",
     "coherence_auto_open_report":True,"coherence_reuse_translate_tab":True,
     "realtime_editor_enabled":True,"realtime_monitoring_interval":200,"realtime_auto_backup":True,"realtime_default_language":"french",
@@ -385,14 +386,9 @@ DEFAULT_CONFIG = {
     "dark_mode":True,"show_output_path_display":False,
     "last_game_directory":"",
     "downloads_use_system_temp": False,
-    "font_preferences":{"is_rtl":False,"apply_system_font":True,"individual_fonts":{
-        "text_font":{"enabled":False,"font_name":"","font_path":""},
-        "name_text_font":{"enabled":False,"font_name":"","font_path":""},
-        "interface_text_font":{"enabled":False,"font_name":"","font_path":""},
-        "button_text_font":{"enabled":False,"font_name":"","font_path":""},
-        "choice_button_text_font":{"enabled":False,"font_name":"","font_path":""}}},
     "custom_extraction_patterns":[]
 }
+# font_preferences et advanced_screen_options → font_and_screen_options.json (voir config.py)
 # Note: Les catégories de logs sont maintenant extraites dynamiquement depuis le fichier HTML
 # Voir utils/logging.py → _extract_categories_from_log_file()
 

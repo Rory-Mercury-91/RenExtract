@@ -767,6 +767,28 @@ def _create_updates_section(parent, settings_instance):
     open_config_btn.pack(side='left')
 
 
+def _center_toplevel(toplevel, parent):
+    """Centre une fenêtre Toplevel par rapport à son parent (ou à l'écran si pas de parent)."""
+    toplevel.update_idletasks()
+    w, h = toplevel.winfo_width(), toplevel.winfo_height()
+    if parent:
+        px, py = parent.winfo_rootx(), parent.winfo_rooty()
+        pw, ph = parent.winfo_width(), parent.winfo_height()
+        x = px + (pw - w) // 2
+        y = py + (ph - h) // 2
+    else:
+        x = (toplevel.winfo_screenwidth() - w) // 2
+        y = (toplevel.winfo_screenheight() - h) // 2
+    toplevel.geometry("+%d+%d" % (x, y))
+
+
+# Message tutoriel pour les mises à jour (réutilisé dans les popups)
+_UPDATE_TUTORIAL_TEXT = (
+    "Remplacez les fichiers lorsque l’extraction le demande. "
+    "Tant que le dossier 05_ConfigRenExtract est présent à côté de l’application, vos paramètres et données ne seront pas perdus."
+)
+
+
 def _show_update_result(settings_instance, has_update_flag, latest_str, release_url, assets, error_msg=None):
     """Affiche le résultat de la vérification des mises à jour (dialog + lien releases)."""
     from infrastructure.helpers.unified_functions import show_custom_messagebox
@@ -791,7 +813,7 @@ def _show_update_result(settings_instance, has_update_flag, latest_str, release_
             parent=parent
         )
         return
-    # Mise à jour disponible : dialog avec téléchargement direct ou lien
+    # Mise à jour disponible : dialog avec téléchargement direct ou lien (centré)
     dialog = tk.Toplevel(parent)
     dialog.title("Mise à jour disponible")
     dialog.transient(parent)
@@ -799,7 +821,8 @@ def _show_update_result(settings_instance, has_update_flag, latest_str, release_
     frame = tk.Frame(dialog, bg=theme["bg"], padx=20, pady=20)
     frame.pack(fill="both", expand=True)
     tk.Label(frame, text=f"Version disponible : {latest_str}", font=("Segoe UI", 11, "bold"), bg=theme["bg"], fg=theme["fg"]).pack(anchor="w")
-    tk.Label(frame, text="Téléchargez le zip dans le dossier de l'application, puis fermez l'app et décompressez-le vous-même.", font=("Segoe UI", 9), bg=theme["bg"], fg=theme["fg"], wraplength=400).pack(anchor="w", pady=(8, 12))
+    tk.Label(frame, text="Téléchargez le zip dans le dossier de l'application, puis fermez l'app et décompressez-le. Remplacez les fichiers si demandé.", font=("Segoe UI", 9), bg=theme["bg"], fg=theme["fg"], wraplength=420).pack(anchor="w", pady=(4, 4))
+    tk.Label(frame, text=_UPDATE_TUTORIAL_TEXT, font=("Segoe UI", 9), bg=theme["bg"], fg=theme["accent"], wraplength=420).pack(anchor="w", pady=(0, 12))
     btn_frame = tk.Frame(frame, bg=theme["bg"])
     btn_frame.pack(fill="x")
     def do_download():
@@ -809,13 +832,24 @@ def _show_update_result(settings_instance, has_update_flag, latest_str, release_
                 from infrastructure.update_checker import download_update_zip
                 ok, path_or_err = download_update_zip()
                 def show_result():
+                    dialog.destroy()
                     if ok:
                         from infrastructure.helpers.unified_functions import show_custom_messagebox
-                        show_custom_messagebox(type_="info", title="Téléchargement terminé", message=[("Fichier enregistré dans :\n\n", "bold"), (path_or_err + "\n\n", "normal"), ("Fermez l'application puis extrayez le zip dans ce dossier.", "normal")], theme=theme, parent=dialog)
+                        show_custom_messagebox(
+                            type_="info",
+                            title="Téléchargement réussi",
+                            message=[
+                                ("Fichier enregistré :\n\n", "bold"),
+                                (path_or_err + "\n\n", "normal"),
+                                ("Fermez l'application, extrayez le zip dans ce dossier et remplacez les fichiers si demandé.\n\n", "normal"),
+                                (_UPDATE_TUTORIAL_TEXT, "normal")
+                            ],
+                            theme=theme,
+                            parent=parent
+                        )
                     else:
                         from infrastructure.helpers.unified_functions import show_custom_messagebox
-                        show_custom_messagebox(type_="warning", title="Erreur", message=[(path_or_err, "normal")], theme=theme, parent=dialog)
-                    dialog.destroy()
+                        show_custom_messagebox(type_="warning", title="Erreur", message=[(path_or_err, "normal")], theme=theme, parent=parent)
                 dialog.after(0, show_result)
             except Exception as e:
                 dialog.after(0, lambda: (log_message("ERREUR", f"Téléchargement mise à jour: {e}", category="application_tab"), dialog.destroy()))
@@ -825,7 +859,10 @@ def _show_update_result(settings_instance, has_update_flag, latest_str, release_
     tk.Button(btn_frame, text="⬇️ Télécharger la mise à jour (dossier de l'exe)", command=do_download, bg=theme["accent"], fg="#000000", font=("Segoe UI", 10), pady=6, cursor="hand2").pack(side="left", padx=(0, 10))
     tk.Button(btn_frame, text="Ouvrir la page des releases", command=lambda: (webbrowser.open(release_url), dialog.destroy()), bg=theme["button_nav_bg"], fg="#000000", font=("Segoe UI", 10), pady=6, cursor="hand2").pack(side="left", padx=(0, 10))
     tk.Button(btn_frame, text="Fermer", command=dialog.destroy, bg=theme["button_bg"], fg=theme["fg"], font=("Segoe UI", 10), pady=6, cursor="hand2").pack(side="left")
-    dialog.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 80))
+    dialog.geometry("480x220")
+    dialog.resizable(True, True)
+    dialog.update_idletasks()
+    _center_toplevel(dialog, parent)
 
 
 def _create_system_actions_section(parent, settings_instance):

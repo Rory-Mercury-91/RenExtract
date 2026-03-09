@@ -1,6 +1,12 @@
 import json, os
 import re
 from .constants import DEFAULT_CONFIG, FILE_NAMES, FOLDERS, VERSION, ensure_folders_exist
+
+# Fichier dédié aux exclusions du rapport de cohérence (à côté de config.json)
+COHERENCE_EXCLUSIONS_FILE = FILE_NAMES.get("coherence_exclusions") or os.path.join(os.path.dirname(FILE_NAMES["config"]), "coherence_exclusions.json")
+# Polices GUI + options avancées screen (à côté de config.json)
+FONT_AND_SCREEN_OPTIONS_FILE = FILE_NAMES.get("font_and_screen_options") or os.path.join(os.path.dirname(FILE_NAMES["config"]), "font_and_screen_options.json")
+# config.json : préférences, thème, chemins, options cohérence/génération, etc. Exclusions → coherence_exclusions.json ; polices/options screen → font_and_screen_options.json.
 from infrastructure.logging.logging import log_message, get_logger
 
 class ConfigManager:
@@ -10,6 +16,7 @@ class ConfigManager:
         self.config_file = FILE_NAMES["config"]
         self.config = DEFAULT_CONFIG.copy()
         self._applying_debug = False  # garde anti-réentrance
+        self._font_and_screen_cache = None  # cache pour font_and_screen_options.json
         self.load_config()
 
     def load_config(self):
@@ -297,7 +304,7 @@ class ConfigManager:
 
     # --- reset options Génération ---
     def reset_generation_options_to_defaults(self):
-        keys = ["renpy_default_language","renpy_auto_open_folder","renpy_show_results_popup","renpy_delete_rpa_after","renpy_delete_source_after_rpa","cleanup_excluded_files","extraction_detection_mode","extraction_excluded_files","language_selector_integration","developer_console_integration","font_preferences"]
+        keys = ["renpy_default_language","renpy_auto_open_folder","renpy_show_results_popup","renpy_delete_rpa_after","renpy_delete_source_after_rpa","cleanup_excluded_files","extraction_detection_mode","extraction_excluded_files","language_selector_integration","developer_console_integration"]
         for k in keys:
             if k in DEFAULT_CONFIG: self.config[k] = DEFAULT_CONFIG[k]
         self.save_config()
@@ -335,14 +342,13 @@ class ConfigManager:
         return any(prefs.values())
 
     def get_font_preferences(self):
-        default = {"is_rtl": False,"apply_system_font": True,"individual_fonts": {
-            "text_font":{"enabled": True,"font_name":"","font_path":""},
-            "name_text_font":{"enabled": False,"font_name":"","font_path":""},
-            "interface_text_font":{"enabled": False,"font_name":"","font_path":""},
-            "button_text_font":{"enabled": False,"font_name":"","font_path":""},
-            "choice_button_text_font":{"enabled": False,"font_name":"","font_path":""}}}
-        return self.config.get("font_preferences", default)
-    def set_font_preferences(self, preferences): self.set("font_preferences", preferences)
+        default = self._default_font_preferences()
+        data = self._load_font_and_screen_options_from_file()
+        return data.get("font_preferences", default)
+    def set_font_preferences(self, preferences):
+        data = self._load_font_and_screen_options_from_file()
+        data["font_preferences"] = dict(preferences) if preferences is not None else self._default_font_preferences()
+        self._save_font_and_screen_options_to_file(data)
     def get_individual_font_config(self, font_type):
         prefs = self.get_font_preferences()
         return prefs.get("individual_fonts", {}).get(font_type, {"enabled": False,"font_name":"","font_path":""})
@@ -502,46 +508,131 @@ class ConfigManager:
             self._applying_debug = False
 
     def get_advanced_screen_options(self):
-        """Récupère les options avancées de screen preferences"""
-        default_options = {
-            'language_selector': False,
-            'fontsize_control': False,
-            'textbox_opacity': False,
-            'textbox_offset': False,
-            'textbox_outline': False
-        }
-        return self.config.get("advanced_screen_options", default_options)
+        """Récupère les options avancées de screen preferences (fichier font_and_screen_options.json)"""
+        default_options = self._default_advanced_screen_options()
+        data = self._load_font_and_screen_options_from_file()
+        return data.get("advanced_screen_options", default_options)
     
     def set_advanced_screen_options(self, options):
-        """Sauvegarde les options avancées de screen preferences"""
-        self.config["advanced_screen_options"] = options
-        self.save_config()
+        """Sauvegarde les options avancées de screen preferences (fichier font_and_screen_options.json)"""
+        data = self._load_font_and_screen_options_from_file()
+        data["advanced_screen_options"] = dict(options) if options is not None else {}
+        self._save_font_and_screen_options_to_file(data)
     
-    # ========== NOUVELLES MÉTHODES: Exclusions de cohérence précises (projet+fichier+ligne) ==========
+    # ========== Polices et options screen (fichier dédié font_and_screen_options.json) ==========
+    
+    def _default_font_preferences(self):
+        """Valeurs par défaut des préférences polices (pour fichier dédié et fallback)."""
+        return {
+            "is_rtl": False,
+            "apply_system_font": True,
+            "individual_fonts": {
+                "text_font": {"enabled": True, "font_name": "", "font_path": ""},
+                "name_text_font": {"enabled": False, "font_name": "", "font_path": ""},
+                "interface_text_font": {"enabled": False, "font_name": "", "font_path": ""},
+                "button_text_font": {"enabled": False, "font_name": "", "font_path": ""},
+                "choice_button_text_font": {"enabled": False, "font_name": "", "font_path": ""},
+            },
+        }
+    
+    def _default_advanced_screen_options(self):
+        """Valeurs par défaut des options avancées screen (pour fichier dédié et fallback)."""
+        return {
+            "language_selector": False,
+            "fontsize_control": False,
+            "textbox_opacity": False,
+            "textbox_offset": False,
+            "textbox_outline": False,
+        }
+    
+    def _load_font_and_screen_options_from_file(self):
+        """Charge polices + options screen depuis font_and_screen_options.json. Migration depuis config si absent."""
+        if self._font_and_screen_cache is not None:
+            return self._font_and_screen_cache
+        if os.path.exists(FONT_AND_SCREEN_OPTIONS_FILE):
+            try:
+                with open(FONT_AND_SCREEN_OPTIONS_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    self._font_and_screen_cache = data
+                    return self._font_and_screen_cache
+            except Exception as e:
+                log_message("ATTENTION", f"Lecture font_and_screen_options.json: {e}", category="config")
+        # Migration depuis config.json
+        fp = self.config.get("font_preferences")
+        aso = self.config.get("advanced_screen_options")
+        if not isinstance(fp, dict):
+            fp = self._default_font_preferences()
+        if not isinstance(aso, dict):
+            aso = self._default_advanced_screen_options()
+        data = {"font_preferences": fp, "advanced_screen_options": aso}
+        self._save_font_and_screen_options_to_file(data)
+        self.config.pop("font_preferences", None)
+        self.config.pop("advanced_screen_options", None)
+        self.save_config()
+        log_message("INFO", "Polices et options screen migrées vers font_and_screen_options.json", category="config")
+        return self._font_and_screen_cache
+    
+    def _save_font_and_screen_options_to_file(self, data):
+        """Enregistre polices + options screen dans font_and_screen_options.json."""
+        try:
+            d = os.path.dirname(FONT_AND_SCREEN_OPTIONS_FILE)
+            if d and not os.path.exists(d):
+                os.makedirs(d, exist_ok=True)
+            with open(FONT_AND_SCREEN_OPTIONS_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            self._font_and_screen_cache = data
+        except Exception as e:
+            log_message("ATTENTION", f"Écriture font_and_screen_options.json: {e}", category="config")
+    
+    # ========== Exclusions de cohérence (fichier dédié coherence_exclusions.json) ==========
+    
+    def _load_coherence_exclusions_from_file(self):
+        """Charge les exclusions depuis coherence_exclusions.json. Migration depuis config si le fichier n'existe pas."""
+        exclusions = {}
+        if os.path.exists(COHERENCE_EXCLUSIONS_FILE):
+            try:
+                with open(COHERENCE_EXCLUSIONS_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    exclusions = data
+            except Exception as e:
+                log_message("ATTENTION", f"Lecture coherence_exclusions.json: {e}", category="config")
+        else:
+            # Migration : copier depuis config.json puis retirer de la config
+            legacy = self.config.get('coherence_custom_exclusions', {})
+            if isinstance(legacy, dict) and legacy:
+                exclusions, _ = self._normalize_coherence_exclusions_structure(legacy)
+                self._save_coherence_exclusions_to_file(exclusions)
+                self.config.pop('coherence_custom_exclusions', None)
+                self.save_config()
+                log_message("INFO", "Exclusions cohérence migrées vers coherence_exclusions.json", category="config")
+        return exclusions
+    
+    def _save_coherence_exclusions_to_file(self, exclusions):
+        """Enregistre les exclusions dans coherence_exclusions.json."""
+        try:
+            d = os.path.dirname(COHERENCE_EXCLUSIONS_FILE)
+            if d and not os.path.exists(d):
+                os.makedirs(d, exist_ok=True)
+            with open(COHERENCE_EXCLUSIONS_FILE, "w", encoding="utf-8") as f:
+                json.dump(exclusions, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            log_message("ATTENTION", f"Écriture coherence_exclusions.json: {e}", category="config")
     
     def get_coherence_exclusions(self, project_path=None):
         """
-        Récupère les exclusions de cohérence.
+        Récupère les exclusions de cohérence (depuis coherence_exclusions.json).
         Si project_path est fourni, retourne les exclusions pour ce projet.
         Sinon, retourne toutes les exclusions (dict par projet).
-        
-        Source unique de vérité : les exclusions ajoutées via le rapport HTML interactif.
         """
-        exclusions = self.config.get('coherence_custom_exclusions', {})
-        
-        # Garantir que c'est toujours un dictionnaire
+        exclusions = self._load_coherence_exclusions_from_file()
         if not isinstance(exclusions, dict):
-            log_message("ATTENTION", f"coherence_custom_exclusions n'est pas un dict ({type(exclusions).__name__}), réinitialisation", category="config")
             exclusions = {}
-            self.config['coherence_custom_exclusions'] = exclusions
-            self.save_config()
         
-        # Normaliser la structure pour garantir des clés cohérentes (racine projet)
         normalized_exclusions, changed = self._normalize_coherence_exclusions_structure(exclusions)
-
         if changed:
-            self.config['coherence_custom_exclusions'] = normalized_exclusions
-            self.save_config()
+            self._save_coherence_exclusions_to_file(normalized_exclusions)
             exclusions = normalized_exclusions
         else:
             exclusions = normalized_exclusions
@@ -591,10 +682,7 @@ class ConfigManager:
             'added_date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         exclusions[project_key].append(new_entry)
-        
-        self.config['coherence_custom_exclusions'] = exclusions
-        self.save_config()
-        
+        self._save_coherence_exclusions_to_file(exclusions)
         log_message("INFO", f"Exclusion ajoutée: {file_path_normalized}:{line} - {normalized_text[:50]}", category="coherence_exclusion")
         return True
     
@@ -621,14 +709,9 @@ class ConfigManager:
                 excl['line'] == line and 
                 excl['text'] == normalized_text):
                 exclusions[project_key].pop(i)
-                
-                # Supprimer le projet si plus d'exclusions
                 if not exclusions[project_key]:
                     del exclusions[project_key]
-                
-                self.config['coherence_custom_exclusions'] = exclusions
-                self.save_config()
-                
+                self._save_coherence_exclusions_to_file(exclusions)
                 log_message("INFO", f"Exclusion retirée: {file_path_normalized}:{line}", category="coherence_exclusion")
                 return True
         
@@ -649,10 +732,7 @@ class ConfigManager:
         
         count = len(exclusions[project_key])
         del exclusions[project_key]
-        
-        self.config['coherence_custom_exclusions'] = exclusions
-        self.save_config()
-        
+        self._save_coherence_exclusions_to_file(exclusions)
         log_message("INFO", f"Toutes les exclusions supprimées pour le projet: {project_key} ({count} exclusions)", category="coherence_exclusion")
         return count
     
