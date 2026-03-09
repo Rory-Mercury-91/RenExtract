@@ -15,6 +15,13 @@ import subprocess
 import os
 import platform
 
+# Charger charset_normalizer avant tout import de requests pour éviter l'avertissement
+# "Unable to find acceptable character detection dependency" dans la CMD
+try:
+    import charset_normalizer  # noqa: F401
+except ImportError:
+    pass
+
 
 def _early_single_instance_win():
     """

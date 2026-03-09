@@ -43,6 +43,7 @@ jobs:
             pip install requests>=2.0
             pip install groq>=0.4.1
             pip install typing-extensions>=4.0.0
+            pip install charset-normalizer>=3.0.0
             # Note : Pillow supprimé - utilise maintenant l'installation temporaire des polices
           }
         shell: pwsh
@@ -120,6 +121,7 @@ jobs:
             --hidden-import=tkinterdnd2 `
             --hidden-import=PIL `
             --hidden-import=requests `
+            --hidden-import=charset_normalizer `
             main.py
           
           # Copier tout le dossier onedir (exe + 04_RenExtract)
@@ -201,6 +203,7 @@ jobs:
             pip install requests>=2.0
             pip install groq>=0.4.1
             pip install typing-extensions>=4.0.0
+            pip install charset-normalizer>=3.0.0
             # Note : Pillow supprimé - utilise maintenant l'installation temporaire des polices
           fi
 
