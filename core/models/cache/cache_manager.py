@@ -12,13 +12,14 @@ import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from infrastructure.logging.logging import log_message
-from infrastructure.config.constants import FOLDERS
+from infrastructure.config.config import config_manager
 
 class PersistentCacheManager:
     """Gestionnaire de cache persistant avec invalidation intelligente"""
     
     def __init__(self):
-        self.cache_dir = Path(FOLDERS["cache"]) if "cache" in FOLDERS else Path.home() / '.renextract_tools' / 'cache'
+        tools_dir = config_manager.get_tools_directory()
+        self.cache_dir = Path(tools_dir) / 'cache'
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Cache en mémoire par projet

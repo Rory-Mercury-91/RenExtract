@@ -54,7 +54,7 @@ if __name__ == "__main__":
         os._exit(1)  # terminaison immédiate (sys.exit peut laisser le processus vivant avec Tk)
 
 
-from infrastructure.config.constants import VERSION
+from infrastructure.config.constants import VERSION, FILE_NAMES
 
 # ✅ CORRECTION CRITIQUE : Charger le mode debug AVANT d'initialiser le logger
 import json
@@ -62,7 +62,7 @@ import os as os_temp
 _DEBUG_MODE = False
 _DEBUG_LEVEL = 3
 try:
-    _config_path = os_temp.path.join("04_Configs", "config.json")
+    _config_path = FILE_NAMES["config"]
     if os_temp.path.exists(_config_path):
         with open(_config_path, 'r', encoding='utf-8') as f:
             _config = json.load(f)
@@ -171,6 +171,52 @@ def _log_health_summary():
 # _log_health_summary()  # Commenté pour éviter les problèmes en sandbox
 
 log_message("INFO", "=== Démarrage de {version} ===", version=VERSION, category="main")
+
+# --- Fenêtre console de chargement (Windows) : s'ouvre au démarrage, se ferme quand l'app est prête ---
+_loading_console_active = False
+_loading_console_stdout = None
+_loading_console_stderr = None
+
+def _show_loading_console():
+    """Ouvre une fenêtre CMD affichant un message de chargement (Windows uniquement). N'affecte pas Tk."""
+    global _loading_console_active, _loading_console_stdout, _loading_console_stderr
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        if not kernel32.AllocConsole():
+            return
+        _loading_console_active = True
+        kernel32.SetConsoleTitleW("RenExtract - Chargement...")
+        # Réattacher stdout/stderr pour que print() aille dans la console
+        _loading_console_stdout = sys.stdout
+        _loading_console_stderr = sys.stderr
+        sys.stdout = open("CONOUT$", "w", encoding="utf-8")
+        sys.stderr = sys.stdout
+        print("RenExtract - Chargement en cours...")
+        print("(Cette fenêtre se fermera lorsque l'application sera prête.)")
+    except Exception:
+        _loading_console_active = False
+
+def _hide_loading_console():
+    """Ferme la fenêtre console de chargement (Windows). À appeler juste avant d'afficher la fenêtre principale."""
+    global _loading_console_active, _loading_console_stdout, _loading_console_stderr
+    if not _loading_console_active or sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        if sys.stdout and getattr(sys.stdout, "name", "") == "CONOUT$":
+            try:
+                sys.stdout.close()
+            except Exception:
+                pass
+        sys.stdout = _loading_console_stdout if _loading_console_stdout is not None else sys.__stdout__
+        sys.stderr = _loading_console_stderr if _loading_console_stderr is not None else sys.__stderr__
+        ctypes.windll.kernel32.FreeConsole()
+        _loading_console_active = False
+    except Exception:
+        _loading_console_active = False
 
 # Imports légers uniquement ; core / ui chargés plus tard pour accélérer l'affichage
 from infrastructure import get_config_manager
@@ -365,10 +411,10 @@ class RenExtractApp:
         - _init_base : ensure_folders_exist() (dossiers), _preload_tutorial_images() (thread, non bloquant)
         - _create_root : Tk() puis withdraw()
         - _create_ui : AppController + MainWindow (construction UI = partie la plus longue)
-        - _finalize : apply_theme, center_window, puis deiconify() ci-dessous.
-        Aucun contrôle de présence de fichiers bloquant ; le délai vient surtout de la construction de MainWindow.
+        - _finalize : fermeture console de chargement (Windows), apply_theme, center_window, puis deiconify().
         """
         try:
+            _hide_loading_console()
             from ui.themes import theme_manager
             from ui.tutorial import show_first_launch_popup, check_first_launch
             # Thème et centrage avant affichage pour éviter que la fenêtre "saute" après apparition
@@ -701,6 +747,9 @@ def main():
             log_message("ERREUR", f"Erreur création verrou: {e}", category="main")
             sys.exit(1)
     
+    # Fenêtre console de chargement (Windows) : affichage immédiat avant tout chargement lourd
+    _show_loading_console()
+    
     # Nettoyer d'éventuels ports orphelins (crash précédent)
     log_message("DEBUG", "Vérification des ports orphelins...", category="main")
     cleanup_orphaned_ports()
@@ -712,6 +761,7 @@ def main():
         app.run()
         
     except Exception as e:
+        _hide_loading_console()
         try:
             root = tk.Tk(); root.withdraw()
             tk.messagebox.showerror(
@@ -737,7 +787,7 @@ def main():
             from core.services.translation.font_manager import FontManager
             from infrastructure.config.config import config_manager
             
-            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            tools_dir = config_manager.get_tools_directory()
             font_manager = FontManager(tools_dir)
             
             # Récupérer les polices utilisées

@@ -48,7 +48,8 @@ class TranslationGenerationBusiness:
             tools_dir: Répertoire pour stocker les outils
         """
         if tools_dir is None:
-            tools_dir = os.path.join(os.path.expanduser("~"), ".renextract_tools")
+            from infrastructure.config.config import config_manager
+            tools_dir = config_manager.get_tools_directory()
         
         self.tools_dir = tools_dir
         self.operation_cancelled = False
@@ -292,7 +293,7 @@ class TranslationGenerationBusiness:
             if not enabled_fonts:
                 return True, "Aucune police appliquée"
             
-            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            tools_dir = config_manager.get_tools_directory()
             font_manager = FontManager(tools_dir)
             
             processed_fonts = {}
@@ -986,27 +987,18 @@ init python early hide:
                 
                 options_explicitly_passed = options and 'advanced_screen_options' in options
                 
-                # Détecter si c'est une génération simple (toutes les options sont False ou absentes)
+                # Génération "simple" = bouton "Générer les traductions" sans options (on n'a pas passé advanced_screen_options)
+                # Si advanced_screen_options est passé, on n'est jamais en mode simple, même si certaines cases (common, screen, etc.) sont décochées
                 is_simple_generation = False
-                if options:
-                    # Si les options explicites indiquent qu'on ne veut pas les features
-                    has_false_options = (
-                        options.get('create_common_file') == False or
-                        options.get('create_screen_file') == False or
-                        options.get('create_developer_console') == False or
-                        options.get('create_language_selector') == False or
-                        options.get('apply_system_font') == False
-                    )
-                    # Si aucune option avancée n'est explicitement activée
+                if options and not options_explicitly_passed:
                     no_explicit_options = (
                         not options.get('create_common_file', False) and
                         not options.get('create_screen_file', False) and
                         not options.get('create_developer_console', False) and
                         not options.get('create_language_selector', False) and
-                        not options.get('apply_system_font', False) and
-                        not options_explicitly_passed
+                        not options.get('apply_system_font', False)
                     )
-                    is_simple_generation = has_false_options or no_explicit_options
+                    is_simple_generation = no_explicit_options
                 
                 if options_explicitly_passed:
                     # Options explicitement passées dans la génération
@@ -2073,7 +2065,7 @@ init python early hide:
             image_path_relative = None
             if use_textbox_system and need_textbox:
                 from core.services.translation.image_manager import ImageManager
-                tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+                tools_dir = config_manager.get_tools_directory()
                 image_manager = ImageManager(tools_dir)
                 
                 success, result = image_manager.copy_image_to_project(

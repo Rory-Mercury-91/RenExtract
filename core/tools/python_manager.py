@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 from typing import Optional, Dict, Any
 from infrastructure.logging.logging import log_message
+from infrastructure.config.config import config_manager
 from .downloader import get_downloader
 
 
@@ -30,7 +31,8 @@ class PythonManager:
             tools_dir: Répertoire pour stocker les Python embedded
         """
         if tools_dir is None:
-            tools_dir = os.path.join(os.path.expanduser("~"), ".renextract_tools")
+            from infrastructure.config.config import config_manager
+            tools_dir = config_manager.get_tools_directory()
         
         self.tools_dir = tools_dir
         self.python_embed_dir = os.path.join(tools_dir, "python_embed_3")
@@ -71,8 +73,9 @@ class PythonManager:
         try:
             downloader = get_downloader()
             
-            # Télécharger et extraire directement dans le dossier python_embed_3
-            temp_zip_path = os.path.join(tempfile.gettempdir(), "python_embed_3.zip")
+            # Télécharger et extraire (dossier temp selon config : app ou système)
+            app_temp = config_manager.get_download_temp_dir()
+            temp_zip_path = os.path.join(app_temp, "python_embed_3.zip")
             
             # Télécharger le fichier
             download_result = downloader.download_file(python_url, temp_zip_path, force_redownload=True)
@@ -143,7 +146,8 @@ class PythonManager:
             downloader = get_downloader()
             
             # Télécharger et extraire
-            temp_zip_path = os.path.join(tempfile.gettempdir(), "python27_embed.zip")
+            app_temp = config_manager.get_download_temp_dir()
+            temp_zip_path = os.path.join(app_temp, "python27_embed.zip")
             
             download_result = downloader.download_file(python27_url, temp_zip_path, force_redownload=True)
             

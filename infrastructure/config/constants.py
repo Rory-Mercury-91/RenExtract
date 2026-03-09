@@ -74,7 +74,7 @@ def get_version():
         pass
     
     # FALLBACK : uniquement si version_build.py absent et git indisponible
-    return "v1.2.28"
+    return "v1.2.31"
 
 def increment_build_number():
     """
@@ -114,7 +114,13 @@ VALIDATION_CACHE_VERSION = 2
 
 # Dossiers/fichiers
 BASE_DIR = get_executable_dir()
-FOLDERS = {"configs": os.path.join(BASE_DIR, "04_Configs"),
+# Dossier de configuration utilisateur (séparé de 04_RenExtract utilisé par PyInstaller pour le runtime)
+CONFIG_DIR_NAME = "05_ConfigRenExtract"
+TOOLS_SUBDIR = os.path.join(CONFIG_DIR_NAME, "tools")
+TEMP_SUBDIR = os.path.join(CONFIG_DIR_NAME, "temp")
+FOLDERS = {"configs": os.path.join(BASE_DIR, CONFIG_DIR_NAME),
+           "tools": os.path.join(BASE_DIR, TOOLS_SUBDIR),
+           "temp": os.path.join(BASE_DIR, TEMP_SUBDIR),
            "backup": os.path.join(BASE_DIR, "02_Sauvegardes"),
            "temporaires": os.path.join(BASE_DIR, "01_Temporaires"),
            "warnings": os.path.join(BASE_DIR, "03_Rapports")}
@@ -123,10 +129,22 @@ FILE_NAMES = {"config": os.path.join(FOLDERS["configs"], "config.json"),
               "tutorial_flag": os.path.join(FOLDERS["configs"], "tutorial_shown.flag"),
               "languages": os.path.join(FOLDERS["configs"], "languages.json")}
 
+def get_app_temp_dir():
+    """Retourne un dossier temporaire dans l'application (05_ConfigRenExtract/temp). Utiliser plutôt que tempfile.gettempdir() pour garder les téléchargements/extractions sur le même disque que l'app (souvent plus rapide sur SSD)."""
+    d = FOLDERS.get("temp")
+    if d:
+        try:
+            os.makedirs(d, exist_ok=True)
+            return d
+        except Exception:
+            pass
+    return os.path.join(BASE_DIR, CONFIG_DIR_NAME, "temp")
+
 def ensure_folders_exist():
-    """Crée les dossiers nécessaires s'ils n'existent pas."""
+    """Crée les dossiers nécessaires s'ils n'existent pas (y compris 05_ConfigRenExtract/tools et 05_ConfigRenExtract/temp)."""
     try:
-        for p in FOLDERS.values(): os.makedirs(p, exist_ok=True)
+        for p in FOLDERS.values():
+            os.makedirs(p, exist_ok=True)
     except Exception:
         pass
 
@@ -358,6 +376,7 @@ DEFAULT_CONFIG = {
     "coherence_excluded_files":"",
     "coherence_auto_open_report":True,"coherence_reuse_translate_tab":True,
     "realtime_editor_enabled":True,"realtime_monitoring_interval":200,"realtime_auto_backup":True,"realtime_default_language":"french",
+    "realtime_autosave_every_n":0,"realtime_autosave_before_choice_menu":True,"realtime_autosave_after_choice_if_pending":True,
     "editor_font_size":9,"realtime_log_retention_days":7,"realtime_max_log_size_mb":10,"default_online_translator":"Google","groq_api_key":"","groq_custom_instructions":"","groq_translation_style":"Naturel","groq_game_context":"Général","groq_temperature":0.3,
     "current_renpy_project":"","renpy_sdk_path":"","renpy_default_language":"french","renpy_auto_open_folder":True,"renpy_show_results_popup":True,
     "renpy_delete_rpa_after":False,"renpy_delete_source_after_rpa":False,
@@ -365,6 +384,7 @@ DEFAULT_CONFIG = {
     "language_selector_integration":False,"developer_console_integration":False,
     "dark_mode":True,"show_output_path_display":False,
     "last_game_directory":"",
+    "downloads_use_system_temp": False,
     "font_preferences":{"is_rtl":False,"apply_system_font":True,"individual_fonts":{
         "text_font":{"enabled":False,"font_name":"","font_path":""},
         "name_text_font":{"enabled":False,"font_name":"","font_path":""},
@@ -394,7 +414,7 @@ def get_health_message(health_percentage: float) -> str:
         return f"Santé du système: {health_percentage}%"
 
 __all__ = [
-    'VERSION','__version__','PROJECT_NAME','AUTHOR','PROJECT_DESCRIPTION','BASE_DIR','FOLDERS','FILE_NAMES','THEMES','WINDOW_CONFIG','SPECIAL_CODES','PROTECTION_ORDER','SUPPORTED_FILES',
+    'VERSION','__version__','PROJECT_NAME','AUTHOR','PROJECT_DESCRIPTION','BASE_DIR','CONFIG_DIR_NAME','FOLDERS','FILE_NAMES','THEMES','WINDOW_CONFIG','SPECIAL_CODES','PROTECTION_ORDER','SUPPORTED_FILES',
     'MESSAGES','NOTIFICATION_CONFIG','CRITICAL_POPUPS','MESSAGE_PRIORITIES','DEFAULT_CONFIG','LOGGING_CONFIG','HEALTH_CONFIG',
-    'get_executable_dir','ensure_folders_exist','ensure_game_structure','validate_game_name','get_health_color','get_health_message'
+    'get_executable_dir','ensure_folders_exist','ensure_game_structure','validate_game_name','get_health_color','get_health_message','get_app_temp_dir'
 ]

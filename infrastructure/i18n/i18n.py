@@ -61,7 +61,7 @@ class I18nManager:
                 # Script Python
                 base_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
             
-            config_folder = os.path.join(base_dir, "04_Configs")
+            config_folder = os.path.join(base_dir, "05_ConfigRenExtract")
             
             # Créer le dossier s'il n'existe pas
             try:

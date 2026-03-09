@@ -26,7 +26,7 @@ class UnifiedLanguageManager:
             from infrastructure.config.constants import FOLDERS
             self.language_file = Path(FOLDERS["configs"]) / "languages.json"
         except ImportError:
-            self.language_file = Path("04_Configs") / "languages.json"
+            self.language_file = Path("05_ConfigRenExtract") / "languages.json"
     
     def detect_system_language(self):
         """Détecte la langue Windows via le registre (fr/en/de uniquement)"""

@@ -1,6 +1,6 @@
 import json, os
 import re
-from .constants import DEFAULT_CONFIG, FILE_NAMES, VERSION, ensure_folders_exist
+from .constants import DEFAULT_CONFIG, FILE_NAMES, FOLDERS, VERSION, ensure_folders_exist
 from infrastructure.logging.logging import log_message, get_logger
 
 class ConfigManager:
@@ -22,9 +22,25 @@ class ConfigManager:
             # normalisation
             if not self.config.get("debug_mode", False):
                 self.config["debug_level"] = 3
+            # Migration : anciens noms de dossier → 05_ConfigRenExtract/tools (réécrit la config une fois)
+            self._migrate_tools_directory_if_needed()
         except Exception as e:
             log_message("ATTENTION", f"Impossible de charger la configuration: {e}", category="utils_config")
             self.config = DEFAULT_CONFIG.copy()
+
+    def _migrate_tools_directory_if_needed(self):
+        """Si tools_directory pointe vers un ancien nom (04_Configs, 04_RenExtract, ConfigRenExtract), met à jour la config vers 05_ConfigRenExtract/tools."""
+        from .constants import CONFIG_DIR_NAME
+        raw = self.get("tools_directory") or ""
+        raw = str(raw).strip()
+        if not raw:
+            return
+        raw_norm = raw.replace("\\", "/")
+        if "04_Configs" in raw_norm or "04_RenExtract" in raw_norm or (raw_norm.startswith("ConfigRenExtract") and not raw_norm.startswith("05_ConfigRenExtract")):
+            new_val = CONFIG_DIR_NAME + "/tools" if "tools" in raw_norm else CONFIG_DIR_NAME
+            self.config["tools_directory"] = new_val
+            self.save_config()
+            log_message("INFO", f"Config migrée : tools_directory → {new_val}", category="utils_config")
 
     def save_config(self):
         try:
@@ -79,6 +95,29 @@ class ConfigManager:
 
     # --- getters/setters génériques ---
     def get(self, key, default=None): return self.config.get(key, default)
+    def get_tools_directory(self):
+        """Retourne le répertoire des outils (cache, polices, etc.). Si configuré avec un chemin relatif (ex. 05_ConfigRenExtract/tools), il est résolu par rapport au dossier de l'app."""
+        from .constants import BASE_DIR, CONFIG_DIR_NAME
+        raw = self.get("tools_directory") or ""
+        raw = str(raw).strip()
+        # Compatibilité : 04_Configs ou 04_RenExtract (anciens noms) → 05_ConfigRenExtract/tools
+        raw_norm = raw.replace("\\", "/") if raw else ""
+        if raw_norm and ("04_Configs" in raw_norm or "04_RenExtract" in raw_norm):
+            raw = (CONFIG_DIR_NAME + "/tools") if "tools" in raw_norm else CONFIG_DIR_NAME
+        if raw:
+            return os.path.join(BASE_DIR, raw) if not os.path.isabs(raw) else raw
+        return os.path.expanduser("~/.renextract_tools")
+
+    def get_download_temp_dir(self):
+        """Dossier temporaire pour téléchargements/extractions (ZIP SDK, Python, unrpyc, etc.).
+        Si True : downloads_use_system_temp → Temp système (utile si l'app est sur HDD et le système sur SSD).
+        Si False (défaut) : 05_ConfigRenExtract/temp (utile si l'app est sur SSD ou même disque que le système)."""
+        import tempfile
+        from .constants import get_app_temp_dir
+        if self.get("downloads_use_system_temp", False):
+            return tempfile.gettempdir()
+        return get_app_temp_dir()
+
     def set(self, key, value):
         self.config[key] = value
         self.save_config()

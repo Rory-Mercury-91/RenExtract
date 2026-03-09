@@ -252,6 +252,40 @@ def create_realtime_editor_tab(parent, main_interface):
     main_interface.stop_monitor_btn = tk.Button(controls_frame, text="⏹️ Arrêter la surveillance", command=lambda: stop_monitoring(main_interface), bg=theme["button_danger_bg"], fg="#000000", font=('Segoe UI', 9, 'normal'), pady=4, padx=8, relief='flat', cursor='hand2', state='disabled')
     main_interface.stop_monitor_btn.pack(side='left')
     
+    # === Réglages sauvegarde automatique ===
+    autosave_frame = tk.Frame(install_monitor_frame, bg=theme["bg"])
+    autosave_frame.pack(fill='x', pady=(0, 10))
+    tk.Label(autosave_frame, text="Réglages sauvegarde :", font=('Segoe UI', 9, 'bold'), bg=theme["bg"], fg=theme["fg"]).pack(side='left')
+    if not hasattr(main_interface, 'realtime_autosave_before_choice_var'):
+        main_interface.realtime_autosave_before_choice_var = tk.BooleanVar(value=config_manager.get('realtime_autosave_before_choice_menu', True))
+    if not hasattr(main_interface, 'realtime_autosave_after_choice_var'):
+        main_interface.realtime_autosave_after_choice_var = tk.BooleanVar(value=config_manager.get('realtime_autosave_after_choice_if_pending', True))
+    if not hasattr(main_interface, 'realtime_autosave_every_n_var'):
+        main_interface.realtime_autosave_every_n_var = tk.IntVar(value=config_manager.get('realtime_autosave_every_n', 0))
+    
+    def _save_autosave_config(*_):
+        n = 0
+        try:
+            n = main_interface.realtime_autosave_every_n_var.get()
+            n = max(0, min(50, int(n)))
+            main_interface.realtime_autosave_every_n_var.set(n)
+        except (ValueError, tk.TclError):
+            n = 0
+        config_manager.set('realtime_autosave_before_choice_menu', main_interface.realtime_autosave_before_choice_var.get())
+        config_manager.set('realtime_autosave_after_choice_if_pending', main_interface.realtime_autosave_after_choice_var.get())
+        config_manager.set('realtime_autosave_every_n', n)
+    
+    cb_before = tk.Checkbutton(autosave_frame, text="Sauvegarde avant menu de choix", variable=main_interface.realtime_autosave_before_choice_var, command=_save_autosave_config, font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"], selectcolor=theme["entry_bg"], activebackground=theme["bg"], activeforeground=theme["fg"])
+    cb_before.pack(side='left', padx=(15, 15))
+    cb_after = tk.Checkbutton(autosave_frame, text="Sauvegarde auto après choix si non effectuée", variable=main_interface.realtime_autosave_after_choice_var, command=_save_autosave_config, font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"], selectcolor=theme["entry_bg"], activebackground=theme["bg"], activeforeground=theme["fg"])
+    cb_after.pack(side='left', padx=(0, 15))
+    tk.Label(autosave_frame, text="Sauvegarde auto tous les", font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(side='left', padx=(0, 5))
+    spin_every_n = tk.Spinbox(autosave_frame, from_=0, to=50, width=4, textvariable=main_interface.realtime_autosave_every_n_var, font=('Segoe UI', 9), command=_save_autosave_config)
+    spin_every_n.pack(side='left', padx=(0, 5))
+    spin_every_n.bind('<FocusOut>', lambda e: _save_autosave_config())
+    spin_every_n.bind('<Return>', lambda e: _save_autosave_config())
+    tk.Label(autosave_frame, text="modifications (0 = désactivé)", font=('Segoe UI', 9), bg=theme["bg"], fg=theme["fg"]).pack(side='left')
+    
     # === SECTION MODERNISÉE: ÉDITION DES TRADUCTIONS ===
     edit_frame = tk.Frame(tab_frame, bg=theme["bg"])
     edit_frame.pack(fill='both', expand=True, padx=20, pady=(0, 15))
@@ -1815,6 +1849,8 @@ def start_monitoring(main_interface):
             status_callback=main_interface._update_status,
             error_callback=main_interface._show_notification
         )
+        # Callback pour sauvegarde auto "tous les X modifications"
+        biz.autosave_trigger_callback = lambda: main_interface.window.after(0, lambda: _run_autosave_after_n_edits(main_interface))
         result = biz.start_monitoring(main_interface.current_project_path, language)
 
         if result.get('success'):
@@ -1973,12 +2009,21 @@ def update_dialogue_interface(main_interface, dialogue_info: Dict):
             # ✅ Maintenant on gère aussi les menus dans _save_current_modification_if_changed
             _save_current_modification_if_changed(main_interface)
 
+        # Sauvegarde sécuritaire avant affichage du menu de choix (réglage utilisateur)
+        is_currently_menu = dialogue_info.get('is_menu', False)
+        if is_currently_menu and config_manager.get('realtime_autosave_before_choice_menu', True):
+            biz = main_interface._get_realtime_editor_business()
+            if biz.has_pending_modifications():
+                save_result = biz.save_all_pending_modifications(main_interface.current_project_path)
+                if save_result.get('saved_count', 0) > 0:
+                    log_message("INFO", f"Sauvegarde avant menu de choix: {save_result['saved_count']} modification(s)", category="realtime_editor")
+                update_status_with_pending_count(main_interface)
+
         # --- DÉBUT DE LA LOGIQUE DE TRANSITION CORRIGÉE ---
         was_in_menu = getattr(main_interface, 'is_in_menu_mode', False)
         was_in_multiple = getattr(main_interface, 'is_in_multiple_mode', False)
         was_in_split = getattr(main_interface, 'is_in_split_mode', False)
 
-        is_currently_menu = dialogue_info.get('is_menu', False)
         is_currently_multiple = dialogue_info.get('is_multiple_group', False)
         
         # Déterminer si on est actuellement en mode split (speaker_dialogue ou multiline)
@@ -2015,6 +2060,17 @@ def update_dialogue_interface(main_interface, dialogue_info: Dict):
             # ✅ Réduire les paddings pour éviter les zones blanches en mode détaché
             padding = 0 if is_detached else 15
             main_interface.realtime_edit_main.pack(fill='both', expand=True, padx=padding, pady=padding)
+            
+            # Sauvegarde automatique après traitement du choix si non effectuée (réglage utilisateur)
+            if was_in_menu and config_manager.get('realtime_autosave_after_choice_if_pending', True):
+                biz = main_interface._get_realtime_editor_business()
+                summary = biz.get_pending_modifications_summary()
+                if summary.get('by_type', {}).get('menu_choice', 0) > 0:
+                    save_result = biz.save_all_pending_modifications(main_interface.current_project_path)
+                    if save_result.get('saved_count', 0) > 0:
+                        main_interface._update_status(f"Sauvegarde auto après choix : {save_result['saved_count']} modification(s)")
+                        log_message("INFO", f"Sauvegarde auto après choix: {save_result['saved_count']} modification(s)", category="realtime_editor")
+                    update_status_with_pending_count(main_interface)
         # --- FIN DE LA LOGIQUE DE TRANSITION ---
 
         # Aiguillage principal (inchangé)
@@ -3181,6 +3237,19 @@ def _update_pending_status(main_interface):
             main_interface._update_status(" ".join(status_parts))
     except Exception as e:
         log_message("ERREUR", f"Erreur mise à jour statut pending: {e}", category="realtime_editor")
+
+def _run_autosave_after_n_edits(main_interface):
+    """Lance une sauvegarde automatique (tous les X modifications) sans exiger de dialogue courant."""
+    try:
+        biz = main_interface._get_realtime_editor_business()
+        if not biz.has_pending_modifications():
+            return
+        result = biz.save_all_pending_modifications(main_interface.current_project_path)
+        if result.get('success') and result.get('saved_count', 0) > 0:
+            main_interface._update_status(f"Sauvegarde auto : {result['saved_count']} modification(s) enregistrée(s)")
+            update_status_with_pending_count(main_interface)
+    except Exception as e:
+        log_message("ERREUR", f"Erreur sauvegarde auto (tous les X modifs): {e}", category="realtime_editor")
 
 def save_translation(main_interface):
     """Sauvegarde la modification actuelle puis toutes les modifications en attente."""

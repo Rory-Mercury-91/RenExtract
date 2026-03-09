@@ -1,6 +1,42 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-09 (v1.2.31)
+
+### Dossiers et configuration
+- **Dossier de configuration** : le dossier utilisateur est désormais **05_ConfigRenExtract** (config.json, logs, tools, temp). Cohérent avec la numérotation (04 = runtime, 05 = config).
+- **Dossier runtime PyInstaller** : renommage **04_Configs** → **04_RenExtract** (binaires/librairies générés au build). Évite la confusion avec la config utilisateur.
+- **Migration automatique** : au premier lancement, les anciens chemins (04_Configs, 04_RenExtract, ConfigRenExtract) dans la config sont réécrits vers **05_ConfigRenExtract/tools**. Plus besoin de reconfigurer à la main.
+- **Compatibilité** : lecture des anciennes valeurs conservée ; la config est mise à jour une fois puis utilisée normalement.
+
+### Dossier des outils (cache, polices)
+- **Bouton « Revenir à l'état initial »** : dans Paramètres → Chemins, un second bouton permet de repasser le dossier des outils au dossier utilisateur (~/.renextract_tools) après avoir choisi le dossier de l'application.
+- **Libellés** : « Utiliser le dossier de l'application (05_ConfigRenExtract/tools) » et messages associés mis à jour.
+- **Branchement unique** : tout le code utilise désormais **get_tools_directory()** (plus de chemin en dur ~/.renextract_tools). SDK intégré, Python embed, polices, cache tutoriel, images tutoriel, unrpyc, etc. respectent le choix (dossier app ou dossier utilisateur).
+- **Nettoyage « reset »** : supprime à la fois le dossier outils configuré et l’ancien dossier utilisateur pour repartir propre.
+
+### Polices (génération TL)
+- **Chemins relatifs** : les chemins des polices sous le dossier de l’app ou sous le dossier outils sont enregistrés en **relatif** (ex. `tools:fonts/custom_fonts/...` ou relatif à la racine de l’app). La config reste portable si vous déplacez RenExtract ou le dossier 05_ConfigRenExtract.
+- **Chargement** : à l’ouverture, les chemins relatifs sont résolus automatiquement. Les anciennes configs avec chemins absolus continuent de fonctionner.
+
+### Screen preferences (génération TL)
+- **Synchronisation onglet ↔ génération** : les cases **Sélecteur de langue** et **Contrôle de la taille** de l’onglet Génération sont prises en compte lors du clic sur **« Générer les traductions + toutes les options cochées »**. Plus besoin d’ouvrir la fenêtre « Options screen preferences » pour que ces options soient appliquées.
+- **Correction logique** : le fichier **99_Z_ScreenPreferences.rpy** est bien généré dès qu’au moins une option screen preferences est cochée (sélecteur de langue, contrôle taille, opacité textbox, etc.), même si les autres cases (Common.rpy, Screen.rpy, Console) sont décochées.
+
+### Fichiers modifiés (résumé)
+- `infrastructure/config/constants.py` : commentaire 04_RenExtract.
+- `infrastructure/config/config.py` : migration _migrate_tools_directory_if_needed(), compat 04_RenExtract pour tools_directory.
+- `ui/tab_settings/paths_tab.py` : bouton « Revenir à l'état initial », libellés 05_ConfigRenExtract.
+- `core/tools/python_manager.py`, `sdk_manager.py` : défaut tools_dir via get_tools_directory().
+- `core/services/translation/rpa_extraction_business.py`, `translation_generation_business.py` : idem + correction is_simple_generation (screen preferences).
+- `ui/tutorial/generator.py`, `ui/tutorial/cache.py` : dossier images/cache via get_tools_directory().
+- `core/app_controller.py` : nettoyage reset sur dossier configuré + legacy.
+- `ui/tab_generator/generation_tl_tab.py` : merge checkboxes onglet dans advanced_screen_options, chemins polices relatifs.
+- `Z_Ne_Pas_supprimer/create_windows_exe.py`, `.github/workflows/build-releases.yml` : 04_Configs → 04_RenExtract.
+- `.gitignore`, `README.md`, `CHANGELOG.md` : noms de dossiers et doc.
+
+---
+
 ## 2026-03-07 (v1.2.30)
 
 ### Version : injectée au build depuis le tag
@@ -152,7 +188,7 @@
 - **Ports Configurables** : Lecture des ports depuis la configuration (`editor_server_port`, `hotkey_server_port`, `orphaned_ports`).
 - **Nouveau Standard** : Port hotkey par défaut modifié en **45000** (toujours modifiable via `config.json`).
 - **Amélioration Logs** : Journalisation explicite lorsque le nettoyage d'un port est sauté (ex: `Saut nettoyage port 8766 (PID 8448, proc: electron.exe)`).
-- **Tests & Docs** : Ajout de tests unitaires pour la détection de processus et mise à jour du `README.md` avec un exemple de `04_Configs/config.json`.
+- **Tests & Docs** : Ajout de tests unitaires pour la détection de processus et mise à jour du `README.md` avec un exemple de `05_ConfigRenExtract/config.json`.
 
 **Fichiers modifiés :**
 - `main.py`, `ui/shared/hotkey_manager.py`, `ui/shared/editor_manager_server.py`

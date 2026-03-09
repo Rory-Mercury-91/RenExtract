@@ -406,7 +406,7 @@ def _show_fallback_message(parent=None):
             'error',
             'Erreur Guide',
             "Impossible de générer le guide HTML.\n\n"
-            "Vérifiez les logs dans 04_Configs pour plus de détails.\n\n"
+            "Vérifiez les logs dans 05_ConfigRenExtract pour plus de détails.\n\n"
             "En attendant, consultez la documentation en ligne ou "
             "les commentaires dans le code source de l'application.",
             theme,

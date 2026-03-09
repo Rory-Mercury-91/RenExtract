@@ -41,9 +41,9 @@ def should_show_server_info() -> bool:
     # Fichier marqueur pour savoir si l'utilisateur a déjà vu le message
     try:
         from infrastructure.config.constants import FOLDERS
-        config_dir = FOLDERS.get("configs", "04_Configs")
-    except:
-        config_dir = "04_Configs"
+        config_dir = FOLDERS.get("configs", "05_ConfigRenExtract")
+    except Exception:
+        config_dir = "05_ConfigRenExtract"
     
     marker_file = os.path.join(config_dir, ".server_info_shown")
     

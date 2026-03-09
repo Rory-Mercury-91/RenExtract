@@ -1312,22 +1312,41 @@ Configuration :
             )
             
             if response:
-                # Logique de nettoyage des fichiers temporaires
+                # Logique de nettoyage des fichiers temporaires (Temp système + 05_ConfigRenExtract/temp)
                 import tempfile
                 import shutil
-                
-                temp_dir = tempfile.gettempdir()
-                renpy_temp_files = [f for f in os.listdir(temp_dir) if 'renextract' in f.lower() or 'renpy' in f.lower()]
+                from infrastructure.config.constants import get_app_temp_dir
                 
                 cleaned_count = 0
-                for file_name in renpy_temp_files:
-                    try:
-                        file_path = os.path.join(temp_dir, file_name)
-                        if os.path.isfile(file_path):
-                            os.remove(file_path)
-                            cleaned_count += 1
-                    except Exception:
-                        pass
+                # Ancien emplacement : Temp système
+                temp_dir = tempfile.gettempdir()
+                if os.path.isdir(temp_dir):
+                    renpy_temp_files = [f for f in os.listdir(temp_dir) if 'renextract' in f.lower() or 'renpy' in f.lower()]
+                    for file_name in renpy_temp_files:
+                        try:
+                            file_path = os.path.join(temp_dir, file_name)
+                            if os.path.isfile(file_path):
+                                os.remove(file_path)
+                                cleaned_count += 1
+                            elif os.path.isdir(file_path):
+                                shutil.rmtree(file_path, ignore_errors=True)
+                                cleaned_count += 1
+                        except Exception:
+                            pass
+                # Dossier temp de l'app (05_ConfigRenExtract/temp) utilisé pour téléchargements/extractions
+                app_temp = get_app_temp_dir()
+                if os.path.isdir(app_temp):
+                    for name in os.listdir(app_temp):
+                        try:
+                            path = os.path.join(app_temp, name)
+                            if os.path.isfile(path):
+                                os.remove(path)
+                                cleaned_count += 1
+                            elif os.path.isdir(path):
+                                shutil.rmtree(path, ignore_errors=True)
+                                cleaned_count += 1
+                        except Exception:
+                            pass
                 
                 self._show_toast(f"🧹 {cleaned_count} fichiers temporaires nettoyés")
                 

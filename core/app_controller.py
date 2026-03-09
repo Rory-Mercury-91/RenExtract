@@ -915,20 +915,23 @@ class AppController:
             log_message("ERREUR", "Erreur réinitialisation", e, category="reset")
 
     def _clean_user_config_folders(self):
-        """Nettoie les dossiers de configuration utilisateur"""
+        """Nettoie les dossiers de configuration (outils configuré + ancien dossier utilisateur)."""
         import os
         import shutil
         from pathlib import Path
-        
+        from infrastructure.config.config import config_manager
+
         try:
-            # Obtenir le dossier utilisateur
-            user_home = Path.home()
-            
-            # Dossier à nettoyer
-            folders_to_clean = [
-                user_home / ".renextract_tools"
-            ]
-            
+            folders_to_clean = []
+            # Dossier outils actuel (05_ConfigRenExtract/tools ou dossier utilisateur selon config)
+            tools_dir = config_manager.get_tools_directory()
+            if tools_dir:
+                folders_to_clean.append(Path(tools_dir))
+            # Ancien emplacement par défaut (au cas où l'utilisateur aurait encore des données)
+            legacy = Path.home() / ".renextract_tools"
+            if legacy not in folders_to_clean:
+                folders_to_clean.append(legacy)
+
             for folder_path in folders_to_clean:
                 if folder_path.exists():
                     try:

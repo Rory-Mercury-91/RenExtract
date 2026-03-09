@@ -155,7 +155,7 @@ def generate_content(generator, language=None, translations=None):
                 <h4>💡 Conseils rapides</h4>
                 <ul style="margin: 10px 0; padding-left: 40px;">
                     <li><strong>Sauvegardez toujours le jeu original</strong> avant toute modification</li>
-                    <li><strong>Consultez les logs</strong> dans le dossier <code>04_Configs</code> en cas d'erreur</li>
+                    <li><strong>Consultez les logs</strong> dans le dossier <code>05_ConfigRenExtract</code> en cas d'erreur</li>
                     <li><strong>Gardez vos paramètres d'exclusion</strong> pour éviter les faux positifs lors des vérifications</li>
                 </ul>
             </div>
@@ -239,7 +239,7 @@ def generate_content(generator, language=None, translations=None):
                         <p>Si les problèmes persistent :</p>
                         <ul>
                             <li><strong>Vérifier la source :</strong> Assurez-vous que le problème vient de RenExtract et pas d'un outil de traduction externe</li>
-                            <li><strong>Consulter les logs :</strong> Le dossier <code>04_Configs</code> contient les logs détaillés (mode debug recommandé)</li>
+                            <li><strong>Consulter les logs :</strong> Le dossier <code>05_ConfigRenExtract</code> contient les logs détaillés (mode debug recommandé)</li>
                             <li><strong>Vérifier la version :</strong> Assurez-vous d'avoir la dernière version de RenExtract</li>
                             <li><strong>Test minimal :</strong> Testez avec un petit fichier <code>.rpy</code> simple pour isoler le problème</li>
                         </ul>
@@ -332,7 +332,7 @@ def generate_content(generator, language=None, translations=None):
                     <li><strong>Email</strong> pour les questions complexes nécessitant des captures d'écran ou des logs</li>
                     <li><strong>GitHub Issues</strong> uniquement pour les bugs liés au code lui-même</li>
                     <li>Précisez toujours votre <strong>version de RenExtract</strong> et votre <strong>système d'exploitation</strong></li>
-                    <li>Joignez les <strong>logs du dossier <code>04_Configs</code></strong> si vous êtes en mode debug</li>
+                    <li>Joignez les <strong>logs du dossier <code>05_ConfigRenExtract</code></strong> si vous êtes en mode debug</li>
                 </ul>
             </div>
         </div>

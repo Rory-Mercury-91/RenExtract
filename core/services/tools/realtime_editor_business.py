@@ -53,12 +53,16 @@ class RealTimeEditorBusiness:
         self.pending_modifications_file = None
         self.last_dialogue_line = 0
         self.pending_modifications = {}
+        # Compteur d'éditions depuis la dernière sauvegarde auto (pour "tous les X modifications")
+        self._autosave_edit_count = 0
         
         # Callbacks pour l'interface
         self.dialogue_callback: Optional[Callable] = None
         self.status_callback: Optional[Callable] = None
         self.error_callback: Optional[Callable] = None
-        self.string_translation_cache: Optional[Dict[str, Any]] = None        
+        self.string_translation_cache: Optional[Dict[str, Any]] = None
+        # Callback appelé quand une sauvegarde auto doit être déclenchée (tous les X modifications)
+        self.autosave_trigger_callback: Optional[Callable] = None
         log_message("INFO", "RealTimeEditorBusiness initialisé", category="realtime_editor")
     
     def set_callbacks(self, dialogue_callback: Callable = None, 
@@ -1101,6 +1105,18 @@ class RealTimeEditorBusiness:
                 'version': '2.0'  # Version pour la compatibilité
             }
             
+            # Déclencher une sauvegarde auto si "tous les X modifications" est activé
+            autosave_every_n = config_manager.get('realtime_autosave_every_n', 0)
+            if autosave_every_n and autosave_every_n > 0:
+                self._autosave_edit_count += 1
+                if self._autosave_edit_count >= autosave_every_n:
+                    self._autosave_edit_count = 0
+                    if self.autosave_trigger_callback:
+                        try:
+                            self.autosave_trigger_callback()
+                        except Exception as e:
+                            log_message("ATTENTION", f"Erreur callback sauvegarde auto: {e}", category="realtime_editor")
+            
             # Sauvegarder dans le fichier
             if self.pending_modifications_file:
                 with open(self.pending_modifications_file, 'w', encoding='utf-8') as f:
@@ -1621,6 +1637,8 @@ class RealTimeEditorBusiness:
             
             result['success'] = True
             result['saved_count'] = saved_count
+            if saved_count > 0:
+                self._autosave_edit_count = 0  # Réinitialiser pour le prochain cycle "tous les X modifications"
             
             log_message("INFO", f"Sauvegarde en lot: {saved_count} modifications, {len(result['errors'])} erreurs", category="realtime_editor")
             

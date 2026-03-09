@@ -21,12 +21,46 @@ from infrastructure.config.config import config_manager
 from core.services.translation.font_manager import FontManager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox, show_custom_messagebox
+from infrastructure.config.constants import BASE_DIR
+
+# ===== CHEMINS RELATIFS POUR FONT_PATH (portabilité) =====
+
+def _font_path_to_stored(path: str) -> str:
+    """Convertit un chemin absolu en forme stockable (relatif si sous BASE_DIR ou tools_dir)."""
+    if not path or not path.strip():
+        return path
+    path = os.path.normpath(path)
+    tools_dir = config_manager.get_tools_directory()
+    tools_dir_norm = os.path.normpath(tools_dir)
+    base_norm = os.path.normpath(BASE_DIR)
+    try:
+        if tools_dir_norm and path.lower().startswith(tools_dir_norm.lower()):
+            rel = os.path.relpath(path, tools_dir_norm)
+            return "tools:" + rel if not rel.startswith("..") else path
+        if base_norm and path.lower().startswith(base_norm.lower()):
+            rel = os.path.relpath(path, base_norm)
+            return rel if not rel.startswith("..") else path
+    except (ValueError, TypeError):
+        pass
+    return path
+
+def _stored_font_path_to_absolute(stored: str) -> str:
+    """Résout un chemin stocké (relatif ou préfixé tools:) en chemin absolu."""
+    if not stored or not stored.strip():
+        return stored
+    stored = stored.strip()
+    if stored.startswith("tools:"):
+        tools_dir = config_manager.get_tools_directory()
+        return os.path.normpath(os.path.join(tools_dir, stored[6:].lstrip(os.sep)))
+    if not os.path.isabs(stored):
+        return os.path.normpath(os.path.join(BASE_DIR, stored))
+    return os.path.normpath(stored)
 
 # ===== WRAPPERS POUR FONTMANAGER =====
 
 def _get_font_manager():
     """Retourne une instance du FontManager"""
-    tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+    tools_dir = config_manager.get_tools_directory()
     return FontManager(tools_dir)
 
 def cleanup_unused_temporary_fonts_only():
@@ -53,7 +87,7 @@ def cleanup_unused_temporary_fonts_only():
 def get_available_fonts_with_accents():
     """Retourne les polices depuis le FontManager centralisé"""
     try:
-        tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+        tools_dir = config_manager.get_tools_directory()
         font_manager = FontManager(tools_dir)
         
         return font_manager.get_all_available_fonts()
@@ -89,13 +123,14 @@ def load_font_preferences(main_interface):
             font_name = font_config.get('font_name', '')
             is_custom = font_config.get('is_custom', False)
             
-            # Si c'est une police personnalisée, charger les infos
+            # Si c'est une police personnalisée, charger les infos (résolution chemin relatif → absolu)
             if is_custom and font_config.get('font_path'):
                 if not hasattr(main_interface, 'custom_fonts'):
                     main_interface.custom_fonts = {}
+                resolved_path = _stored_font_path_to_absolute(font_config.get('font_path', ''))
                 main_interface.custom_fonts[font_type] = {
                     'name': font_name,
-                    'path': font_config.get('font_path', ''),
+                    'path': resolved_path,
                     'is_custom': True
                 }
                 # Afficher le nom personnalisé
@@ -143,11 +178,13 @@ def save_font_preferences(main_interface):
                             if font_info['name'] == font_name:
                                 font_path = font_info['path']
                                 break
+            # Stocker en relatif quand possible (portabilité)
+            stored_path = _font_path_to_stored(font_path) if font_path else ""
             
             individual_fonts[font_type] = {
                 'enabled': enabled,
                 'font_name': font_name,
-                'font_path': font_path,
+                'font_path': stored_path,
                 'is_custom': is_custom
             }
         
@@ -229,7 +266,7 @@ def add_custom_font_with_refresh(main_interface):
         
         if filename:
             # Ajouter au gestionnaire centralisé
-            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            tools_dir = config_manager.get_tools_directory()
             font_manager = FontManager(tools_dir)
             
             success, message = font_manager.add_custom_font(filename)
@@ -322,7 +359,7 @@ def update_font_preview_fixed(main_interface):
         is_custom_font = False
         custom_font_path = None
         try:
-            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            tools_dir = config_manager.get_tools_directory()
             font_manager = FontManager(tools_dir)
             custom_font_path = font_manager.get_font_for_project(selected_font)
             is_custom_font = custom_font_path and Path(custom_font_path).exists()
@@ -1043,7 +1080,7 @@ def create_generation_tab_aligned(parent, main_interface):
                 log_message("INFO", f"Scan polices terminé et listes mises à jour : {message}", category="renpy_generator_tl")
         
         try:
-            tools_dir = config_manager.get('tools_directory', os.path.expanduser("~/.renextract_tools"))
+            tools_dir = config_manager.get_tools_directory()
             font_manager = FontManager(tools_dir)
             font_manager.scan_and_copy_system_fonts_async(callback=on_scan_complete)
         except Exception as e:
@@ -1295,8 +1332,11 @@ def start_generation_with_checked_options(main_interface):
         selector_checked = main_interface.language_selector_var.get()
         fontsize_checked = main_interface.fontsize_selector_var.get()
         
-        # Récupérer les options avancées de screen preferences sauvegardées
-        advanced_options = config_manager.get_advanced_screen_options()
+        # Récupérer les options avancées (modal) puis synchroniser avec les checkboxes de l'onglet
+        # pour que "Générer + options" utilise bien l'état visible (sélecteur langue, contrôle taille)
+        advanced_options = dict(config_manager.get_advanced_screen_options())
+        advanced_options['language_selector'] = selector_checked or advanced_options.get('language_selector', False)
+        advanced_options['fontsize_control'] = fontsize_checked or advanced_options.get('fontsize_control', False)
         
         # AJOUTER : Vérifier les polices cochées
         enabled_fonts = get_enabled_fonts_info(main_interface)

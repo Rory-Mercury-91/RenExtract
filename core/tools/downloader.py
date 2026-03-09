@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Dict, Any
 from infrastructure.logging.logging import log_message
+from infrastructure.config.config import config_manager
 
 
 class UniversalDownloader:
@@ -56,9 +57,10 @@ class UniversalDownloader:
             # Créer le répertoire parent si nécessaire
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             
-            # Préparer les chemins temporaires
-            temp_zip_path = os.path.join(tempfile.gettempdir(), "download_temp.zip")
-            temp_extract_path = os.path.join(tempfile.gettempdir(), "extract_temp")
+            # Préparer les chemins temporaires (dossier app ou Temp système selon config : downloads_use_system_temp)
+            app_temp = config_manager.get_download_temp_dir()
+            temp_zip_path = os.path.join(app_temp, "download_temp.zip")
+            temp_extract_path = os.path.join(app_temp, "extract_temp")
             
             try:
                 log_message("INFO", f"Téléchargement depuis {url}...", category="download_zip")

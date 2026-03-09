@@ -43,7 +43,8 @@ class RPAExtractionBusiness:
             tools_dir: Répertoire pour stocker les outils
         """
         if tools_dir is None:
-            tools_dir = os.path.join(os.path.expanduser("~"), ".renextract_tools")
+            from infrastructure.config.config import config_manager
+            tools_dir = config_manager.get_tools_directory()
         
         self.tools_dir = tools_dir
         self.unrpyc_dir = os.path.join(tools_dir, "unrpyc")

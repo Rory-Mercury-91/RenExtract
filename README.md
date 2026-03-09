@@ -188,9 +188,9 @@ Accédez aux options avancées via **⚙️ Options Avancées** :
 Le système détecte automatiquement le style de votre `screens.rpy` et génère un code cohérent !
 
 #### ⚠️ Conflits de ports & serveur local
-- **Ports par défaut** : serveur éditeur HTTP `8765`, serveur hotkey `45000` (hotkey). Ces ports sont configurables via `04_Configs/config.json` avec les clés **`editor_server_port`** et **`hotkey_server_port`**. La liste des ports nettoyés au démarrage peut être personnalisée via **`orphaned_ports`**.
+- **Ports par défaut** : serveur éditeur HTTP `8765`, serveur hotkey `45000` (hotkey). Ces ports sont configurables via `05_ConfigRenExtract/config.json` avec les clés **`editor_server_port`** et **`hotkey_server_port`**. La liste des ports nettoyés au démarrage peut être personnalisée via **`orphaned_ports`**.
 
-Exemple `04_Configs/config.json` :
+Exemple `05_ConfigRenExtract/config.json` :
 
 ```json
 {
@@ -242,7 +242,7 @@ RenExtract/
 │   ├── widgets/                     # Composants custom
 │   ├── tutorial/                    # Tutoriel interactif
 │   └── main_window.py               # Fenêtre principale
-├── 04_Configs/                      # Configuration utilisateur
+├── 05_ConfigRenExtract/             # Configuration utilisateur (créé à l'exécution)
 ├── tutorial_images/                 # Images du tutoriel
 └── requirements.txt                 # Dépendances Python
 ```
@@ -283,7 +283,7 @@ RenExtract/
     └── nettoyage/
         └── <game_name>_nettoyage_interactif_YYYYMMDD_HHMMSS.html
 
-04_Configs/                         # ⚙️ Configuration et cache
+05_ConfigRenExtract/                # ⚙️ Configuration et cache
 ├── config.json                                     # Configuration utilisateur
 ├── renextract_log_YYYY-MM-DD__HH-MM-SS.html       # Logs session
 ├── project_scan_cache.pkl                          # Cache projets (persistant)
@@ -437,7 +437,7 @@ pyinstaller --onefile --windowed \
 
 ### Diagnostic
 
-- **Logs détaillés** : `04_Configs/renextract_log_[date].html`
+- **Logs détaillés** : `05_ConfigRenExtract/renextract_log_[date].html`
 - **Mode debug** : Activez dans Paramètres > Mode debug
 - **Réinitialisation** : Paramètres > Réinitialiser l'application
 

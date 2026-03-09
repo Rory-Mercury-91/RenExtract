@@ -568,7 +568,7 @@ class HtmlOnlyLogger:
             try:
                 import sys
                 base_dir = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.path.dirname(os.path.abspath(sys.argv[0]))
-                return os.path.join(base_dir, "04_Configs")
+                return os.path.join(base_dir, "05_ConfigRenExtract")
             except Exception:
                 return "."
 

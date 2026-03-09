@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional, Dict, List
 from infrastructure.logging.logging import log_message
 from infrastructure.config.constants import FOLDERS
+from infrastructure.config.config import config_manager
 
 # Configuration GitHub
 GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Rory-Mercury-91/Stockage/main/tutorial_images"
@@ -48,11 +49,11 @@ class TutorialGenerator:
         try:
             return FOLDERS["configs"]
         except Exception:
-            return os.path.join(".", "04_Configs")
+            return os.path.join(".", "05_ConfigRenExtract")
 
     def _get_local_images_directory(self) -> str:
-        """Répertoire local dans .renextract_tools pour les images"""
-        tools_dir = os.path.join(os.path.expanduser("~"), ".renextract_tools")
+        """Répertoire local (dossier outils configuré) pour les images du tutoriel"""
+        tools_dir = config_manager.get_tools_directory()
         images_dir = os.path.join(tools_dir, "tutorial_images")
         return images_dir
     

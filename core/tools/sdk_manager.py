@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 from typing import Optional, List, Dict, Any
 from infrastructure.logging.logging import log_message
+from infrastructure.config.config import config_manager
 from .downloader import get_downloader
 
 
@@ -31,7 +32,8 @@ class SDKManager:
             tools_dir: Répertoire pour stocker le SDK intégré
         """
         if tools_dir is None:
-            tools_dir = os.path.join(os.path.expanduser("~"), ".renextract_tools")
+            from infrastructure.config.config import config_manager
+            tools_dir = config_manager.get_tools_directory()
         
         self.tools_dir = tools_dir
         self.embedded_sdk_dir = os.path.join(tools_dir, "renpy_sdk_embedded")
@@ -92,8 +94,9 @@ class SDKManager:
                 size_mb = info_result['content_length'] / 1024 / 1024
                 log_message("INFO", f"SDK distant détecté: {size_mb:.1f} MB", category="sdk_manager")
             
-            # Télécharger le SDK
-            temp_zip_path = os.path.join(tempfile.gettempdir(), "renpy_sdk_temp.zip")
+            # Télécharger le SDK (dossier temp selon config : app ou système)
+            app_temp = config_manager.get_download_temp_dir()
+            temp_zip_path = os.path.join(app_temp, "renpy_sdk_temp.zip")
             
             download_result = downloader.download_file(sdk_url, temp_zip_path, force_redownload=True)
             

@@ -77,78 +77,64 @@ jobs:
 
       - name: Build Windows Executable
         run: |
-          echo "🔨 Construction de RenExtract pour Windows..."
+          echo "🔨 Construction de RenExtract pour Windows (onedir + 04_RenExtract)..."
           
-          # Créer les dossiers artifacts
           mkdir artifacts
           mkdir artifacts/windows
           
-          # Créer le dossier 04_Configs s'il n'existe pas (ignoré par Git)
-          if (-not (Test-Path "04_Configs")) {
-            mkdir "04_Configs"
-            echo "📁 Dossier 04_Configs créé"
+          # 04_RenExtract créé par PyInstaller via --contents-directory=04_RenExtract (binaires/runtime)
+          if (-not (Test-Path "04_RenExtract")) {
+            mkdir "04_RenExtract"
+            echo "📁 Dossier 04_RenExtract créé (pour build)"
           }
           
-          # Vérifier la présence de l'icône
           if (Test-Path icone.ico) {
             echo "🎨 Icône détectée"
             $iconArg = "--icon=icone.ico"
           } else {
-            echo "⚠️  Icône non trouvée, compilation sans icône"
             $iconArg = ""
           }
-          
-          # Vérifier la présence de version_info.txt
           if (Test-Path version_info.txt) {
-            echo "📋 version_info.txt détecté (avec métadonnées anti-détection)"
             $versionInfoArg = "--version-file=version_info.txt"
           } else {
-            echo "⚠️  version_info.txt non trouvé"
             $versionInfoArg = ""
           }
           
-          # Créer l'exécutable avec PyInstaller
-          # Options anti-détection :
-          # --noupx : Désactive compression UPX (réduit faux positifs antivirus)
-          # --log-level=WARN : Logs propres
-          # Imports cachés explicites pour éviter comportements suspects
-          pyinstaller --onefile --windowed `
+          # onedir = démarrage rapide (pas de déballage à chaque lancement)
+          # --contents-directory=04_RenExtract = exe à la racine, binaires/libs dans 04_RenExtract
+          pyinstaller --onedir --windowed `
             --name "RenExtract" `
             --noupx `
             --log-level=WARN `
+            --contents-directory=04_RenExtract `
             $iconArg `
             $versionInfoArg `
             --add-data "core;core" `
             --add-data "infrastructure;infrastructure" `
             --add-data "ui;ui" `
-            --add-data "04_Configs;04_Configs" `
             --add-data "VERSION.txt;." `
             --add-data "icone.ico;." `
             --hidden-import=groq `
             --hidden-import=typing_extensions `
             --hidden-import=tkinter `
             --hidden-import=tkinterdnd2 `
+            --hidden-import=PIL `
             --hidden-import=requests `
             main.py
           
-          # Copier l'exécutable
-          copy "dist/RenExtract.exe" "artifacts/windows/"
+          # Copier tout le dossier onedir (exe + 04_RenExtract)
+          Copy-Item -Path "dist/RenExtract" -Destination "artifacts/windows/RenExtract" -Recurse -Force
           
-          # ✅ Vérifier que l'icône est bien intégrée dans l'exécutable
           if (Test-Path icone.ico) {
-            echo "✅ Icône intégrée dans l'exécutable via --icon=icone.ico"
-            echo "ℹ️  Note: Si l'icône ne s'affiche pas correctement sur Windows, vider le cache d'icônes:"
-            echo "   ie4uinit.exe -show (ou redémarrer l'explorateur Windows)"
+            echo "✅ Icône intégrée (--icon=icone.ico)"
           }
           
-          # Créer l'archive avec un nom descriptif
           $version = "${{ env.RELEASE_NAME }}"
           if (-not $version.StartsWith("v")) {
             $version = "dev-$(Get-Date -Format 'yyyyMMdd')"
           }
-          Compress-Archive -Path "artifacts/windows/RenExtract.exe" -DestinationPath "artifacts/windows/RenExtract-$version-Windows.zip"
-          
-          echo "✅ Build Windows terminé: RenExtract-$version-Windows.zip"
+          Compress-Archive -Path "artifacts/windows/RenExtract" -DestinationPath "artifacts/windows/RenExtract-$version-Windows.zip" -Force
+          echo "✅ Build Windows terminé: RenExtract-$version-Windows.zip (onedir)"
         shell: pwsh
 
       - name: Generate VirusTotal info
@@ -156,7 +142,7 @@ jobs:
         run: |
           echo "🔐 Génération des hash pour VirusTotal..."
           
-          $exePath = "artifacts/windows/RenExtract.exe"
+          $exePath = "artifacts/windows/RenExtract/RenExtract.exe"
           $sha256 = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash
           $md5 = (Get-FileHash -Path $exePath -Algorithm MD5).Hash
           
@@ -169,11 +155,8 @@ jobs:
           $content += "**MD5:** $md5`n`n"
           $content += "**Note:** 2-3 détections heuristiques sont normales (faux positifs).`n"
           $content += "Le code source est 100% open source et vérifiable sur GitHub.`n`n"
-          $content += "**Améliorations anti-détection appliquées:**`n"
-          $content += "- Métadonnées complètes (auteur, copyright, licence)`n"
-          $content += "- Manifest Windows (pas de droits admin requis)`n"
-          $content += "- Options PyInstaller optimisées (--noupx, imports explicites)`n"
-          $content += "- Lien GitHub visible dans les propriétés de l'exe`n"
+          $content += "**Build Windows:** onedir (démarrage rapide, pas de déballage à chaque lancement).`n"
+          $content += "**Améliorations anti-détection:** métadonnées complètes, manifest Windows, --noupx, imports explicites.`n"
           
           $content | Out-File -FilePath "artifacts/windows/virustotal_info.txt" -Encoding UTF8
           echo "✅ Fichier virustotal_info.txt créé"
@@ -238,10 +221,10 @@ jobs:
           echo -n "$VERSION" > VERSION.txt
           echo "✅ Fichier VERSION.txt créé avec: $VERSION"
           
-          # Créer le dossier 04_Configs s'il n'existe pas (ignoré par Git)
-          if [ ! -d "04_Configs" ]; then
-            mkdir -p "04_Configs"
-            echo "📁 Dossier 04_Configs créé"
+          # Créer le dossier 04_RenExtract s'il n'existe pas (ignoré par Git, utilisé si add-data)
+          if [ ! -d "04_RenExtract" ]; then
+            mkdir -p "04_RenExtract"
+            echo "📁 Dossier 04_RenExtract créé"
           fi
           
           # Créer l'exécutable Linux
@@ -252,7 +235,7 @@ jobs:
             --add-data "core:core" \
             --add-data "infrastructure:infrastructure" \
             --add-data "ui:ui" \
-            --add-data "04_Configs:04_Configs" \
+            --add-data "04_RenExtract:04_RenExtract" \
             --add-data "VERSION.txt:." \
             --add-data "icone.ico:." \
             --hidden-import=groq \
@@ -330,12 +313,12 @@ jobs:
           
           | Plateforme | Fichier | Instructions |
           |------------|---------|--------------|
-          | 🪟 **Windows** | `RenExtract-${{ github.ref_name }}-Windows.zip` | Extraire et exécuter `RenExtract.exe` |
+          | 🪟 **Windows** | `RenExtract-${{ github.ref_name }}-Windows.zip` | Extraire le zip, puis lancer `RenExtract.exe` à la racine du dossier `RenExtract` |
           | 🐧 **Linux** | `RenExtract-${{ github.ref_name }}-Linux.tar.gz` | Extraire, `chmod +x RenExtract`, puis `./RenExtract` |
           
           ### 🚀 Installation
           
-          **Windows** : Extraire `.zip` → Double-cliquer `RenExtract.exe`  
+          **Windows** : Extraire le `.zip` → Ouvrir le dossier `RenExtract` → Double-cliquer `RenExtract.exe` (démarrage rapide, pas de déballage à chaque lancement)  
           **Linux** : `tar -xzf`, `chmod +x RenExtract`, `./RenExtract`
           
           ### ✨ Fonctionnalités Principales
@@ -368,6 +351,8 @@ jobs:
           
           ### 🆕 Nouveautés ${{ github.ref_name }}
           
+          **v1.2.31** — Dossier config **05_ConfigRenExtract** (migration auto des anciennes configs). Bouton **Revenir à l'état initial** pour le dossier outils. **Screen preferences** : les cases de l’onglet (sélecteur de langue, contrôle taille) sont bien prises en compte avec « Générer + options ». Polices en chemins relatifs pour la portabilité. Tout le code utilise le dossier outils configuré (plus de chemin en dur). Détails : [CHANGELOG](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md).
+          
           #### 🎯 Édition Cohérence en Ligne
           - ✅ **Modification directe depuis rapport HTML** : Édition des traductions détectées avec pré-remplissage intelligent
           - ✅ **Surlignage visuel** : Mise en évidence des éléments problématiques dans ANCIEN et NOUVEAU
@@ -380,7 +365,7 @@ jobs:
           #### 🔧 Configuration des Éditeurs
           - ✅ **Détection automatique Windows 10/11** : Lecture registre UserChoice pour respecter le choix utilisateur réel
           - ✅ **Extraction dynamique des chemins** : Récupération chemin d'installation depuis registre (VSCode, Notepad++, Sublime)
-          - ✅ **Test de l'éditeur** : Bouton 🧪 créant fichier test dans `04_Configs` et ouvrant à ligne 7 pour validation
+          - ✅ **Test de l'éditeur** : Bouton 🧪 créant fichier test dans `05_ConfigRenExtract` et ouvrant à ligne 7 pour validation
           - ✅ **Persistance éditeur personnalisé** : Synchronisation champ de saisie + combobox
           
           #### 🛡️ Contrôles de Cohérence

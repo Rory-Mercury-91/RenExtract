@@ -60,7 +60,13 @@ def create_application_tab(parent, settings_instance):
     # Séparateur invisible
     _create_separator(main_container)
     
-    # === SECTION 4: Actions système ===
+    # === SECTION 4: Mises à jour (GitHub) ===
+    _create_updates_section(main_container, settings_instance)
+    
+    # Séparateur invisible
+    _create_separator(main_container)
+    
+    # === SECTION 5: Actions système ===
     _create_system_actions_section(main_container, settings_instance)
     
 
@@ -310,7 +316,7 @@ def _create_editor_section(parent, settings_instance):
         from pathlib import Path
         
         try:
-            # Créer le fichier de test dans le dossier 04_Configs
+            # Créer le fichier de test dans le dossier 05_ConfigRenExtract
             from infrastructure.config.constants import FOLDERS
             
             config_dir = Path(FOLDERS["configs"])
@@ -321,7 +327,7 @@ def _create_editor_section(parent, settings_instance):
             # Contenu du fichier de test
             test_content = """# TEST DE COMPATIBILITÉ
 
-# 04_Configs/test_editor_compatibility.rpy:1
+# 05_ConfigRenExtract/test_editor_compatibility.rpy:1
 translate test:
 
     # RenExtract "je veux la ligne 7"
@@ -677,6 +683,149 @@ def _create_groq_section(parent, settings_instance):
     
     settings_instance.groq_api_key_entry.bind('<KeyRelease>', on_api_key_changed)
     settings_instance.groq_api_key_entry.bind('<FocusOut>', on_api_key_changed)
+
+
+def _create_updates_section(parent, settings_instance):
+    """Crée la section Vérification des mises à jour (GitHub)."""
+    theme = theme_manager.get_theme()
+    title_label = tk.Label(
+        parent,
+        text="🔄 Mises à jour",
+        font=('Segoe UI', 12, 'bold'),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    )
+    title_label.pack(anchor='w', pady=(0, 10))
+    row = tk.Frame(parent, bg=theme["bg"])
+    row.pack(fill='x')
+    desc = tk.Label(
+        row,
+        text="Vérifier sur GitHub si une nouvelle version est disponible (onedir : ne retéléchargez que les fichiers modifiés ou le zip de la release).",
+        font=('Segoe UI', 9),
+        bg=theme["bg"],
+        fg=theme["fg"],
+        wraplength=520
+    )
+    desc.pack(anchor='w', pady=(0, 8))
+    def do_check_updates():
+        def run_check():
+            try:
+                from infrastructure.update_checker import check_for_updates
+                has_new, latest_str, release_url, assets = check_for_updates()
+                parent.after(0, lambda: _show_update_result(settings_instance, has_new, latest_str, release_url, assets))
+            except Exception as e:
+                log_message("ERREUR", f"Vérification mises à jour: {e}", category="application_tab")
+                parent.after(0, lambda: _show_update_result(settings_instance, False, "", "", [], str(e)))
+        import threading
+        threading.Thread(target=run_check, daemon=True).start()
+        if hasattr(settings_instance, '_show_toast'):
+            settings_instance._show_toast("Vérification en cours…", type="info")
+    btn = tk.Button(
+        row,
+        text="🔍 Vérifier les mises à jour",
+        command=do_check_updates,
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 10),
+        pady=6,
+        cursor='hand2'
+    )
+    btn.pack(side='left', padx=(0, 10))
+    # Bouton pour ouvrir le dossier de configuration (05_ConfigRenExtract)
+    def open_config_folder():
+        import os
+        import subprocess
+        import sys
+        try:
+            from infrastructure.config.constants import FOLDERS
+            path = FOLDERS.get("configs")
+            if path:
+                os.makedirs(path, exist_ok=True)
+            if path and os.path.exists(path):
+                if sys.platform == "win32":
+                    os.startfile(path)
+                elif sys.platform == "darwin":
+                    subprocess.run(["open", path], check=False)
+                else:
+                    subprocess.run(["xdg-open", path], check=False)
+            elif hasattr(settings_instance, '_show_toast'):
+                settings_instance._show_toast("Dossier de configuration introuvable", type="warning")
+        except Exception as e:
+            log_message("ATTENTION", f"Ouverture dossier config: {e}", category="application_tab")
+            if hasattr(settings_instance, '_show_toast'):
+                settings_instance._show_toast(str(e)[:60], type="error")
+    open_config_btn = tk.Button(
+        row,
+        text="📂 Ouvrir le dossier de configuration",
+        command=open_config_folder,
+        bg=theme["button_help_bg"],
+        fg="#000000",
+        font=('Segoe UI', 10),
+        pady=6,
+        cursor='hand2'
+    )
+    open_config_btn.pack(side='left')
+
+
+def _show_update_result(settings_instance, has_update_flag, latest_str, release_url, assets, error_msg=None):
+    """Affiche le résultat de la vérification des mises à jour (dialog + lien releases)."""
+    from infrastructure.helpers.unified_functions import show_custom_messagebox
+    import webbrowser
+    theme = theme_manager.get_theme()
+    parent = settings_instance.winfo_toplevel() if hasattr(settings_instance, 'winfo_toplevel') else None
+    if error_msg:
+        show_custom_messagebox(
+            type_="warning",
+            title="Mises à jour",
+            message=[("Impossible de vérifier les mises à jour.\n\n", "normal"), (error_msg, "bold")],
+            theme=theme,
+            parent=parent
+        )
+        return
+    if not has_update_flag:
+        show_custom_messagebox(
+            type_="info",
+            title="Mises à jour",
+            message=[("Vous êtes à jour.", "bold"), (f"\nDernière version connue : {latest_str}", "normal")] if latest_str else [("Aucune mise à jour disponible ou impossible de contacter GitHub.", "normal")],
+            theme=theme,
+            parent=parent
+        )
+        return
+    # Mise à jour disponible : dialog avec téléchargement direct ou lien
+    dialog = tk.Toplevel(parent)
+    dialog.title("Mise à jour disponible")
+    dialog.transient(parent)
+    dialog.grab_set()
+    frame = tk.Frame(dialog, bg=theme["bg"], padx=20, pady=20)
+    frame.pack(fill="both", expand=True)
+    tk.Label(frame, text=f"Version disponible : {latest_str}", font=("Segoe UI", 11, "bold"), bg=theme["bg"], fg=theme["fg"]).pack(anchor="w")
+    tk.Label(frame, text="Téléchargez le zip dans le dossier de l'application, puis fermez l'app et décompressez-le vous-même.", font=("Segoe UI", 9), bg=theme["bg"], fg=theme["fg"], wraplength=400).pack(anchor="w", pady=(8, 12))
+    btn_frame = tk.Frame(frame, bg=theme["bg"])
+    btn_frame.pack(fill="x")
+    def do_download():
+        import threading
+        def run():
+            try:
+                from infrastructure.update_checker import download_update_zip
+                ok, path_or_err = download_update_zip()
+                def show_result():
+                    if ok:
+                        from infrastructure.helpers.unified_functions import show_custom_messagebox
+                        show_custom_messagebox(type_="info", title="Téléchargement terminé", message=[("Fichier enregistré dans :\n\n", "bold"), (path_or_err + "\n\n", "normal"), ("Fermez l'application puis extrayez le zip dans ce dossier.", "normal")], theme=theme, parent=dialog)
+                    else:
+                        from infrastructure.helpers.unified_functions import show_custom_messagebox
+                        show_custom_messagebox(type_="warning", title="Erreur", message=[(path_or_err, "normal")], theme=theme, parent=dialog)
+                    dialog.destroy()
+                dialog.after(0, show_result)
+            except Exception as e:
+                dialog.after(0, lambda: (log_message("ERREUR", f"Téléchargement mise à jour: {e}", category="application_tab"), dialog.destroy()))
+        threading.Thread(target=run, daemon=True).start()
+        if hasattr(settings_instance, '_show_toast'):
+            settings_instance._show_toast("Téléchargement en cours…", type="info")
+    tk.Button(btn_frame, text="⬇️ Télécharger la mise à jour (dossier de l'exe)", command=do_download, bg=theme["accent"], fg="#000000", font=("Segoe UI", 10), pady=6, cursor="hand2").pack(side="left", padx=(0, 10))
+    tk.Button(btn_frame, text="Ouvrir la page des releases", command=lambda: (webbrowser.open(release_url), dialog.destroy()), bg=theme["button_nav_bg"], fg="#000000", font=("Segoe UI", 10), pady=6, cursor="hand2").pack(side="left", padx=(0, 10))
+    tk.Button(btn_frame, text="Fermer", command=dialog.destroy, bg=theme["button_bg"], fg=theme["fg"], font=("Segoe UI", 10), pady=6, cursor="hand2").pack(side="left")
+    dialog.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 80))
 
 
 def _create_system_actions_section(parent, settings_instance):

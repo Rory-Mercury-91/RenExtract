@@ -16,6 +16,7 @@ from tkinter import ttk, filedialog
 import subprocess
 from ui.themes import theme_manager
 from infrastructure.config.config import config_manager
+from infrastructure.config.constants import FOLDERS
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_custom_messagebox
 
@@ -135,6 +136,11 @@ def create_paths_tab(parent, settings_instance):
     
     # === SECTION 2: Éditeur personnalisé ===
     _create_custom_editor_section(main_container, settings_instance)
+    
+    _create_separator(main_container)
+    
+    # === SECTION 3: Dossier des outils (cache, polices) ===
+    _create_tools_directory_section(main_container, settings_instance)
 
 
 def _create_separator(parent):
@@ -310,6 +316,112 @@ def _create_custom_editor_section(parent, settings_instance):
     settings_instance.custom_editor_entry.bind('<KeyRelease>', lambda e: _on_custom_editor_path_changed(settings_instance))
 
 
+def _create_tools_directory_section(parent, settings_instance):
+    """Crée la section Dossier des outils (cache, polices) — option 05_ConfigRenExtract pour démarrage plus rapide."""
+    theme = theme_manager.get_theme()
+    tools_frame = tk.Frame(parent, bg=theme["bg"])
+    tools_frame.pack(fill='x', pady=(0, 20))
+    title_label = tk.Label(
+        tools_frame,
+        text="📦 Dossier des outils (cache, polices, tutoriel)",
+        font=('Segoe UI', 11, 'bold'),
+        bg=theme["bg"],
+        fg=theme["accent"]
+    )
+    title_label.pack(anchor='w', pady=(0, 6))
+    desc_label = tk.Label(
+        tools_frame,
+        text="Sur certaines machines, placer ce dossier dans l'application (05_ConfigRenExtract) peut accélérer le démarrage.",
+        font=('Segoe UI', 9),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    )
+    desc_label.pack(anchor='w', pady=(0, 8))
+    btn_row = tk.Frame(tools_frame, bg=theme["bg"])
+    btn_row.pack(fill='x')
+    use_app_btn = tk.Button(
+        btn_row,
+        text="Utiliser le dossier de l'application (05_ConfigRenExtract/tools)",
+        command=lambda: _use_app_tools_directory(settings_instance),
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=6,
+        relief='flat',
+        cursor='hand2'
+    )
+    use_app_btn.pack(side='left')
+    reset_tools_btn = tk.Button(
+        btn_row,
+        text="Revenir à l'état initial (dossier utilisateur)",
+        command=lambda: _reset_tools_directory_to_user(settings_instance),
+        bg=theme["button_tertiary_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=6,
+        relief='flat',
+        cursor='hand2'
+    )
+    reset_tools_btn.pack(side='left', padx=(10, 0))
+    current = config_manager.get_tools_directory()
+    tk.Label(
+        btn_row,
+        text="Actuel : " + (current if len(current) < 60 else current[:57] + "..."),
+        font=('Segoe UI', 8),
+        bg=theme["bg"],
+        fg=theme["sep"]
+    ).pack(side='left', padx=(15, 0))
+    
+    # Option : Temp des téléchargements (app vs système)
+    _create_download_temp_section(tools_frame, settings_instance)
+
+
+def _create_download_temp_section(parent, settings_instance):
+    """Option pour utiliser le Temp système au lieu de 05_ConfigRenExtract/temp (utile si app sur HDD et système sur SSD)."""
+    theme = theme_manager.get_theme()
+    row = tk.Frame(parent, bg=theme["bg"])
+    row.pack(fill='x', pady=(14, 0))
+    var = tk.BooleanVar(value=config_manager.get("downloads_use_system_temp", False))
+    def on_toggle():
+        config_manager.set("downloads_use_system_temp", var.get())
+        log_message("DEBUG", f"downloads_use_system_temp = {var.get()}", category="paths_tab")
+    cb = tk.Checkbutton(
+        row,
+        text="Utiliser le Temp système pour les téléchargements (SDK, Python, etc.) — recommandé si l'app est sur HDD et le système sur SSD",
+        variable=var,
+        command=on_toggle,
+        bg=theme["bg"],
+        fg=theme["fg"],
+        selectcolor=theme["entry_bg"],
+        activebackground=theme["bg"],
+        activeforeground=theme["fg"],
+        font=('Segoe UI', 9)
+    )
+    cb.pack(anchor='w')
+
+
+def _use_app_tools_directory(settings_instance):
+    """Enregistre 05_ConfigRenExtract/tools comme dossier des outils (portable, souvent plus rapide)."""
+    try:
+        config_manager.set("tools_directory", "05_ConfigRenExtract/tools")
+        log_message("INFO", "Dossier des outils défini sur 05_ConfigRenExtract/tools", category="paths_tab")
+        _show_toast(settings_instance, "Dossier des outils : 05_ConfigRenExtract/tools (prise en compte au prochain lancement)", "success")
+    except Exception as e:
+        log_message("ATTENTION", f"Impossible de définir le dossier des outils: {e}", category="paths_tab")
+        _show_toast(settings_instance, "Erreur lors de la configuration du dossier des outils", "error")
+
+
+def _reset_tools_directory_to_user(settings_instance):
+    """Remet le dossier des outils à l'état initial (dossier utilisateur ~/.renextract_tools)."""
+    try:
+        config_manager.set("tools_directory", "")
+        log_message("INFO", "Dossier des outils réinitialisé (dossier utilisateur)", category="paths_tab")
+        _show_toast(settings_instance, "Dossier des outils : revenu à l'état initial — dossier utilisateur (prise en compte au prochain lancement)", "info")
+    except Exception as e:
+        log_message("ATTENTION", f"Impossible de réinitialiser le dossier des outils: {e}", category="paths_tab")
+        _show_toast(settings_instance, "Erreur lors de la réinitialisation", "error")
+
+
 def _test_custom_editor_path(settings_instance):
     """Teste si l'éditeur peut ouvrir un fichier à une ligne spécifique"""
     import tempfile
@@ -326,7 +438,7 @@ def _test_custom_editor_path(settings_instance):
             _show_toast(settings_instance, "❌ Éditeur personnalisé : Fichier non trouvé", "error")
             return
         
-        # Créer le fichier de test dans le dossier 04_Configs de RenExtract
+        # Créer le fichier de test dans le dossier 05_ConfigRenExtract de RenExtract
         from infrastructure.config.constants import FOLDERS
         
         config_dir = Path(FOLDERS["configs"])
@@ -337,7 +449,7 @@ def _test_custom_editor_path(settings_instance):
         # Contenu du fichier de test
         test_content = """# TEST DE COMPATIBILITÉ
 
-# 04_Configs/test_editor_compatibility.rpy:1
+# 05_ConfigRenExtract/test_editor_compatibility.rpy:1
 translate test:
 
     # RenExtract "je veux la ligne 7"
