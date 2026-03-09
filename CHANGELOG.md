@@ -1,6 +1,19 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-03-09 (v1.2.32)
+
+### Démarrage / fenêtre CMD
+- **Avertissement requests** : ajout de la dépendance **charset-normalizer** dans `requirements.txt` pour satisfaire la détection d’encodage de la bibliothèque `requests`. L’avertissement « Unable to find acceptable character detection dependency (chardet or charset_normalizer) » ne s’affiche plus dans la fenêtre de chargement CMD.
+
+### Build
+- Le workflow GitHub installe déjà les dépendances via `pip install -r requirements.txt` (Windows et Linux) ; les prochains builds incluront donc charset-normalizer et la CMD restera propre.
+
+### Santé des packages
+- **Package Config** : le module **version_build** (généré au build CI, absent en dev) est exclu du calcul de santé dans `infrastructure/config/__init__.py`. Plus d’erreur « Modules non chargés: version_build » ni « Package Config santé: 75% (3/4 modules) » au démarrage.
+
+---
+
 ## 2026-03-09 (v1.2.31)
 
 ### Dossiers et configuration

@@ -15,8 +15,11 @@ except ImportError:
     def log_message(level, message, category="init"):
         pass
 
+# Modules exclus du calcul de santé (générés au build CI, absents en dev)
+_CONFIG_OPTIONAL_MODULES = {'version_build'}
+
 def discover_modules() -> List[str]:
-    """Découverte automatique des modules dans ce package"""
+    """Découverte automatique des modules dans ce package (hors modules optionnels)."""
     try:
         package_dir = os.path.dirname(__file__)
         modules = []
@@ -28,11 +31,12 @@ def discover_modules() -> List[str]:
             # Fichiers .py (sauf __init__)
             if item.endswith('.py') and item != '__init__.py':
                 module_name = item[:-3]
-                modules.append(module_name)
+                if module_name not in _CONFIG_OPTIONAL_MODULES:
+                    modules.append(module_name)
             
             # Sous-dossiers (packages)
             elif os.path.isdir(item_path) and not item.startswith('__') and not item.startswith('.'):
-                if os.path.exists(os.path.join(item_path, '__init__.py')):
+                if os.path.exists(os.path.join(item_path, '__init__.py')) and item not in _CONFIG_OPTIONAL_MODULES:
                     modules.append(item)
         
         return sorted(modules)

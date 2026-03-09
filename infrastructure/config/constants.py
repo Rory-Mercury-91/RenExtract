@@ -74,7 +74,7 @@ def get_version():
         pass
     
     # FALLBACK : uniquement si version_build.py absent et git indisponible
-    return "v1.2.31"
+    return "v1.2.32"
 
 def increment_build_number():
     """
