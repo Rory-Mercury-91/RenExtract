@@ -74,7 +74,7 @@ def get_version():
         pass
     
     # FALLBACK : uniquement si version_build.py absent et git indisponible
-    return "v1.2.32"
+    return "v1.2.33"
 
 def increment_build_number():
     """
@@ -382,7 +382,7 @@ DEFAULT_CONFIG = {
     "current_renpy_project":"","renpy_sdk_path":"","renpy_default_language":"french","renpy_auto_open_folder":True,"renpy_show_results_popup":True,
     "renpy_delete_rpa_after":False,"renpy_delete_source_after_rpa":False,
     "renpy_excluded_files":"common.rpy",
-    "language_selector_integration":False,"developer_console_integration":False,
+    "language_selector_integration":False,"developer_console_integration":False,"default_language_at_startup_integration":False,
     "dark_mode":True,"show_output_path_display":False,
     "last_game_directory":"",
     "downloads_use_system_temp": False,

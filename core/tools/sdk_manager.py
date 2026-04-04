@@ -425,4 +425,9 @@ def get_sdk_manager(tools_dir: str = None) -> SDKManager:
     global _global_sdk_manager
     if _global_sdk_manager is None:
         _global_sdk_manager = SDKManager(tools_dir)
+    elif tools_dir:
+        requested = os.path.normpath(tools_dir)
+        current = os.path.normpath(_global_sdk_manager.tools_dir)
+        if requested != current:
+            _global_sdk_manager = SDKManager(tools_dir)
     return _global_sdk_manager

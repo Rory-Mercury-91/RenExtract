@@ -1,6 +1,52 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-04 (v1.2.33)
+
+### Générateur de traductions – langue au démarrage
+- **Nouveau** : option **« Forcer la langue cible au démarrage »** (case à cocher + bouton **« Langue au démarrage »**). Crée **`game/tl/<langue>/00_set_default_language_at_startup.rpy`** avec `init 1000 python:` qui définit **`renpy.game.preferences.language`** sur le même identifiant que la langue cible.
+- **Emplacement dans `tl/<langue>/`** : le fichier accompagne le dossier de traduction lors d’un partage (plus de fichier seul à la racine de **`game/`**).
+- **Migration** : si un ancien **`game/00_set_default_language_at_startup.rpy`** existe, il est **supprimé automatiquement** lors de la création du nouveau fichier (évite un double forçage).
+- **Intégration** : appliqué avec **« Générer les traductions + toutes les options cochées »** lorsque la case est cochée ; la génération simple **« Générer les traductions »** ne l’inclut pas. Préférence persistée : **`default_language_at_startup_integration`**.
+
+### Générateur de traductions – code langue (casse)
+- **Casse conservée** là où Ren’Py l’exige : dossiers **`tl/`**, commande **`translate`**, console développeur, polices GUI, fichier de forçage au démarrage ; recherche **`Language("…")`** dans les screens **sensible à la casse**.
+- **Common.rpy / Screen.rpy français** : génération **uniquement** si la langue cible est **exactement** **`french`** (minuscules), aligné avec **`tl/french/`** et les blocs **`translate`**.
+
+### Interface (onglet Génération)
+- **Configuration** : **« Langue cible »** à **gauche**, juste après le titre **« Configuration »** ; **Options screen preferences**, Common, Screen, console et **forçage de langue au démarrage** sur **une seule ligne**.
+
+### Combinaison / division TL
+- **Auto-remplissage** : la langue de l’onglet Génération est reprise **sans forcer les minuscules** (cohérent avec un dossier **`tl/<Langue>/`** personnalisé).
+
+### Outils (Python embed, SDK)
+- **Après décompression du zip** Python embarqué : contrôle que **`python.exe`** existe bien dans le dossier cible ; erreur claire si l’archive est incomplète ou mal extraite (évite un état « silencieux » cassé).
+- **Test de l’exécutable Python** : en cas d’échec, les journaux incluent un extrait de **stdout** et **stderr** pour le diagnostic.
+- **Changement du dossier outils** : si l’utilisateur modifie le **dossier des outils** dans les paramètres, les instances globales **`PythonManager`** et **`SDKManager`** sont **reconstruites** sur le nouveau chemin (téléchargements / extractions cohérents avec le répertoire choisi, y compris après usage d’un dossier temporaire ou d’un autre emplacement).
+
+### Paramètres – thème des boutons
+- **Onglet allégé** (`colors_tab`) : uniquement le choix d’un **preset** de couleurs et la remise au thème par défaut ; **suppression** de la personnalisation fine des couleurs par catégorie et du **sélecteur de couleur** (color picker).
+- **Fenêtre Paramètres** (`settings_interface`) : retrait du **colorchooser** et des boutons liés aux clés de couleur individuelles ; texte de confirmation du reset adapté au thème **Classique v1** / presets uniquement.
+
+### Extraction / reconstruction (RenPy Extract)
+- **Fins de ligne `.rpy`** : écriture des fichiers générés par le générateur TL avec **CRLF** (Windows) pour rester aligné avec Ren’Py et les outils qui s’attendent à ce format.
+- **Lignes vides en fin de fichier** : la reconstruction ne supprime plus les **lignes vides terminales** (le marqueur de reconstruction est inséré **avant** elles pour préserver la structure d’origine).
+- **Guillemets échappés** : le découpage des dialogues respecte les séquences **`\"` / `\\"`** ; elles ne sont plus interprétées comme une fin de chaîne qui coupait le dialogue.
+- **Guillemets simples et doubles** : prise en charge des chaînes en **`"`** ou **`'`** (y compris mélangées sur une même ligne) ; le type de quote d’origine est conservé dans les métadonnées et réappliqué à la reconstruction.
+- **Personnages en tête de ligne** (`"Personnage" "Dialogue"` ou équivalent avec quotes simples) : le **premier segment** (nom) n’est **plus extrait** dans le fichier dialogue (reste en VO dans le `.rpy`) ; seul le **texte** est extrait. Les noms uniques sont listés dans **`{base}_characters.rpy`** à côté du fichier source (dans le projet), au format **`translate french strings:`** avec paires **`old` / `new`** (par défaut identiques pour une traduction optionnelle en un seul endroit).
+
+### Fichiers modifiés (résumé)
+*(aligné sur l’état Git du dépôt local pour cette version)*
+
+- **Extraction / reconstruction** : `core/services/extraction/extraction.py`, `core/services/extraction/reconstruction.py`
+- **Génération TL** : `core/services/translation/translation_generation_business.py`, `ui/tab_generator/generation_tl_tab.py`, `ui/tab_generator/combination_tab.py`, `ui/dialogs/translation_generator_interface.py`
+- **Configuration / version** : `infrastructure/config/config.py`, `infrastructure/config/constants.py`, `version_info.txt`
+- **Outils** : `core/tools/python_manager.py`, `core/tools/sdk_manager.py`
+- **Interface** : `ui/dialogs/settings_interface.py`, `ui/tab_settings/colors_tab.py`
+- **Documentation** : `CHANGELOG.md`
+
+---
+
 ## 2026-03-09 (v1.2.32)
 
 ### Configuration (fichiers dédiés)

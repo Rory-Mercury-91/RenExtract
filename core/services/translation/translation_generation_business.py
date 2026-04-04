@@ -15,6 +15,7 @@ Logique métier complète pour la génération de traductions Ren'Py
 
 import os
 import sys
+import json
 import subprocess
 import threading
 import glob
@@ -67,7 +68,14 @@ class TranslationGenerationBusiness:
         self.error_callback: Optional[Callable] = None
         
         log_message("INFO", "TranslationGenerationBusiness initialisé", category="renpy_generator_tl")
-    
+
+    @staticmethod
+    def _is_french_language_target(language: Optional[str]) -> bool:
+        """True uniquement si la langue cible est exactement 'french' (common/screens strings français)."""
+        if language is None:
+            return False
+        return str(language).strip() == "french"
+
     def set_callbacks(self, progress_callback: Callable = None, status_callback: Callable = None,
                      completion_callback: Callable = None, error_callback: Callable = None):
         """Configure les callbacks pour l'interface utilisateur"""
@@ -119,8 +127,9 @@ class TranslationGenerationBusiness:
         Ce helper effectue une écriture simple et prévisible par défaut.
         """
         try:
-            # Comportement par défaut : écriture simple et déterministe
-            file_path.write_text(content, encoding='utf-8', newline='\n')
+            # Normaliser puis forcer CRLF pour compatibilité Ren'Py/Windows.
+            normalized_content = content.replace('\r\n', '\n').replace('\r', '\n')
+            file_path.write_text(normalized_content, encoding='utf-8', newline='\r\n')
             return file_path, f"Écrit: {file_path.name}"
 
         except Exception as e:
@@ -485,8 +494,8 @@ init python early hide:
             tuple: (success: bool, message: str)
         """
         try:
-            # Ne s'applique que pour le français
-            if language.lower() != "french":
+            # Ne s'applique que si la langue cible est exactement 'french'
+            if not self._is_french_language_target(language):
                 return True, "Fichier common non applicable pour cette langue"
             
             game_dir = os.path.join(project_path, "game")
@@ -691,7 +700,7 @@ init python early hide:
 
             # === PRÉPARATION FICHIERS FRANÇAIS AVANT GÉNÉRATION ===
             # Common.rpy français si demandé
-            if options.get('create_common_file', False) and language.lower() == "french":
+            if options.get('create_common_file', False) and self._is_french_language_target(language):
                 if progress_callback:
                     progress_callback(6, "Préparation du fichier common français...")
                 if status_callback:
@@ -709,7 +718,7 @@ init python early hide:
 
             # Screen.rpy français si demandé
             screen_option = options.get('create_screen_file', False)
-            is_french = language.lower() == "french"
+            is_french = self._is_french_language_target(language)
             
             if screen_option and is_french:
                 if progress_callback:
@@ -980,6 +989,24 @@ init python early hide:
                     except Exception as cons_error:
                         result['warnings'].append(f"Erreur console développeur : {cons_error}")
 
+                # Langue par défaut au démarrage (game/tl/<lang>/00_set_default_language_at_startup.rpy)
+                if options.get('create_default_language_at_startup', False):
+                    if progress_callback:
+                        progress_callback(95, "Création du forçage de langue au démarrage...")
+                    if status_callback:
+                        status_callback("Création du forçage de langue au démarrage...")
+                    try:
+                        lang_success, lang_message = self.create_default_language_at_startup_file(
+                            project_path, language
+                        )
+                        if lang_success:
+                            result['default_language_at_startup_created'] = True
+                            result['default_language_at_startup_message'] = lang_message
+                        else:
+                            result['warnings'].append(f"Langue au démarrage : {lang_message}")
+                    except Exception as lang_err:
+                        result['warnings'].append(f"Erreur langue au démarrage : {lang_err}")
+
                 # Options screen preferences avancées - Nouveau système modulaire unifié
                 # ✅ CORRECTION : Ne générer les screen preferences QUE si explicitement demandé
                 # Le bouton "Générer les traductions" doit uniquement générer les traductions,
@@ -995,6 +1022,7 @@ init python early hide:
                         not options.get('create_common_file', False) and
                         not options.get('create_screen_file', False) and
                         not options.get('create_developer_console', False) and
+                        not options.get('create_default_language_at_startup', False) and
                         not options.get('create_language_selector', False) and
                         not options.get('apply_system_font', False)
                     )
@@ -1653,11 +1681,11 @@ init python early hide:
             bool: True si la langue existe déjà
         """
         try:
-            # Pattern pour chercher Language("french") ou Language('french')
+            # Même casse que l'identifiant Ren'Py / dossier tl/ (sensible à la casse)
             language_pattern = rf'Language\s*\(\s*["\']?\s*{re.escape(language)}\s*["\']?\s*\)'
             
             screen_content = '\n'.join(screen_lines)
-            return bool(re.search(language_pattern, screen_content, re.IGNORECASE))
+            return bool(re.search(language_pattern, screen_content))
             
         except Exception as e:
             log_message("ATTENTION", f"Erreur vérification langue existante : {e}", category="renpy_generator_tl")
@@ -1724,8 +1752,8 @@ init python early hide:
             tuple: (success: bool, message: str)
         """
         try:
-            # Ne s'applique que pour le français
-            if language.lower() != "french":
+            # Ne s'applique que si la langue cible est exactement 'french'
+            if not self._is_french_language_target(language):
                 return True, "Fichier screens non applicable pour cette langue"
             
             game_dir = os.path.join(project_path, "game")
@@ -1776,12 +1804,12 @@ init python early hide:
                 # Sécurité : si déjà string
                 content += str(screen_lines)
 
-            # 2) Bloc translate pour le libellé "Language" si langue = french
-            lang_norm = str(language).strip().lower()
-            translated_label = self.get_language_word_translation(lang_norm)
+            # 2) Bloc translate : identifiant = même casse que la langue cible / dossier tl/
+            lang_raw = str(language).strip()
+            translated_label = self.get_language_word_translation(lang_raw)
             if translated_label:
                 content += (
-                    f'\n\ntranslate {lang_norm} strings:\n'
+                    f'\n\ntranslate {lang_raw} strings:\n'
                     '\n'
                     '    old "Language"\n'
                     f'    new "{translated_label}"\n'
@@ -1836,6 +1864,65 @@ init python early hide:
             log_message("ERREUR", f"Erreur création console dev : {e}", category="renpy_generator_tl")
             return False, f"Erreur création console dev : {e}"
 
+    def create_default_language_at_startup_file(self, project_path: str, language: str):
+        """
+        Crée/écrase game/tl/<langue>/00_set_default_language_at_startup.rpy pour définir
+        renpy.game.preferences.language au démarrage (même code que le dossier tl/).
+
+        Returns:
+            (success: bool, message: str)
+        """
+        try:
+            game_dir = os.path.join(project_path, "game")
+            if not os.path.isdir(game_dir):
+                return False, "Dossier 'game' introuvable dans le projet"
+
+            lang_code = (language or "").strip()
+            if not lang_code:
+                return False, "Code langue vide"
+            # Même règle que l'UI : lettres (casse conservée), chiffres, tirets, underscores
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", lang_code):
+                return False, "Code langue invalide pour le fichier de forçage"
+
+            # Ancien emplacement (racine game/) : évite un double forçage si les deux existent
+            legacy_file = Path(game_dir) / "00_set_default_language_at_startup.rpy"
+            if legacy_file.is_file():
+                try:
+                    legacy_file.unlink()
+                    log_message(
+                        "INFO",
+                        "Ancien 00_set_default_language_at_startup.rpy retiré de game/ (emplacement tl/)",
+                        category="renpy_generator_tl",
+                    )
+                except OSError as e_unlink:
+                    log_message(
+                        "ATTENTION",
+                        f"Impossible de supprimer l'ancien fichier à la racine game/ : {e_unlink}",
+                        category="renpy_generator_tl",
+                    )
+
+            tl_lang_dir = Path(game_dir) / "tl" / lang_code
+            tl_lang_dir.mkdir(parents=True, exist_ok=True)
+            target_file = tl_lang_dir / "00_set_default_language_at_startup.rpy"
+            lang_literal = json.dumps(lang_code)
+            content = (
+                "## Langue au démarrage (RenExtract)\n"
+                "init 1000 python:\n"
+                f"    renpy.game.preferences.language = {lang_literal}\n"
+            )
+
+            actual_path, status_msg = self._safe_write_file(target_file, content)
+            log_message(
+                "INFO",
+                f"Langue au démarrage: {actual_path.name} écrit ({status_msg})",
+                category="renpy_generator_tl",
+            )
+            return True, "Fichier de langue au démarrage créé"
+
+        except Exception as e:
+            log_message("ERREUR", f"Erreur création langue au démarrage : {e}", category="renpy_generator_tl")
+            return False, f"Erreur création langue au démarrage : {e}"
+
     def get_language_word_translation(self, language_code: str) -> str | None:
         """
         Retourne la traduction du mot 'Language' dans la langue cible.
@@ -1869,7 +1956,8 @@ init python early hide:
             'malay': 'Bahasa',
             # 'english': None  # pas de traduction nécessaire
         }
-        return m.get(language_code.lower())
+        key = (language_code or "").strip().casefold()
+        return m.get(key)
 
     def get_language_display_name(self, language_code: str) -> str:
         """
@@ -1910,7 +1998,10 @@ init python early hide:
             'malay': 'Bahasa Melayu'
         }
         
-        return language_names.get(language_code.lower(), language_code.capitalize())
+        key = (language_code or "").strip().casefold()
+        if key in language_names:
+            return language_names[key]
+        return (language_code or "").strip() or language_code
 
     def get_project_info(self, project_path: str) -> Dict[str, Any]:
         """Récupère les informations détaillées sur un projet Ren'Py."""
@@ -2180,10 +2271,11 @@ init python early hide:
         content += self._generate_preferences_screen(language, need_language, need_fontsize, need_textbox, options)
         content += "\n"
         
-        # Section 4: Traductions
-        lang_norm = language.strip().lower()
-        if lang_norm == "french":
-            content += self._generate_french_translations(need_language, need_fontsize, need_textbox, options)
+        # Section 4: traductions françaises des libellés (uniquement si langue cible == 'french')
+        if self._is_french_language_target(language):
+            content += self._generate_french_translations(
+                language, need_language, need_fontsize, need_textbox, options
+            )
         
         return content
     
@@ -2649,10 +2741,11 @@ init python early hide:
         
         return lines
     
-    def _generate_french_translations(self, need_language: bool, need_fontsize: bool, 
+    def _generate_french_translations(self, language: str, need_language: bool, need_fontsize: bool,
                                      need_textbox: bool, options: Dict[str, bool]) -> str:
-        """Génère les traductions françaises"""
-        content = "\ntranslate french strings:\n\n"
+        """Génère les traductions françaises des libellés d'options (bloc translate = casse du dossier tl/)."""
+        lang_id = (language or "").strip()
+        content = f"\ntranslate {lang_id} strings:\n\n"
         
         if need_language:
             content += '    old "Language"\n'

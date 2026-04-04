@@ -161,7 +161,9 @@ class TextExtractor:
         self.line_quote_counts = []
         self.line_content_prefixes = []
         self.line_content_suffixes = []
+        self.line_content_quote_chars = []
         self.line_suffixes = []
+        self.character_entries = OrderedDict()
         self.asterix_texts = []
         self.tilde_texts = []  # NOUVEAU
         self.empty_texts = []
@@ -276,11 +278,6 @@ class TextExtractor:
             match = re.search(r'RENPY_NARRATOR(.*)"(.*)', line)
             if match:
                 raw_contents.append(match.group(1))
-        elif "RENPY_EMPTY03" in line:
-            match = re.search(r'"(.*)RENPY_EMPTY03(.*)"(.*)', line)
-            if match:
-                raw_contents.append(match.group(1))
-                raw_contents.append(match.group(2))
         else:
             # Détecter s'il y a des paramètres en fin de ligne
             # Pattern pour détecter les paramètres : espaces + ( + contenu + )
@@ -292,12 +289,88 @@ class TextExtractor:
             else:
                 # Pas de paramètres détectés, garder la ligne entière
                 line_clean = line
-                
-            matches = re.findall(r'"(.*?)"', line_clean)
-            if matches:
-                raw_contents.extend(matches)
+
+            segments = self._extract_quoted_segments(line_clean)
+            if segments:
+                for segment in segments:
+                    raw_contents.extend(self._split_separator_placeholder_content(segment['content']))
         
         return raw_contents
+
+    def _split_separator_placeholder_content(self, content):
+        """Découpe un contenu sur le placeholder séparateur si présent."""
+        separator_tokens = ["RENPY_EMPTY03", f"{self.empty_prefix}_SEP03"]
+
+        for token in separator_tokens:
+            if token in content:
+                left, right = content.split(token, 1)
+                return [left, right]
+
+        return [content]
+
+    def _is_character_dialogue_line(self, line, segments):
+        """
+        Détecte une ligne de type "personnage" "dialogue" (ou avec quotes simples).
+        Le premier segment est alors traité comme un nom de personnage à garder en VO.
+        """
+        if len(segments) < 2:
+            return False
+
+        first = segments[0]
+        prefix = line[:first['start_quote_idx']].strip()
+        speaker = first['content'].strip()
+
+        if prefix or not speaker:
+            return False
+        if len(speaker) > 64:
+            return False
+        return True
+
+    def _extract_quoted_segments(self, line):
+        """
+        Extrait les segments entre guillemets simples/doubles en respectant les échappements.
+        Exemple: \" ou \\" ne ferment pas un dialogue.
+        """
+        segments = []
+        i = 0
+        line_len = len(line)
+
+        while i < line_len:
+            if line[i] not in ('"', "'"):
+                i += 1
+                continue
+
+            quote_char = line[i]
+            start_quote_idx = i
+            i += 1
+            content_chars = []
+
+            while i < line_len:
+                ch = line[i]
+
+                # Conserver la sequence echappee (ex: \", \\) comme texte.
+                if ch == '\\' and i + 1 < line_len:
+                    content_chars.append(line[i:i + 2])
+                    i += 2
+                    continue
+
+                if ch == quote_char:
+                    segments.append({
+                        'content': ''.join(content_chars),
+                        'quote_char': quote_char,
+                        'start_quote_idx': start_quote_idx,
+                        'end_quote_idx': i
+                    })
+                    i += 1
+                    break
+
+                content_chars.append(ch)
+                i += 1
+            else:
+                # Guillemet ouvrant sans fermeture: on arrete proprement.
+                break
+
+        return segments
 
     def _extract_asterisk_groups_with_stack(self, line):
         """
@@ -688,6 +761,8 @@ class TextExtractor:
                         # Ignorer uniquement les placeholders vides structurels
                         if part['text'].startswith(f'{self.empty_prefix}_'):
                             continue
+                        if not part.get('extract', True):
+                            continue
                         
                         # IMPORTANT: Même si le texte est vide après pelage, on doit le garder
                         # car il peut correspondre à un astérisque ou autre contenu traduisible
@@ -701,8 +776,10 @@ class TextExtractor:
                     if self.line_to_content_indices[idx]:
                         self.original_lines_with_translations[idx] = line
                         self.line_suffixes.append(analysis['line_suffix'])
-                        self.line_content_prefixes.append([p['prefix'] for p in analysis['decomposed_parts']])
-                        self.line_content_suffixes.append([p['suffix'] for p in analysis['decomposed_parts']])
+                        extracted_parts = [p for p in analysis['decomposed_parts'] if p.get('extract', True)]
+                        self.line_content_prefixes.append([p['prefix'] for p in extracted_parts])
+                        self.line_content_suffixes.append([p['suffix'] for p in extracted_parts])
+                        self.line_content_quote_chars.append([p.get('quote_char', '"') for p in extracted_parts])
                     else:
                         # Nettoyer si la ligne ne contenait que des placeholders structurels
                         del self.line_to_content_indices[idx]
@@ -922,6 +999,8 @@ class TextExtractor:
                     # Ignorer uniquement les placeholders vides structurels
                     if part['text'].startswith(f'{self.empty_prefix}_'):
                         continue
+                    if not part.get('extract', True):
+                        continue
                     
                     # IMPORTANT: Même si le texte est vide après pelage, on doit le garder
                     # car il peut correspondre à un astérisque ou autre contenu traduisible
@@ -935,8 +1014,10 @@ class TextExtractor:
                 if self.line_to_content_indices[idx]:
                     self.original_lines_with_translations[idx] = line
                     self.line_suffixes.append(analysis['line_suffix'])
-                    self.line_content_prefixes.append([p['prefix'] for p in analysis['decomposed_parts']])
-                    self.line_content_suffixes.append([p['suffix'] for p in analysis['decomposed_parts']])
+                    extracted_parts = [p for p in analysis['decomposed_parts'] if p.get('extract', True)]
+                    self.line_content_prefixes.append([p['prefix'] for p in extracted_parts])
+                    self.line_content_suffixes.append([p['suffix'] for p in extracted_parts])
+                    self.line_content_quote_chars.append([p.get('quote_char', '"') for p in extracted_parts])
                 else:
                     # Nettoyer si la ligne ne contenait que des placeholders structurels
                     del self.line_to_content_indices[idx]
@@ -977,7 +1058,15 @@ class TextExtractor:
         # Traiter seulement les lignes avec guillemets (dialogues) ou new (choix)
         if stripped.startswith('new '):
             return True
-        if '"' in line or 'RENPY_NARRATOR' in line or stripped == 'RENPY_EMPTY03':
+        narrator_placeholder = f"{self.empty_prefix}_NARRATOR"
+        separator_placeholder = f"{self.empty_prefix}_SEP03"
+        if (
+            '"' in line
+            or 'RENPY_NARRATOR' in line
+            or narrator_placeholder in line
+            or stripped == 'RENPY_EMPTY03'
+            or stripped == separator_placeholder
+        ):
             return True
         return False
 
@@ -998,12 +1087,6 @@ class TextExtractor:
         if narrator_match:
             raw_contents.append(narrator_match.group(1))
             line_suffix = narrator_match.group(2)
-        elif "RENPY_EMPTY03" in line:
-            match = re.search(r'"(.*)RENPY_EMPTY03(.*)"(.*)', line)
-            if match:
-                raw_contents.append(match.group(1))
-                raw_contents.append(match.group(2))
-                line_suffix = match.group(3)
         else:
             # LOGIQUE MISE À JOUR : Détecter et séparer les paramètres
             param_pattern = r'\s+\([^)]*\)\s*$'
@@ -1017,16 +1100,21 @@ class TextExtractor:
                 # Pas de paramètres
                 line_clean = line
                 # Calculer line_suffix normalement
-                last_quote_pos = line.rfind('"')
-                if last_quote_pos != -1:
-                    line_suffix = line[last_quote_pos + 1:].rstrip()
-            
-            matches = re.findall(r'"(.*?)"', line_clean)
-            if matches:
-                raw_contents.extend(matches)
+                segments_for_suffix = self._extract_quoted_segments(line_clean)
+                if segments_for_suffix:
+                    last_end_quote = segments_for_suffix[-1]['end_quote_idx']
+                    line_suffix = line_clean[last_end_quote + 1:].rstrip()
 
-        # Extraction des {tags} comme préfixes/suffixes (inchangé)
-        for content in raw_contents:
+            segments = self._extract_quoted_segments(line_clean)
+            if segments:
+                for segment in segments:
+                    raw_contents.extend(self._split_separator_placeholder_content(segment['content']))
+
+        segments_with_quotes = self._extract_quoted_segments(line)
+        is_character_dialogue = self._is_character_dialogue_line(line, segments_with_quotes)
+
+        # Extraction des {tags} comme préfixes/suffixes
+        for part_idx, content in enumerate(raw_contents):
             prefix_tags = ""
             suffix_tags = ""
             clean_content = content
@@ -1051,11 +1139,28 @@ class TextExtractor:
                 else:
                     break
             
+            extract_part = not (is_character_dialogue and part_idx == 0)
+            if is_character_dialogue and part_idx == 0 and clean_content.strip():
+                if clean_content not in self.character_entries:
+                    self.character_entries[clean_content] = clean_content
+
             decomposed_parts.append({
                 'prefix': prefix_tags,
                 'text': clean_content,
-                'suffix': suffix_tags
+                'suffix': suffix_tags,
+                'quote_char': '"',
+                'extract': extract_part
             })
+
+        # Réinjecter les délimiteurs originaux détectés (si disponibles).
+        if segments_with_quotes and decomposed_parts:
+            part_idx = 0
+            for segment in segments_with_quotes:
+                split_parts = self._split_separator_placeholder_content(segment['content'])
+                for _ in split_parts:
+                    if part_idx < len(decomposed_parts):
+                        decomposed_parts[part_idx]['quote_char'] = segment.get('quote_char', '"')
+                        part_idx += 1
 
         return {'decomposed_parts': decomposed_parts, 'line_suffix': line_suffix}
 
@@ -1126,6 +1231,7 @@ class TextExtractor:
             'suffixes': self.line_suffixes,
             'content_prefixes': self.line_content_prefixes,
             'content_suffixes': self.line_content_suffixes,
+            'content_quote_chars': self.line_content_quote_chars,
             
             # MÉTADONNÉES ASTÉRISQUES INTÉGRÉES
             'asterix_metadata': self.asterix_metadata,
@@ -1162,6 +1268,22 @@ class TextExtractor:
         )
         result['dialogue_files'] = dialogue_files
         result['files_to_open'].extend(dialogue_files)
+
+        # Fichier dédié des personnages (une seule occurrence) au format old/new.
+        if self.character_entries:
+            # Le fichier personnages doit vivre dans le projet (pas dans le dossier temporaire).
+            source_dir = os.path.dirname(self.original_path) if self.original_path else translate_folder
+            characters_file = os.path.join(source_dir, f'{file_base}_characters.rpy')
+            with open(characters_file, 'w', encoding='utf-8', newline='\r\n') as f:
+                f.write("# Personnages détectés automatiquement (une seule occurrence)\n")
+                f.write("# Conserver en VO ou traduire la valeur 'new' selon le besoin.\n\n")
+                f.write("translate french strings:\n")
+                for speaker in self.character_entries.keys():
+                    escaped = speaker.replace("\\", "\\\\").replace('"', '\\"')
+                    f.write(f'    old "{escaped}"\n')
+                    f.write(f'    new "{escaped}"\n\n')
+            result['characters_file'] = characters_file
+            result['files_to_open'].append(characters_file)
 
         if self.duplicate_manager.duplicate_texts_for_translation:
             doublons_files = self._save_texts_with_limit(

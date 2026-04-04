@@ -90,6 +90,9 @@ class PythonManager:
             import zipfile
             with zipfile.ZipFile(temp_zip_path) as z:
                 z.extractall(self.python_embed_dir)
+
+            if not os.path.exists(python_exe):
+                raise RuntimeError(f"python.exe introuvable après extraction dans {self.python_embed_dir}")
             
             # Configurer Python Embedded pour les imports
             self._configure_python_embedded(self.python_embed_dir)
@@ -323,7 +326,13 @@ class PythonManager:
                     log_message("DEBUG", f"Python testé avec succès : {version_output.strip()}", category="python_test")
                     return True
             else:
-                log_message("DEBUG", f"Échec test Python : code {result.returncode}", category="python_test")
+                stdout_tail = (result.stdout or "").strip()[:300]
+                stderr_tail = (result.stderr or "").strip()[:300]
+                log_message(
+                    "DEBUG",
+                    f"Échec test Python : code {result.returncode}, stdout='{stdout_tail}', stderr='{stderr_tail}'",
+                    category="python_test"
+                )
                 return False
                 
         except subprocess.TimeoutExpired:
@@ -483,4 +492,10 @@ def get_python_manager(tools_dir: str = None) -> PythonManager:
     global _global_python_manager
     if _global_python_manager is None:
         _global_python_manager = PythonManager(tools_dir)
+    elif tools_dir:
+        requested = os.path.normpath(tools_dir)
+        current = os.path.normpath(_global_python_manager.tools_dir)
+        if requested != current:
+            log_message("INFO", f"Rechargement PythonManager (tools_dir changé): {current} -> {requested}", category="python_setup_3")
+            _global_python_manager = PythonManager(tools_dir)
     return _global_python_manager

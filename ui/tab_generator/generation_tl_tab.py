@@ -851,52 +851,33 @@ def create_generation_tab_aligned(parent, main_interface):
     # ===== SECTION CONFIGURATION =====
     config_frame = tk.Frame(main_container, bg=theme["bg"])
     config_frame.pack(fill='x', pady=(0, 20))
-    
-    # Titre de la section configuration
+
+    # Titre puis langue cible + champ + aide, alignés à gauche sur la même ligne
+    config_header = tk.Frame(config_frame, bg=theme["bg"])
+    config_header.pack(fill='x', pady=(0, 10))
+
     config_title = tk.Label(
-        config_frame,
+        config_header,
         text="⚙️ Configuration",
         font=('Segoe UI', 11, 'bold'),
         bg=theme["bg"],
         fg=theme["fg"]
     )
-    config_title.pack(anchor='w', pady=(0, 10))
-    
-    # === SECTION AVEC GRILLE ALIGNÉE ===
-    main_config_frame = tk.Frame(config_frame, bg=theme["bg"])
-    main_config_frame.pack(fill='x', pady=(0, 10))
-    
-    # Configuration des colonnes pour une disposition sur une seule ligne
-    main_config_frame.grid_columnconfigure(0, weight=0)    # Langue cible:
-    main_config_frame.grid_columnconfigure(1, weight=0)    # [french]
-    main_config_frame.grid_columnconfigure(2, weight=0)    # [?] aide langue
-    main_config_frame.grid_columnconfigure(3, weight=1)    # Espace flexible
-    main_config_frame.grid_columnconfigure(4, weight=0)    # ☑ Sélecteur
-    main_config_frame.grid_columnconfigure(5, weight=0)    # [?] aide sélecteur
-    main_config_frame.grid_columnconfigure(6, weight=1)    # Espace flexible
-    main_config_frame.grid_columnconfigure(7, weight=0)    # ☑ Taille
-    main_config_frame.grid_columnconfigure(8, weight=0)    # [?] aide taille
-    main_config_frame.grid_columnconfigure(9, weight=1)    # Espace flexible
-    main_config_frame.grid_columnconfigure(10, weight=0)   # ☑ Common
-    main_config_frame.grid_columnconfigure(11, weight=0)   # [?] aide common
-    main_config_frame.grid_columnconfigure(12, weight=1)   # Espace flexible
-    main_config_frame.grid_columnconfigure(13, weight=0)   # ☑ Screen
-    main_config_frame.grid_columnconfigure(14, weight=0)   # [?] aide screen
-    main_config_frame.grid_columnconfigure(15, weight=1)   # Espace flexible
-    main_config_frame.grid_columnconfigure(16, weight=0)   # ☑ Console
-    main_config_frame.grid_columnconfigure(17, weight=0)   # [?] aide console
-    
-    # === LIGNE UNIQUE : Tous les éléments ===
-    
-    # Langue cible
-    tk.Label(main_config_frame, 
-            text="Langue cible:",
-            font=('Segoe UI', 10, 'bold'),
-            bg=theme["bg"],
-            fg=theme["fg"]).grid(row=0, column=0, sticky='w', padx=(0, 10))
-    
+    config_title.pack(side='left')
+
+    lang_header = tk.Frame(config_header, bg=theme["bg"])
+    lang_header.pack(side='left', padx=(20, 0))
+
+    tk.Label(
+        lang_header,
+        text="Langue cible:",
+        font=('Segoe UI', 10, 'bold'),
+        bg=theme["bg"],
+        fg=theme["fg"]
+    ).pack(side='left', padx=(0, 10))
+
     lang_entry = tk.Entry(
-        main_config_frame,
+        lang_header,
         textvariable=main_interface.language_var,
         font=('Segoe UI', 10),
         width=12,
@@ -904,13 +885,12 @@ def create_generation_tab_aligned(parent, main_interface):
         fg=theme["entry_fg"],
         insertbackground=theme["entry_fg"]
     )
-    lang_entry.grid(row=0, column=1, sticky='w', padx=(0, 5))
+    lang_entry.pack(side='left', padx=(0, 5))
     lang_entry.bind('<KeyRelease>', lambda event: on_language_changed(main_interface, event))
     lang_entry.bind('<FocusOut>', lambda event: on_language_changed(main_interface, event))
 
-    # Aide langue
     help_lang_btn = tk.Button(
-        main_config_frame,
+        lang_header,
         text="?",
         command=lambda: show_language_help(main_interface.window),
         bg=theme["button_help_bg"],
@@ -921,9 +901,19 @@ def create_generation_tab_aligned(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    help_lang_btn.grid(row=0, column=2, padx=(0, 20))
+    help_lang_btn.pack(side='left')
     
-    # Options avancées screen preferences (remplace sélecteur langue + taille)
+    # === SECTION AVEC GRILLE ALIGNÉE ===
+    main_config_frame = tk.Frame(config_frame, bg=theme["bg"])
+    main_config_frame.pack(fill='x', pady=(0, 10))
+    
+    # Ligne unique : options screen, common, screen, console, forçage langue (espaces flexibles)
+    main_config_frame.grid_columnconfigure(2, weight=1)
+    main_config_frame.grid_columnconfigure(5, weight=1)
+    main_config_frame.grid_columnconfigure(8, weight=1)
+    main_config_frame.grid_columnconfigure(11, weight=1)
+    
+    # Options avancées screen preferences
     advanced_options_btn = tk.Button(
         main_config_frame,
         text="⚙️ Options screen preferences",
@@ -936,7 +926,7 @@ def create_generation_tab_aligned(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    advanced_options_btn.grid(row=0, column=4, sticky='w', padx=(0, 5))
+    advanced_options_btn.grid(row=0, column=0, sticky='w', padx=(0, 5))
 
     advanced_options_help_btn = tk.Button(
         main_config_frame,
@@ -950,7 +940,7 @@ def create_generation_tab_aligned(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    advanced_options_help_btn.grid(row=0, column=5, padx=(0, 20))
+    advanced_options_help_btn.grid(row=0, column=1, padx=(0, 20))
     
     # Common.rpy
     common_check = tk.Checkbutton(
@@ -963,7 +953,7 @@ def create_generation_tab_aligned(parent, main_interface):
         selectcolor=theme["entry_bg"],
         command=lambda: save_add_common_preference(main_interface)
     )
-    common_check.grid(row=0, column=7, sticky='w', padx=(0, 5))
+    common_check.grid(row=0, column=3, sticky='w', padx=(0, 5))
 
     common_help_btn = tk.Button(
         main_config_frame,
@@ -977,7 +967,7 @@ def create_generation_tab_aligned(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    common_help_btn.grid(row=0, column=8, padx=(0, 20))
+    common_help_btn.grid(row=0, column=4, padx=(0, 20))
     
     # Screen.rpy
     screen_check = tk.Checkbutton(
@@ -990,7 +980,7 @@ def create_generation_tab_aligned(parent, main_interface):
         selectcolor=theme["entry_bg"],
         command=lambda: save_add_screen_preference(main_interface)
     )
-    screen_check.grid(row=0, column=10, sticky='w', padx=(0, 5))
+    screen_check.grid(row=0, column=6, sticky='w', padx=(0, 5))
 
     screen_help_btn = tk.Button(
         main_config_frame,
@@ -1004,7 +994,7 @@ def create_generation_tab_aligned(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    screen_help_btn.grid(row=0, column=11, padx=(0, 20))
+    screen_help_btn.grid(row=0, column=7, padx=(0, 20))
     
     # Console développeur
     dev_console_check = tk.Checkbutton(
@@ -1017,7 +1007,7 @@ def create_generation_tab_aligned(parent, main_interface):
         selectcolor=theme["entry_bg"],
         command=lambda: save_developer_console_preference(main_interface)
     )
-    dev_console_check.grid(row=0, column=13, sticky='w', padx=(0, 5))
+    dev_console_check.grid(row=0, column=9, sticky='w', padx=(0, 5))
 
     dev_console_help_btn = tk.Button(
         main_config_frame,
@@ -1031,7 +1021,34 @@ def create_generation_tab_aligned(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    dev_console_help_btn.grid(row=0, column=14)
+    dev_console_help_btn.grid(row=0, column=10)
+    
+    # Langue au démarrage (fichier dans game/tl/<langue>/ — voir aide), même ligne que le reste
+    startup_lang_check = tk.Checkbutton(
+        main_config_frame,
+        text="Forcer la langue cible au démarrage",
+        variable=main_interface.default_language_at_startup_var,
+        font=('Segoe UI', 9),
+        bg=theme["bg"],
+        fg=theme["fg"],
+        selectcolor=theme["entry_bg"],
+        command=lambda: save_default_language_at_startup_preference(main_interface)
+    )
+    startup_lang_check.grid(row=0, column=12, sticky='w', padx=(0, 5))
+
+    startup_lang_help_btn = tk.Button(
+        main_config_frame,
+        text="?",
+        command=lambda: show_default_language_at_startup_help(main_interface.window),
+        bg=theme["button_help_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    startup_lang_help_btn.grid(row=0, column=13, sticky='w', padx=(5, 0))
     
     # Charger les préférences
     load_font_preferences(main_interface)
@@ -1169,6 +1186,20 @@ def create_generation_tab_aligned(parent, main_interface):
     )
     dev_console_btn.pack(side='left', padx=(0, 10))
 
+    startup_lang_btn = tk.Button(
+        second_row_frame,
+        text="Langue au démarrage",
+        command=lambda: create_default_language_startup_only(main_interface),
+        bg=theme["button_devtool_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    startup_lang_btn.pack(side='left', padx=(0, 10))
+
     reset_btn = tk.Button(
         second_row_frame,
         text="Réinitialiser les options",
@@ -1189,8 +1220,21 @@ def create_generation_tab_aligned(parent, main_interface):
         generate_with_fonts_btn,
         create_screen_prefs_btn,
         dev_console_btn,
+        startup_lang_btn,
         reset_btn
     ])
+
+_TL_LANG_INVALID_MSG = (
+    "Le nom de langue contient des caractères non autorisés.\n"
+    "Utilisez uniquement des lettres, chiffres, tirets et underscores."
+)
+
+
+def _is_valid_tl_language_syntax(language: str) -> bool:
+    """Code langue TL : lettres (casse conservée), chiffres, tirets et underscores."""
+    s = (language or "").strip()
+    return bool(s) and bool(s.replace("_", "").replace("-", "").isalnum())
+
 
 def set_operation_buttons_state(main_interface, state):
     """
@@ -1233,6 +1277,15 @@ def save_developer_console_preference(main_interface):
     except Exception as e:
         log_message("ERREUR", f"Erreur sauvegarde console dev : {e}", category="renpy_generator_tl")
 
+def save_default_language_at_startup_preference(main_interface):
+    """Sauvegarde la préférence du forçage de langue au démarrage"""
+    try:
+        enabled = main_interface.default_language_at_startup_var.get()
+        config_manager.set_default_language_at_startup_integration(enabled)
+        log_message("DEBUG", f"Langue au démarrage: {'activée' if enabled else 'désactivée'}", category="renpy_generator_tl")
+    except Exception as e:
+        log_message("ERREUR", f"Erreur sauvegarde langue au démarrage : {e}", category="renpy_generator_tl")
+
 def save_language_selector_preference(main_interface):
     """Sauvegarde la préférence du sélecteur de langue"""
     try:
@@ -1269,17 +1322,13 @@ def start_generation_simple(main_interface):
         if not validate_project(main_interface):
             return
         
-        language = main_interface.language_var.get().strip().lower()
+        language = main_interface.language_var.get().strip()
         if not language:
             main_interface._show_notification("Veuillez spécifier une langue cible.", "warning")
             return
         
-        if not language.replace('_', '').replace('-', '').isalnum():
-            main_interface._show_notification(
-                "Le nom de langue contient des caractères non autorisés.\n" +
-                "Utilisez uniquement des lettres, chiffres, tirets et underscores.",
-                "warning"
-            )
+        if not _is_valid_tl_language_syntax(language):
+            main_interface._show_notification(_TL_LANG_INVALID_MSG, "warning")
             return
         
         # Options pour génération SIMPLE - sans les cases cochées
@@ -1288,6 +1337,7 @@ def start_generation_simple(main_interface):
             'apply_system_font': False,
             'create_language_selector': False,
             'create_developer_console': False,
+            'create_default_language_at_startup': False,
             'create_common_file': False,
             'create_screen_file': False,
             'auto_open': getattr(main_interface, 'auto_open_var', tk.BooleanVar(value=False)).get()
@@ -1320,15 +1370,20 @@ def start_generation_with_checked_options(main_interface):
         if not validate_project(main_interface):
             return
         
-        language = main_interface.language_var.get().strip().lower()
+        language = main_interface.language_var.get().strip()
         if not language:
             main_interface._show_notification("Veuillez spécifier une langue cible.", "warning")
+            return
+        
+        if not _is_valid_tl_language_syntax(language):
+            main_interface._show_notification(_TL_LANG_INVALID_MSG, "warning")
             return
         
         # Récupérer l'état de toutes les checkboxes
         common_checked = main_interface.add_common_var.get()
         screen_checked = main_interface.add_screen_var.get()
         console_checked = main_interface.developer_console_var.get()
+        startup_lang_checked = main_interface.default_language_at_startup_var.get()
         selector_checked = main_interface.language_selector_var.get()
         fontsize_checked = main_interface.fontsize_selector_var.get()
         
@@ -1355,6 +1410,7 @@ def start_generation_with_checked_options(main_interface):
             'create_language_selector': selector_checked or advanced_options.get('language_selector', False),
             'create_fontsize_selector': fontsize_checked or advanced_options.get('fontsize_control', False),
             'create_developer_console': console_checked,
+            'create_default_language_at_startup': startup_lang_checked,
             'create_common_file': common_checked,
             'create_screen_file': screen_checked,
             'auto_open': getattr(main_interface, 'auto_open_var', tk.BooleanVar(value=False)).get(),
@@ -1370,6 +1426,8 @@ def start_generation_with_checked_options(main_interface):
             status_parts.append("screens français")
         if console_checked:
             status_parts.append("console dev")
+        if startup_lang_checked:
+            status_parts.append("langue au démarrage")
         if apply_fonts:
             status_parts.append("polices GUI")
         
@@ -1417,9 +1475,13 @@ def apply_fonts_only(main_interface):
         if not validate_project(main_interface):
             return
         
-        language = main_interface.language_var.get().strip().lower()
+        language = main_interface.language_var.get().strip()
         if not language:
             main_interface._update_status("Veuillez spécifier une langue cible.")
+            return
+        
+        if not _is_valid_tl_language_syntax(language):
+            main_interface._update_status(_TL_LANG_INVALID_MSG.replace("\n", " "))
             return
         
         # Vérifier qu'au moins une police GUI est sélectionnée
@@ -1488,9 +1550,13 @@ def create_screen_preferences_only(main_interface):
             main_interface._update_status("Veuillez sélectionner un projet Ren'Py")
             return
         
-        language = main_interface.language_var.get().strip().lower()
+        language = main_interface.language_var.get().strip()
         if not language:
             main_interface._update_status("Veuillez spécifier une langue cible.")
+            return
+        
+        if not _is_valid_tl_language_syntax(language):
+            main_interface._update_status(_TL_LANG_INVALID_MSG.replace("\n", " "))
             return
         
         # Récupérer les options configurées depuis config_manager (nouveau système unifié)
@@ -1539,9 +1605,13 @@ def create_developer_console_only(main_interface):
             main_interface._update_status("Veuillez sélectionner un projet Ren'Py")
             return
 
-        language = main_interface.language_var.get().strip().lower()
+        language = main_interface.language_var.get().strip()
         if not language:
             main_interface._update_status("Veuillez spécifier une langue cible.")
+            return
+
+        if not _is_valid_tl_language_syntax(language):
+            main_interface._update_status(_TL_LANG_INVALID_MSG.replace("\n", " "))
             return
 
         # Griser les boutons pendant l'opération
@@ -1566,6 +1636,44 @@ def create_developer_console_only(main_interface):
         log_message("ERREUR", f"Erreur création console dev seule : {e}", category="renpy_generator_tl")
     finally:
         # Toujours réactiver les boutons à la fin
+        set_operation_buttons_state(main_interface, 'normal')
+
+def create_default_language_startup_only(main_interface):
+    """Crée/écrase game/tl/<langue>/00_set_default_language_at_startup.rpy sans génération TL"""
+    try:
+        if not main_interface.current_project_path:
+            main_interface._update_status("Veuillez sélectionner un projet Ren'Py")
+            return
+
+        language = main_interface.language_var.get().strip()
+        if not language:
+            main_interface._update_status("Veuillez spécifier une langue cible.")
+            return
+
+        if not _is_valid_tl_language_syntax(language):
+            main_interface._update_status(_TL_LANG_INVALID_MSG.replace("\n", " "))
+            return
+
+        set_operation_buttons_state(main_interface, 'disabled')
+        main_interface._update_status("Création du fichier langue au démarrage...")
+
+        translation_business = main_interface._get_translation_business()
+        success, message = translation_business.create_default_language_at_startup_file(
+            main_interface.current_project_path,
+            language
+        )
+
+        if success:
+            main_interface._update_status("✓ Fichier langue au démarrage créé")
+            log_message("INFO", f"Langue au démarrage : {message}", category="renpy_generator_tl")
+        else:
+            main_interface._update_status(f"✗ Échec : {message}")
+            log_message("ATTENTION", f"Langue au démarrage : {message}", category="renpy_generator_tl")
+
+    except Exception as e:
+        main_interface._update_status(f"✗ Erreur : {e}")
+        log_message("ERREUR", f"Erreur création langue au démarrage seule : {e}", category="renpy_generator_tl")
+    finally:
         set_operation_buttons_state(main_interface, 'normal')
 
 def save_fontsize_selector_preference(main_interface):
@@ -1595,6 +1703,7 @@ def reset_generation_options_ui(main_interface):
         # Checkboxes - FORCER les valeurs par défaut
         main_interface.language_selector_var.set(False)
         main_interface.developer_console_var.set(False)
+        main_interface.default_language_at_startup_var.set(False)
         main_interface.add_common_var.set(False)
         main_interface.add_screen_var.set(False)
         main_interface.fontsize_selector_var.set(False)
@@ -1602,6 +1711,7 @@ def reset_generation_options_ui(main_interface):
         # Sauvegarder ces nouvelles valeurs
         config_manager.set_language_selector_integration(False)
         config_manager.set_developer_console_integration(False)
+        config_manager.set_default_language_at_startup_integration(False)
         config_manager.set_add_common_integration(False)
         config_manager.set_add_screen_integration(False)
         config_manager.set_fontsize_selector_integration(False)
@@ -1674,9 +1784,20 @@ def show_language_help(parent_window):
         ("Spécifiez le nom de votre langue de traduction.\n\n", "normal"),
 
         ("Conseils :\n", "bold_green"),
-        ("• Utilisez des noms simples en minuscules\n", "normal"),
-        ("• Évitez les espaces et caractères spéciaux\n", "normal"),
-        ("• Ce nom créera le dossier dans game/tl/\n\n", "normal"),
+        ("• La casse compte : identique au dossier ", "normal"),
+        ("game/tl/...", "bold"),
+        (" et à ", "normal"),
+        ("preferences.language", "bold"),
+        (" (ex. ", "normal"),
+        ("FR", "bold"),
+        (", ", "normal"),
+        ("French", "bold"),
+        (", ", "normal"),
+        ("french", "bold"),
+        (")\n", "normal"),
+        ("• Lettres, chiffres, tirets et underscores uniquement\n", "normal"),
+        ("• Ce nom sert à la commande translate et aux chemins ", "normal"),
+        ("tl/<langue>/\n\n", "bold"),
     ]
 
     try:
@@ -1780,7 +1901,7 @@ def show_common_help(parent_window):
         ("COMMON.RPY FRANÇAIS\n\n", "bold_blue"),
         ("Remplace le common.rpy par défaut par une version française pré-traduite.\n\n", "normal"),
         
-        ("⚠️ ", "red"), ("Disponible uniquement pour la langue ", "normal"), ("french", "bold"), (".\n\n", "normal"),
+        ("⚠️ ", "red"), ("Uniquement si la langue cible est exactement ", "normal"), ("french", "bold"), (" (minuscules).\n\n", "normal"),
         
         ("Contenu :\n", "bold_green"),
         ("• Menus et boutons de l'interface\n", "normal"),
@@ -1817,7 +1938,7 @@ def show_screen_help(parent_window):
         ("SCREEN.RPY FRANÇAIS\n\n", "bold_blue"),
         ("Remplace le screens.rpy par défaut par une version française pré-traduite.\n\n", "normal"),
         
-        ("⚠️ ", "red"), ("Disponible uniquement pour la langue ", "normal"), ("french", "bold"), (".\n\n", "normal"),
+        ("⚠️ ", "red"), ("Uniquement si la langue cible est exactement ", "normal"), ("french", "bold"), (" (minuscules).\n\n", "normal"),
         
         ("Contenu :\n", "bold_green"),
         ("• Écrans principaux (menu, préférences, sauvegarde)\n", "normal"),
@@ -1878,6 +1999,52 @@ def show_developer_console_help(parent_window):
         )
     except Exception as e:
         log_message("ERREUR", f"Erreur affichage aide console dev : {e}", category="renpy_generator_tl")
+
+def show_default_language_at_startup_help(parent_window):
+    """Aide pour le fichier qui force preferences.language au lancement."""
+
+    message_styled = [
+        ("LANGUE AU DÉMARRAGE\n\n", "bold_blue"),
+        ("Crée le fichier ", "normal"),
+        ("game/tl/<langue>/00_set_default_language_at_startup.rpy", "bold"),
+        (" (même code que la ", "normal"),
+        ("Langue cible", "bold"),
+        ("), pour définir ", "normal"),
+        ("renpy.game.preferences.language", "bold"),
+        (" au lancement.\n\n", "normal"),
+        ("Placé dans le dossier de la traduction pour qu'il parte avec le partage du dossier ", "normal"),
+        ("tl/", "bold"),
+        (".\n\n", "normal"),
+        ("Remarques :\n", "bold_green"),
+        ("• Le préfixe ", "normal"),
+        ("00_", "bold"),
+        (" favorise un chargement précoce\n", "normal"),
+        ("• ", "normal"),
+        ("init 1000", "bold"),
+        (" s'exécute après la plupart des blocs ", "normal"),
+        ("init", "bold"),
+        (" habituels\n", "normal"),
+        ("• Un ancien fichier à la racine ", "normal"),
+        ("game/00_set_default_language_at_startup.rpy", "bold"),
+        (" est supprimé automatiquement si présent\n", "normal"),
+        ("• Pour désactiver : supprimez ce fichier dans ", "normal"),
+        ("game/tl/<votre_langue>/", "bold"),
+        ("\n", "normal"),
+    ]
+
+    try:
+        from ui.themes import theme_manager
+        from infrastructure.helpers.unified_functions import show_custom_messagebox
+
+        show_custom_messagebox(
+            'info',
+            'Aide - Langue au démarrage',
+            message_styled,
+            theme_manager.get_theme(),
+            parent=parent_window
+        )
+    except Exception as e:
+        log_message("ERREUR", f"Erreur affichage aide langue au démarrage : {e}", category="renpy_generator_tl")
 
 def show_fontsize_selector_help(parent_window):
     """Affiche une aide simplifiée pour le contrôle de taille de police."""

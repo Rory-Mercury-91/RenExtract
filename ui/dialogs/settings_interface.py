@@ -48,7 +48,6 @@ class UnifiedSettingsInterface:
         
         self._tab_mousewheel_binders = []
         # Variables pour les onglets
-        self.color_buttons = {}
         self.editor_path_vars = {}
         self.save_mode_combo = None
         self.notification_combo = None
@@ -1405,53 +1404,15 @@ Configuration :
 
     # === MÉTHODES POUR L'ONGLET COULEURS ===
     
-    def _change_color(self, color_key):
-        """Ouvre le sélecteur de couleur avec mise à jour du preset affiché"""
-        try:
-            from tkinter import colorchooser
-            
-            current_color = config_manager.get_theme_color(color_key)
-            
-            new_color = colorchooser.askcolor(
-                color=current_color,
-                title=f"Choisir la couleur pour {color_key}"
-            )[1]
-            
-            if new_color:
-                # Sauvegarder la nouvelle couleur
-                config_manager.set_theme_color(color_key, new_color)
-                
-                # Mettre à jour le bouton dans l'interface
-                if color_key in self.color_buttons:
-                    self.color_buttons[color_key].configure(bg=new_color)
-                
-                # Mettre à jour l'affichage du preset
-                if self.preset_var:
-                    current_preset = config_manager.get_current_preset_name()
-                    self.preset_var.set(current_preset)
-                
-                # Mettre à jour seulement les couleurs des boutons
-                theme_manager.apply_to_all_cached_widgets()
-                
-                # Rafraîchir aussi la fenêtre des paramètres
-                self.window.after(100, self._apply_theme_to_window)
-                
-                self._show_toast(f"Couleur mise à jour : {color_key}")
-                
-        except Exception as e:
-            log_message("ERREUR", f"Erreur changement couleur: {e}", category="ui_settings")
-
     def _reset_theme_colors(self):
-        """Remet toutes les couleurs par défaut avec mise à jour du preset affiché"""
+        """Remet le thème de boutons par défaut (Classique v1)"""
         try:
             confirmation_message = [
                 ("CONFIRMATION REQUISE\n\n", "bold_red"),
                 ("Voulez-vous vraiment ", "normal"),
-                ("remettre toutes les couleurs par défaut", "bold"),
+                ("remettre le thème de boutons par défaut (Classique v1)", "bold"),
                 (" ?\n\n", "normal"),
-                ("Cette action est ", "yellow"),
-                ("irréversible", "bold_red"),
-                (" et supprimera toutes vos personnalisations.", "normal")
+                ("Le preset affiché sera mis à jour en conséquence.", "normal")
             ]
             
             response = show_custom_messagebox(
@@ -1467,20 +1428,11 @@ Configuration :
             )
             
             if response:
-                # Reset dans la config
                 config_manager.reset_theme_colors_to_default()
-                
-                # Mettre à jour l'interface des paramètres
-                current_colors = config_manager.get_theme_colors()
-                for color_key, btn in self.color_buttons.items():
-                    btn.configure(bg=current_colors.get(color_key, "#D3D3D3"))
-                
-                # Mettre à jour l'affichage du preset
+
                 if self.preset_var:
-                    current_preset = config_manager.get_current_preset_name()
-                    self.preset_var.set(current_preset)
-                
-                # Mettre à jour seulement les couleurs des boutons
+                    self.preset_var.set(config_manager.get_current_preset_name())
+
                 theme_manager.apply_to_all_cached_widgets()
                 
                 # Rafraîchir aussi la fenêtre des paramètres
@@ -1500,13 +1452,7 @@ Configuration :
         try:
             preset_name = self.preset_var.get()
             if preset_name and config_manager.apply_color_preset(preset_name):
-                
-                # Mettre à jour l'interface des paramètres
-                current_colors = config_manager.get_theme_colors()
-                for color_key, btn in self.color_buttons.items():
-                    btn.configure(bg=current_colors.get(color_key, "#D3D3D3"))
-                
-                # Mettre à jour seulement les couleurs des boutons
+
                 theme_manager.apply_to_all_cached_widgets()
                 
                 # Rafraîchir aussi la fenêtre des paramètres

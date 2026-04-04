@@ -635,9 +635,9 @@ def auto_fill_combination_fields(main_interface, silent=False):
             return
         
         # Utiliser la langue sélectionnée dans l'onglet Génération
-        selected_language = main_interface.language_var.get().strip().lower()
-        if not selected_language or selected_language == "":
-            selected_language = "french"  # Fallback par défaut
+        selected_language = main_interface.language_var.get().strip()
+        if not selected_language:
+            selected_language = "french"  # Fallback par défaut (convention Ren'Py courante)
         
         # COMBINAISON : Auto-remplir dossier source avec la langue sélectionnée
         tl_language_folder = os.path.join(main_interface.current_project_path, "game", "tl", selected_language)

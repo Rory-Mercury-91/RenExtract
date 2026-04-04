@@ -301,10 +301,13 @@ class ConfigManager:
     def is_developer_console_integration_enabled(self): return self.config.get("developer_console_integration", False)
     def set_developer_console_integration(self, enabled): self.set("developer_console_integration", bool(enabled))
     def toggle_developer_console_integration(self): v = not self.is_developer_console_integration_enabled(); self.set_developer_console_integration(v); return v
+    def is_default_language_at_startup_enabled(self): return self.config.get("default_language_at_startup_integration", False)
+    def set_default_language_at_startup_integration(self, enabled): self.set("default_language_at_startup_integration", bool(enabled))
+    def toggle_default_language_at_startup_integration(self): v = not self.is_default_language_at_startup_enabled(); self.set_default_language_at_startup_integration(v); return v
 
     # --- reset options Génération ---
     def reset_generation_options_to_defaults(self):
-        keys = ["renpy_default_language","renpy_auto_open_folder","renpy_show_results_popup","renpy_delete_rpa_after","renpy_delete_source_after_rpa","cleanup_excluded_files","extraction_detection_mode","extraction_excluded_files","language_selector_integration","developer_console_integration"]
+        keys = ["renpy_default_language","renpy_auto_open_folder","renpy_show_results_popup","renpy_delete_rpa_after","renpy_delete_source_after_rpa","cleanup_excluded_files","extraction_detection_mode","extraction_excluded_files","language_selector_integration","developer_console_integration","default_language_at_startup_integration"]
         for k in keys:
             if k in DEFAULT_CONFIG: self.config[k] = DEFAULT_CONFIG[k]
         self.save_config()

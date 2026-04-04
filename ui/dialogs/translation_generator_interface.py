@@ -119,6 +119,7 @@ class TranslationGeneratorInterface:
             self.language_var = tk.StringVar(value=config_manager.get_renpy_default_language())
             self.language_selector_var = tk.BooleanVar(value=config_manager.is_language_selector_integration_enabled())
             self.developer_console_var = tk.BooleanVar(value=config_manager.is_developer_console_integration_enabled())
+            self.default_language_at_startup_var = tk.BooleanVar(value=config_manager.is_default_language_at_startup_enabled())
             self.add_common_var = tk.BooleanVar(value=config_manager.is_add_common_integration_enabled())
             self.add_screen_var = tk.BooleanVar(value=config_manager.is_add_screen_integration_enabled())
             self.fontsize_selector_var = tk.BooleanVar(value=config_manager.is_fontsize_selector_integration_enabled())

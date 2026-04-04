@@ -120,6 +120,7 @@ class FileReconstructor:
         self.suffixes = []
         self.content_prefixes = []
         self.content_suffixes = []
+        self.content_quote_chars = []
         self.asterix_metadata = {}
         self.tilde_metadata = {}  # NOUVEAU
 
@@ -188,6 +189,7 @@ class FileReconstructor:
             self.suffixes = data['suffixes']
             self.content_prefixes = data.get('content_prefixes', [])
             self.content_suffixes = data.get('content_suffixes', [])
+            self.content_quote_chars = data.get('content_quote_chars', [])
             
             # Charger les métadonnées
             if 'asterix_metadata' in data:
@@ -450,6 +452,7 @@ class FileReconstructor:
             meta_idx = line_idx_to_meta_idx.get(line_idx)
             prefixes = self.content_prefixes[meta_idx] if meta_idx is not None and meta_idx < len(self.content_prefixes) else [""] * len(content_indices)
             suffixes = self.content_suffixes[meta_idx] if meta_idx is not None and meta_idx < len(self.content_suffixes) else [""] * len(content_indices)
+            quote_chars = self.content_quote_chars[meta_idx] if meta_idx is not None and meta_idx < len(self.content_quote_chars) else ['"'] * len(content_indices)
             line_suffix = self.suffixes[meta_idx] if meta_idx is not None and meta_idx < len(self.suffixes) else ""
             
             # Reconstruire les contenus complets (avec préfixes/suffixes)
@@ -469,7 +472,7 @@ class FileReconstructor:
                 suffix = suffixes[i] if i < len(suffixes) else ""
                 full_new_contents.append(f"{prefix}{translated_text}{suffix}")
 
-            rebuilt_line = self._reassemble_line_optimized(line_idx, original_line, full_new_contents, line_suffix)
+            rebuilt_line = self._reassemble_line_optimized(line_idx, original_line, full_new_contents, line_suffix, quote_chars)
             output_lines[line_idx] = rebuilt_line
         
         # NETTOYAGE ITÉRATIF des placeholders pour gérer les imbrications
@@ -546,7 +549,7 @@ class FileReconstructor:
             log_message("ERREUR", f"Impossible de commenter le fichier original: {str(e)}", e, category="reconstruction_comment")
             return False
 
-    def _reassemble_line_optimized(self, line_idx, original_line, new_contents, line_suffix):
+    def _reassemble_line_optimized(self, line_idx, original_line, new_contents, line_suffix, quote_chars=None):
         """
         VERSION OPTIMISÉE : Réassemble une ligne avec line_idx déjà connu.
         Les préfixes/suffixes sont déjà intégrés dans new_contents.
@@ -559,8 +562,9 @@ class FileReconstructor:
         rebuilt = rebuilt.replace("RENPY_EMPTY01", '""')
         rebuilt = rebuilt.replace("RENPY_EMPTY02", '" "')
         
-        # Trouver le préfixe de la ligne (locuteur, indentation)
-        first_quote_pos = rebuilt.find('"')
+        # Trouver le préfixe de la ligne (locuteur, indentation), guillemet simple ou double.
+        first_quote_positions = [pos for pos in (rebuilt.find('"'), rebuilt.find("'")) if pos != -1]
+        first_quote_pos = min(first_quote_positions) if first_quote_positions else -1
         if first_quote_pos == -1:
             return original_line
         
@@ -583,8 +587,9 @@ class FileReconstructor:
         else:
             # Cas dialogue normal
             parts = []
-            for content in new_contents:
-                parts.append(f'"{content}"')
+            for idx, content in enumerate(new_contents):
+                quote_char = quote_chars[idx] if quote_chars and idx < len(quote_chars) else '"'
+                parts.append(f'{quote_char}{content}{quote_char}')
             dialogue_part = " ".join(parts)
         
         # Assembler la ligne finale
@@ -701,7 +706,45 @@ class FileReconstructor:
         
         log_message("DEBUG", f"✅ Tildes restaurés: {restored_structured} structurés, {restored_orphans} orphelins, {restored_fallback} en fallback", category="tilde_restoration")
 
-    def _reassemble_line_optimized(self, line_idx, original_line, new_contents, line_suffix):
+    def _extract_quoted_segments(self, line):
+        """Extrait les segments quotés (simples/doubles) en respectant les échappements."""
+        segments = []
+        i = 0
+        line_len = len(line)
+
+        while i < line_len:
+            if line[i] not in ('"', "'"):
+                i += 1
+                continue
+
+            quote_char = line[i]
+            start_idx = i
+            i += 1
+            content_chars = []
+
+            while i < line_len:
+                ch = line[i]
+                if ch == '\\' and i + 1 < line_len:
+                    content_chars.append(line[i:i + 2])
+                    i += 2
+                    continue
+                if ch == quote_char:
+                    segments.append({
+                        'quote_char': quote_char,
+                        'start_quote_idx': start_idx,
+                        'end_quote_idx': i,
+                        'content': ''.join(content_chars)
+                    })
+                    i += 1
+                    break
+                content_chars.append(ch)
+                i += 1
+            else:
+                break
+
+        return segments
+
+    def _reassemble_line_optimized(self, line_idx, original_line, new_contents, line_suffix, quote_chars=None):
         """
         VERSION OPTIMISÉE : Réassemble une ligne avec line_idx déjà connu.
         Évite les recherches O(n) coûteuses. MODIFIÉ pour tildes.
@@ -714,8 +757,29 @@ class FileReconstructor:
         rebuilt = rebuilt.replace("RENPY_EMPTY01", '""')
         rebuilt = rebuilt.replace("RENPY_EMPTY02", '" "')
         
+        # Cas spécial robuste: ligne type "personnage" "dialogue"
+        # => préserver le premier segment en VO et remplacer uniquement le second.
+        quoted_segments = self._extract_quoted_segments(rebuilt)
+        if len(new_contents) == 1 and len(quoted_segments) >= 2:
+            second = quoted_segments[1]
+            quote_char = second.get('quote_char', '"')
+            final_line = (
+                rebuilt[:second['start_quote_idx']]
+                + f"{quote_char}{new_contents[0]}{quote_char}"
+                + rebuilt[second['end_quote_idx'] + 1:]
+            )
+            if original_line.endswith('\n') and not final_line.endswith('\n'):
+                final_line += '\n'
+
+            all_mappings = {**self.mapping, **self.empty_mapping, **self.asterix_mapping, **self.tilde_mapping}
+            sorted_keys = sorted(all_mappings.keys(), key=len, reverse=True)
+            for key in sorted_keys:
+                final_line = final_line.replace(key, all_mappings[key])
+            return final_line
+
         # Trouver le préfixe de la ligne (locuteur, indentation)
-        first_quote_pos = rebuilt.find('"')
+        first_quote_positions = [pos for pos in (rebuilt.find('"'), rebuilt.find("'")) if pos != -1]
+        first_quote_pos = min(first_quote_positions) if first_quote_positions else -1
         if first_quote_pos == -1:
             return original_line
         
@@ -737,8 +801,9 @@ class FileReconstructor:
         else:
             # Cas dialogue normal
             parts = []
-            for content in new_contents:
-                parts.append(f'"{content}"')
+            for idx, content in enumerate(new_contents):
+                quote_char = quote_chars[idx] if quote_chars and idx < len(quote_chars) else '"'
+                parts.append(f'{quote_char}{content}{quote_char}')
             dialogue_part = " ".join(parts)
         
         # Assembler la ligne finale
@@ -817,11 +882,38 @@ class FileReconstructor:
 
         # ✅ NOUVEAU : Ajouter un marqueur de reconstruction
         from datetime import datetime
-        reconstruction_marker = f"\n# Fichier reconstruit après traduction par RenExtract le {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        content.append(reconstruction_marker)
+        reconstruction_marker = f"# Fichier reconstruit après traduction par RenExtract le {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+
+        # Préserver exactement les lignes vides finales du fichier reconstruit.
+        # On insère le marqueur AVANT les lignes vides terminales pour ne pas
+        # modifier la structure de fin de fichier attendue.
+        trailing_empty_count = 0
+        for line in reversed(content):
+            if line.strip() == "":
+                trailing_empty_count += 1
+            else:
+                break
+
+        if trailing_empty_count > 0:
+            content_without_trailing = content[:-trailing_empty_count]
+            trailing_lines = content[-trailing_empty_count:]
+        else:
+            content_without_trailing = content[:]
+            trailing_lines = []
+
+        # Uniformiser toutes les fins de ligne en CRLF pour compatibilité Ren'Py/Windows.
+        normalized_content = [
+            line.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r\n')
+            for line in content_without_trailing
+        ]
+        normalized_content.append(reconstruction_marker.replace('\n', '\r\n'))
+        normalized_content.extend(
+            line.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r\n')
+            for line in trailing_lines
+        )
 
         with open(save_path, "w", encoding="utf-8", newline='') as wf:
-            wf.writelines(content)
+            wf.writelines(normalized_content)
         
         # Commenter l'original si nouveau fichier
         if save_mode == 'new_file':
