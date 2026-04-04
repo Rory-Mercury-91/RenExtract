@@ -1,6 +1,19 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-05 (v1.2.34)
+
+### CI / release / Discord
+- **GitHub Actions** : actions passées sur **Node 24** (`checkout@v5`, `setup-python@v6`, `upload-artifact` / `download-artifact@v5`, `softprops/action-gh-release@v2.6.1`, variable `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24`).
+- **Notification Discord** : envoi **dans le même workflow** que la création de la release (`notify-discord` après `create-release`), sans dépendre d’un **PAT** ni de l’événement `release` (qui ne se propage pas quand la release est créée avec `GITHUB_TOKEN`).
+- **Workflow manuel** : `discord-release-notification.yml` reste disponible en **workflow_dispatch** pour renvoyer une notif sur un tag si besoin.
+
+### Fichiers modifiés (résumé)
+- `.github/workflows/build-releases.yml`, `.github/workflows/discord-release-notification.yml`
+- `infrastructure/config/constants.py` (fallback version), `CHANGELOG.md`
+
+---
+
 ## 2026-04-04 (v1.2.33)
 
 ### Générateur de traductions – langue au démarrage

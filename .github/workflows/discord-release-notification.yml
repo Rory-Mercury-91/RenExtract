@@ -1,8 +1,9 @@
 name: Discord Release Notification
 
+# La notification automatique est envoyée par le job « notify-discord » dans
+# build-releases.yml (même exécution que la release), pour fonctionner sans PAT_TOKEN.
+# Ce workflow sert uniquement à renvoyer une notif manuellement si besoin.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       tag_name:
@@ -35,10 +36,11 @@ jobs:
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          sudo apt-get update -qq && sudo apt-get install -y -qq gawk jq >/dev/null
           
           # Extraire la section du CHANGELOG pour cette version
           # Recherche flexible : accepte "## YYYY-MM-DD (vX.Y.Z)" ou "## YYYY-MM-DD (X.Y.Z)"
-          awk -v ver="$VERSION" '
+          gawk -v ver="$VERSION" '
             BEGIN { 
               # Nettoyer la version (enlever le v si présent)
               gsub(/^v/, "", ver)

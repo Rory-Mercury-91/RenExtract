@@ -420,6 +420,97 @@ jobs:
           prerelease: false
           generate_release_notes: true
         env:
-          # Utiliser PAT_TOKEN pour permettre de déclencher le workflow Discord automatiquement
-          # Si PAT_TOKEN n'est pas défini, utilise GITHUB_TOKEN par défaut
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN suffit : la notification Discord est envoyée par le job « notify-discord » ci-dessous.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify-discord:
+    name: Notify Discord
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION_NUMBER="${VERSION#v}"
+          if [ -z "${DISCORD_WEBHOOK:-}" ]; then
+            echo "::notice::DISCORD_WEBHOOK_URL non défini — notification Discord ignorée."
+            exit 0
+          fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq gawk jq >/dev/null
+
+          gawk -v ver="$VERSION" '
+            BEGIN { gsub(/^v/, "", ver) }
+            /^## [0-9]{4}-[0-9]{2}-[0-9]{2} \(/ {
+              match($0, /\(v?([0-9]+\.[0-9]+\.[0-9]+)\)/, arr)
+              if (arr[1] == ver) { started = 1; next }
+              else if (started) { exit }
+            }
+            started { print }
+          ' CHANGELOG.md > changelog_extract.txt
+
+          if [ ! -s changelog_extract.txt ]; then
+            echo "ATTENTION: Changelog vide pour $VERSION" >&2
+            echo "Contenu disponible dans les prochaines releases." > changelog_extract.txt
+          fi
+          head -c 1000 changelog_extract.txt > changelog_short.txt
+
+          CHANGELOG_RAW=$(cat changelog_short.txt)
+          SUMMARY_RAW=$(awk '/^### / { if (count++ < 3) print "• " $0 }' changelog_extract.txt | sed 's/### //')
+
+          jq -n \
+            --arg username "RenExtract Release Bot" \
+            --arg avatar "https://github.com/Rory-Mercury-91.png" \
+            --arg version "$VERSION" \
+            --arg version_num "$VERSION_NUMBER" \
+            --arg summary "$SUMMARY_RAW" \
+            --arg changelog "$CHANGELOG_RAW" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            '{
+              "username": $username,
+              "avatar_url": $avatar,
+              "embeds": [{
+                "title": ("🚀 RenExtract " + $version + " - Nouvelle Version Disponible !"),
+                "description": "**Une mise à jour importante de RenExtract est maintenant disponible.**\n\n",
+                "color": 5814783,
+                "fields": [
+                  {
+                    "name": "✨ Points Clés de cette Version",
+                    "value": $summary,
+                    "inline": false
+                  },
+                  {
+                    "name": "📝 Changements Complets",
+                    "value": $changelog,
+                    "inline": false
+                  },
+                  {
+                    "name": "⬇️ Téléchargements",
+                    "value": ("**Windows** : [💾 Télécharger](https://github.com/Rory-Mercury-91/RenExtract/releases/download/" + $version + "/RenExtract-" + $version + "-Windows.zip)\n**Linux** : [💾 Télécharger](https://github.com/Rory-Mercury-91/RenExtract/releases/download/" + $version + "/RenExtract-" + $version + "-Linux.tar.gz)"),
+                    "inline": false
+                  },
+                  {
+                    "name": "🔗 Liens Utiles",
+                    "value": ("📦 [Page de la Release](https://github.com/Rory-Mercury-91/RenExtract/releases/tag/" + $version + ")\n📝 [CHANGELOG Complet](https://github.com/Rory-Mercury-91/RenExtract/blob/main/CHANGELOG.md)\n🐛 [Signaler un Bug](https://github.com/Rory-Mercury-91/RenExtract/issues)"),
+                    "inline": false
+                  }
+                ],
+                "footer": {
+                  "text": ("RenExtract v" + $version_num + " • Production Ready • Merci de votre soutien !"),
+                  "icon_url": $avatar
+                },
+                "timestamp": $timestamp
+              }]
+            }' > discord_payload.json
+
+          curl -fsS -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d @discord_payload.json
+          echo "✅ Notification Discord envoyée pour $VERSION"
