@@ -19,6 +19,10 @@ import webbrowser
 from urllib.parse import quote
 from datetime import datetime
 from infrastructure.logging.logging import log_message
+from infrastructure.config.constants import (
+    LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+    RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+)
 from infrastructure.config.config import config_manager
 from infrastructure.config.constants import FOLDERS, ensure_folders_exist
 from infrastructure.helpers.unified_functions import extract_game_name
@@ -191,7 +195,9 @@ class UnifiedCoherenceChecker:
             'common.rpy',
             '99_Z_Console.rpy',
             '99_Z_ScreenPreferences.rpy',
-            '99_Z_FontSystem.rpy'
+            '99_Z_FontSystem.rpy',
+            RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+            LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
         ]
         
         # Vérifier d'abord les fichiers système
@@ -705,8 +711,13 @@ class UnifiedCoherenceChecker:
                         new_contents[tag_name] = []
                     new_contents[tag_name].append(content)
             
+            # Balises purement techniques (identifiants de jeu, pas du texte à traduire)
+            technical_tag_names = frozenset({'ctml', 'id'})
+
             # Comparer les contenus pour chaque type de balise
             for tag_name in old_contents:
+                if tag_name.lower() in technical_tag_names:
+                    continue
                 if tag_name not in new_contents:
                     continue  # Balise absente, sera détecté par _check_tags_coherence
                 
@@ -719,6 +730,12 @@ class UnifiedCoherenceChecker:
                         break  # Plus de contenus correspondants dans NEW
                     
                     new_content = new_tag_contents[i]
+                    
+                    # Identifiants techniques (ex. day1_phonetruck) : inchangés volontairement
+                    if re.fullmatch(r'[a-z][a-z0-9_]*', old_content, re.I) and (
+                        '_' in old_content or any(ch.isdigit() for ch in old_content)
+                    ):
+                        continue
                     
                     # Vérifier si le contenu est identique (pas traduit)
                     # Ignorer la casse et les espaces pour la comparaison

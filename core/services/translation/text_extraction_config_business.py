@@ -19,6 +19,10 @@ from pathlib import Path
 from typing import List, Dict, Set, Optional, Any, Tuple
 from datetime import datetime
 from infrastructure.logging.logging import log_message
+from infrastructure.config.constants import (
+    LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+    RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+)
 
 
 class TextExtractionConfigBusiness:
@@ -36,7 +40,9 @@ class TextExtractionConfigBusiness:
         self.system_generated_exclusions = [
             '99_Z_Console.rpy',              # Console développeur
             '99_Z_ScreenPreferences.rpy',    # Fichier unifié (sélecteur langue + polices + textbox)
-            '99_Z_FontSystem.rpy'            # Polices GUI individuelles
+            '99_Z_FontSystem.rpy',           # Polices GUI individuelles
+            RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+            LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
         ]
         
         log_message("INFO", f"TextExtractionConfigBusiness initialisé - {len(self.system_generated_exclusions)} exclusions système", category="extraction_config")

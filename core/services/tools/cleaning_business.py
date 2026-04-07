@@ -19,7 +19,12 @@ import tempfile
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from infrastructure.logging.logging import log_message
-from infrastructure.config.constants import FOLDERS, ensure_folders_exist
+from infrastructure.config.constants import (
+    FOLDERS,
+    LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+    RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+    ensure_folders_exist,
+)
 from infrastructure.helpers.unified_functions import get_last_game_directory, set_last_game_directory
 from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
 from core.tools.sdk_manager import get_sdk_manager
@@ -696,7 +701,9 @@ Statistics:
                 '99_Z_Console.rpy',
                 '99_Z_ScreenPreferences.rpy', 
                 '99_Z_FontSystem.rpy',
-                'common.rpy'
+                'common.rpy',
+                RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+                LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
             ]
             
             # Vérifier d'abord les fichiers système

@@ -1,6 +1,33 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-07 (v1.2.35)
+
+### Générateur de traductions – langue au démarrage (fichier Ren'Py)
+- **Nom de fichier** : le script généré est désormais **`re_set_default_language_at_startup.rpy`** (préfixe **`re_`** RenExtract). Le préfixe **`00_`** est évité car **réservé par Ren'Py** à ses propres fichiers système.
+- **Migration** : lors de la création, suppression automatique d’un éventuel ancien **`00_set_default_language_at_startup.rpy`** dans **`game/tl/<langue>/`** (en plus de l’ancien fichier à la racine **`game/`**).
+- **`renpy.game.preferences.language`** : normalisation vers les **codes attendus par Ren'Py** (ex. **`french`**, **`english`**), y compris si un libellé type **`français`** était utilisé par erreur.
+
+### Exclusions outils (combinaison, extraction, cohérence, nettoyage)
+- Les fichiers **`re_set_default_language_at_startup.rpy`** et l’ancien **`00_set_default_language_at_startup.rpy`** sont **exclus automatiquement** comme les autres scripts générés (**`99_Z_*.rpy`**, etc.), aligné avec les paramètres d’exclusion utilisateur.
+- **Valeur par défaut** : **`renpy_excluded_files`** inclut ces noms pour les nouvelles installations.
+
+### Guide HTML intégré
+- **Import direct** du **`TutorialGenerator`** depuis **`ui.tutorial.generator`** si l’export vers **`globals()`** a échoué (init du package tutoriel). Réduit les cas **« Générateur non disponible »** chez certains utilisateurs alors que le module est chargable.
+
+### Cohérence des traductions
+- **Contenu des balises** : ignore les balises techniques **`{CTML}…{/CTML}`** et **`{ID}…{/ID}`** pour l’alerte « contenu non traduit ».
+- **Identifiants techniques** : ignore les segments type snake_case avec **chiffre** ou **underscore** (ex. **`day1_phonetruck`**) lorsque le texte est volontairement identique entre **`old`** et **`new`**.
+
+### Fichiers modifiés (résumé)
+- `infrastructure/config/constants.py`
+- `core/services/translation/translation_generation_business.py`, `combination_business.py`, `text_extraction_config_business.py`
+- `core/services/tools/coherence_checker_business.py`, `cleaning_business.py`
+- `ui/tab_generator/generation_tl_tab.py`, `ui/tutorial/__init__.py`
+- `CHANGELOG.md`, `version_info.txt`
+
+---
+
 ## 2026-04-05 (v1.2.34)
 
 ### CI / release / Discord

@@ -1639,7 +1639,7 @@ def create_developer_console_only(main_interface):
         set_operation_buttons_state(main_interface, 'normal')
 
 def create_default_language_startup_only(main_interface):
-    """Crée/écrase game/tl/<langue>/00_set_default_language_at_startup.rpy sans génération TL"""
+    """Crée/écrase game/tl/<langue>/re_set_default_language_at_startup.rpy sans génération TL"""
     try:
         if not main_interface.current_project_path:
             main_interface._update_status("Veuillez sélectionner un projet Ren'Py")
@@ -2006,7 +2006,7 @@ def show_default_language_at_startup_help(parent_window):
     message_styled = [
         ("LANGUE AU DÉMARRAGE\n\n", "bold_blue"),
         ("Crée le fichier ", "normal"),
-        ("game/tl/<langue>/00_set_default_language_at_startup.rpy", "bold"),
+        ("game/tl/<langue>/re_set_default_language_at_startup.rpy", "bold"),
         (" (même code que la ", "normal"),
         ("Langue cible", "bold"),
         ("), pour définir ", "normal"),
@@ -2016,16 +2016,18 @@ def show_default_language_at_startup_help(parent_window):
         ("tl/", "bold"),
         (".\n\n", "normal"),
         ("Remarques :\n", "bold_green"),
-        ("• Le préfixe ", "normal"),
+        ("• Préfixe ", "normal"),
+        ("re_", "bold"),
+        (" (RenExtract) : ne pas utiliser ", "normal"),
         ("00_", "bold"),
-        (" favorise un chargement précoce\n", "normal"),
+        (" (réservé Ren'Py)\n", "normal"),
         ("• ", "normal"),
         ("init 1000", "bold"),
         (" s'exécute après la plupart des blocs ", "normal"),
         ("init", "bold"),
         (" habituels\n", "normal"),
         ("• Un ancien fichier à la racine ", "normal"),
-        ("game/00_set_default_language_at_startup.rpy", "bold"),
+        ("game/00_set_default_language_at_startup.rpy (ancien emplacement, supprimé si présent)", "bold"),
         (" est supprimé automatiquement si présent\n", "normal"),
         ("• Pour désactiver : supprimez ce fichier dans ", "normal"),
         ("game/tl/<votre_langue>/", "bold"),

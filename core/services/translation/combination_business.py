@@ -17,6 +17,10 @@ import time
 from typing import Dict, List, Optional, Callable, Any
 
 from infrastructure.logging.logging import log_message
+from infrastructure.config.constants import (
+    LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+    RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+)
 from infrastructure.config.config import config_manager
 
 
@@ -211,7 +215,9 @@ class CombinationBusiness:
                 '99_Z_Console.rpy',
                 '99_Z_ScreenPreferences.rpy',
                 '99_Z_FontSystem.rpy',
-                'traduction.rpy'
+                'traduction.rpy',
+                RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+                LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
             ]
 
             # Combiner les exclusions système avec les exclusions utilisateur

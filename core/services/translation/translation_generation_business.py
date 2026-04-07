@@ -30,12 +30,45 @@ from datetime import datetime
 
 from infrastructure.logging.logging import log_message
 from infrastructure.config.config import config_manager
+from infrastructure.config.constants import (
+    LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+    RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME,
+)
 from infrastructure.helpers.unified_functions import show_translated_messagebox
 from core.models.backup.unified_backup_manager import BackupType
 from core.tools.sdk_manager import get_sdk_manager
 from core.services.translation.font_manager import FontManager
 from core.models.backup.unified_backup_manager import UnifiedBackupManager
 from core.services.common.common import get_french_common_translations
+
+
+def _normalize_renpy_preferences_language(language: str) -> str:
+    """
+    Normalise l'identifiant pour renpy.game.preferences.language et le dossier tl/.
+    Ren'Py attend des codes du type « french », « english », jamais des libellés (« français »).
+    """
+    raw = (language or "").strip()
+    if not raw:
+        return raw
+    key = raw.lower().replace(" ", "_")
+    display_to_code = {
+        "français": "french",
+        "francais": "french",
+        "anglais": "english",
+        "espagnol": "spanish",
+        "español": "spanish",
+        "espanol": "spanish",
+        "allemand": "german",
+        "italien": "italian",
+        "portugais": "portuguese",
+        "russe": "russian",
+        "japonais": "japanese",
+        "chinois": "chinese",
+        "coréen": "korean",
+        "coreen": "korean",
+        "arabe": "arabic",
+    }
+    return display_to_code.get(key, raw)
 
 
 class TranslationGenerationBusiness:
@@ -989,7 +1022,7 @@ init python early hide:
                     except Exception as cons_error:
                         result['warnings'].append(f"Erreur console développeur : {cons_error}")
 
-                # Langue par défaut au démarrage (game/tl/<lang>/00_set_default_language_at_startup.rpy)
+                # Langue par défaut au démarrage (game/tl/<lang>/re_set_default_language_at_startup.rpy)
                 if options.get('create_default_language_at_startup', False):
                     if progress_callback:
                         progress_callback(95, "Création du forçage de langue au démarrage...")
@@ -1866,8 +1899,8 @@ init python early hide:
 
     def create_default_language_at_startup_file(self, project_path: str, language: str):
         """
-        Crée/écrase game/tl/<langue>/00_set_default_language_at_startup.rpy pour définir
-        renpy.game.preferences.language au démarrage (même code que le dossier tl/).
+        Crée/écrase game/tl/<langue>/re_set_default_language_at_startup.rpy pour définir
+        renpy.game.preferences.language au démarrage (identifiant Ren'Py, ex. « french »).
 
         Returns:
             (success: bool, message: str)
@@ -1877,7 +1910,7 @@ init python early hide:
             if not os.path.isdir(game_dir):
                 return False, "Dossier 'game' introuvable dans le projet"
 
-            lang_code = (language or "").strip()
+            lang_code = _normalize_renpy_preferences_language(language)
             if not lang_code:
                 return False, "Code langue vide"
             # Même règle que l'UI : lettres (casse conservée), chiffres, tirets, underscores
@@ -1885,13 +1918,13 @@ init python early hide:
                 return False, "Code langue invalide pour le fichier de forçage"
 
             # Ancien emplacement (racine game/) : évite un double forçage si les deux existent
-            legacy_file = Path(game_dir) / "00_set_default_language_at_startup.rpy"
+            legacy_file = Path(game_dir) / LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME
             if legacy_file.is_file():
                 try:
                     legacy_file.unlink()
                     log_message(
                         "INFO",
-                        "Ancien 00_set_default_language_at_startup.rpy retiré de game/ (emplacement tl/)",
+                        f"Ancien {LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME} retiré de game/ (emplacement tl/)",
                         category="renpy_generator_tl",
                     )
                 except OSError as e_unlink:
@@ -1903,7 +1936,24 @@ init python early hide:
 
             tl_lang_dir = Path(game_dir) / "tl" / lang_code
             tl_lang_dir.mkdir(parents=True, exist_ok=True)
-            target_file = tl_lang_dir / "00_set_default_language_at_startup.rpy"
+            # Retrait ancien préfixe 00_ (réservé Ren'Py) dans le dossier tl/
+            legacy_tl_00 = tl_lang_dir / LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME
+            if legacy_tl_00.is_file():
+                try:
+                    legacy_tl_00.unlink()
+                    log_message(
+                        "INFO",
+                        f"Ancien {LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME} retiré de {tl_lang_dir}",
+                        category="renpy_generator_tl",
+                    )
+                except OSError as e_unlink:
+                    log_message(
+                        "ATTENTION",
+                        f"Impossible de supprimer l'ancien fichier tl/ : {e_unlink}",
+                        category="renpy_generator_tl",
+                    )
+
+            target_file = tl_lang_dir / RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME
             lang_literal = json.dumps(lang_code)
             content = (
                 "## Langue au démarrage (RenExtract)\n"

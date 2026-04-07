@@ -349,46 +349,54 @@ def show_tutorial(parent=None, language='fr'):
     try:
         log_message("DEBUG", f"Demande d'affichage tutoriel", "init_tutorial")
         
-        # Essayer d'utiliser le générateur importé automatiquement
-        if 'TutorialGenerator' in globals():
-            TutorialGenerator = globals()['TutorialGenerator']
-            
-            if isinstance(TutorialGenerator, type):
-                generator = TutorialGenerator()
-                html_path = generator.generate_tutorial_html(VERSION)
-                
-                # Attendre que le téléchargement des images soit terminé
-                # Note: Le téléchargement a normalement déjà été lancé au démarrage de l'app
-                if hasattr(generator, 'download_complete') and hasattr(generator, 'download_in_progress'):
-                    import time
-                    wait_time = 0
-                    max_wait = 10  # Maximum 10 secondes (réduit car pré-chargement au démarrage)
-                    
-                    # Afficher un message si le téléchargement est encore en cours
-                    if generator.download_in_progress:
-                        log_message("INFO", "⏳ Finalisation du téléchargement des images...", "init_tutorial")
-                    
-                    while generator.download_in_progress and wait_time < max_wait:
-                        time.sleep(0.5)
-                        wait_time += 0.5
-                    
-                    if wait_time >= max_wait:
-                        log_message("ATTENTION", "Timeout téléchargement images, ouverture du tutoriel avec images disponibles", "init_tutorial")
-                    elif generator.download_complete:
-                        log_message("DEBUG", "✅ Images prêtes", "init_tutorial")
-                
-                if html_path and os.path.exists(html_path):
-                    try:
-                        html_url = f"file:///{html_path.replace(os.sep, '/')}"
-                        webbrowser.open(html_url)
-                        log_message("INFO", f"Guide complet ouvert dans le navigateur: {html_path}", "init_tutorial")
-                        return html_path
-                    except Exception as e:
-                        log_message("ERREUR", f"Impossible d'ouvrir le navigateur: {e}", "init_tutorial")
-                        _show_fallback_message(parent)
-                        return html_path
-                        
-        # Fallback si aucun générateur disponible
+        # Import direct : si l'init du package a échoué, globals() ne contient pas TutorialGenerator
+        TutorialGenerator = None
+        try:
+            from ui.tutorial.generator import TutorialGenerator as _TutorialGenerator
+            if isinstance(_TutorialGenerator, type):
+                TutorialGenerator = _TutorialGenerator
+        except ImportError:
+            pass
+        if TutorialGenerator is None:
+            tg = globals().get('TutorialGenerator')
+            if isinstance(tg, type):
+                TutorialGenerator = tg
+        
+        if TutorialGenerator is not None:
+            generator = TutorialGenerator()
+            html_path = generator.generate_tutorial_html(VERSION)
+
+            # Attendre que le téléchargement des images soit terminé
+            # Note: Le téléchargement a normalement déjà été lancé au démarrage de l'app
+            if hasattr(generator, 'download_complete') and hasattr(generator, 'download_in_progress'):
+                import time
+                wait_time = 0
+                max_wait = 10  # Maximum 10 secondes (réduit car pré-chargement au démarrage)
+
+                if generator.download_in_progress:
+                    log_message("INFO", "⏳ Finalisation du téléchargement des images...", "init_tutorial")
+
+                while generator.download_in_progress and wait_time < max_wait:
+                    time.sleep(0.5)
+                    wait_time += 0.5
+
+                if wait_time >= max_wait:
+                    log_message("ATTENTION", "Timeout téléchargement images, ouverture du tutoriel avec images disponibles", "init_tutorial")
+                elif generator.download_complete:
+                    log_message("DEBUG", "✅ Images prêtes", "init_tutorial")
+
+            if html_path and os.path.exists(html_path):
+                try:
+                    html_url = f"file:///{html_path.replace(os.sep, '/')}"
+                    webbrowser.open(html_url)
+                    log_message("INFO", f"Guide complet ouvert dans le navigateur: {html_path}", "init_tutorial")
+                    return html_path
+                except Exception as e:
+                    log_message("ERREUR", f"Impossible d'ouvrir le navigateur: {e}", "init_tutorial")
+                    _show_fallback_message(parent)
+                    return html_path
+
+        # Fallback si aucun générateur disponible ou HTML absent
         log_message("ERREUR", "Générateur non disponible", "init_tutorial")
         _show_fallback_message(parent)
         return None

@@ -15,6 +15,10 @@ def get_executable_dir():
     """Retourne le dossier de l'exécutable (ou main.py)."""
     return os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(sys.argv[0]))
 
+# Fichier forçage langue au démarrage : préfixe « re_ » (RenExtract), pas « 00_ » (réservé Ren'Py)
+RENEXTRACT_DEFAULT_LANGUAGE_STARTUP_FILENAME = "re_set_default_language_at_startup.rpy"
+LEGACY_DEFAULT_LANGUAGE_STARTUP_FILENAME = "00_set_default_language_at_startup.rpy"
+
 def get_version():
     """
     Retourne la version depuis le tag Git ou un fichier VERSION.txt
@@ -74,7 +78,7 @@ def get_version():
         pass
     
     # FALLBACK : uniquement si version_build.py absent et git indisponible
-    return "v1.2.34"
+    return "v1.2.35"
 
 def increment_build_number():
     """
@@ -381,7 +385,7 @@ DEFAULT_CONFIG = {
     "editor_font_size":9,"realtime_log_retention_days":7,"realtime_max_log_size_mb":10,"default_online_translator":"Google","groq_api_key":"","groq_custom_instructions":"","groq_translation_style":"Naturel","groq_game_context":"Général","groq_temperature":0.3,
     "current_renpy_project":"","renpy_sdk_path":"","renpy_default_language":"french","renpy_auto_open_folder":True,"renpy_show_results_popup":True,
     "renpy_delete_rpa_after":False,"renpy_delete_source_after_rpa":False,
-    "renpy_excluded_files":"common.rpy",
+    "renpy_excluded_files":"common.rpy, re_set_default_language_at_startup.rpy, 00_set_default_language_at_startup.rpy",
     "language_selector_integration":False,"developer_console_integration":False,"default_language_at_startup_integration":False,
     "dark_mode":True,"show_output_path_display":False,
     "last_game_directory":"",
