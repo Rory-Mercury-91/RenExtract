@@ -288,59 +288,68 @@ class PythonManager:
         log_message("DEBUG", "Aucun Python embarqué fonctionnel trouvé.", category="embedded_detect")
         return None
     
-    def _test_python_executable(self, python_exe: str, expected_version: str = None) -> bool:
+    def _test_python_executable(self, python_exe: str, expected_version: str = None,
+                                max_retries: int = 3, retry_delay: float = 1.5) -> bool:
         """
-        Teste si un exécutable Python fonctionne
-        
+        Teste si un exécutable Python fonctionne.
+        Effectue plusieurs tentatives pour tolérer le scan antivirus post-extraction.
+
         Args:
             python_exe: Chemin vers l'exécutable Python
             expected_version: Version attendue ("2.7" ou "3.11")
-            
+            max_retries: Nombre max de tentatives (défaut 3)
+            retry_delay: Délai en secondes entre chaque tentative (défaut 1.5s)
+
         Returns:
             True si l'exécutable fonctionne
         """
-        try:
-            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
-            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            
-            result = subprocess.run(
-                [python_exe, "--version"], 
-                capture_output=True, 
-                text=True, 
-                timeout=5,
-                creationflags=creationflags
-            )
-            
-            if result.returncode == 0:
-                # Python 2.7 affiche la version sur stderr, Python 3+ sur stdout
-                version_output = result.stdout or result.stderr
-                
-                if expected_version:
-                    if expected_version in version_output:
+        import time
+
+        for attempt in range(1, max_retries + 1):
+            try:
+                creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+                result = subprocess.run(
+                    [python_exe, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    creationflags=creationflags
+                )
+
+                if result.returncode == 0:
+                    version_output = result.stdout or result.stderr
+
+                    if expected_version:
+                        if expected_version in version_output:
+                            log_message("DEBUG", f"Python testé avec succès : {version_output.strip()}", category="python_test")
+                            return True
+                        else:
+                            log_message("DEBUG", f"Version Python incorrecte : attendu {expected_version}, trouvé {version_output.strip()}", category="python_test")
+                            return False
+                    else:
                         log_message("DEBUG", f"Python testé avec succès : {version_output.strip()}", category="python_test")
                         return True
-                    else:
-                        log_message("DEBUG", f"Version Python incorrecte : attendu {expected_version}, trouvé {version_output.strip()}", category="python_test")
-                        return False
                 else:
-                    log_message("DEBUG", f"Python testé avec succès : {version_output.strip()}", category="python_test")
-                    return True
-            else:
-                stdout_tail = (result.stdout or "").strip()[:300]
-                stderr_tail = (result.stderr or "").strip()[:300]
-                log_message(
-                    "DEBUG",
-                    f"Échec test Python : code {result.returncode}, stdout='{stdout_tail}', stderr='{stderr_tail}'",
-                    category="python_test"
-                )
-                return False
-                
-        except subprocess.TimeoutExpired:
-            log_message("DEBUG", "Timeout test Python", category="python_test")
-            return False
-        except Exception as e:
-            log_message("DEBUG", f"Erreur test Python: {e}", category="python_test")
-            return False
+                    stdout_tail = (result.stdout or "").strip()[:300]
+                    stderr_tail = (result.stderr or "").strip()[:300]
+                    log_message(
+                        "DEBUG",
+                        f"Échec test Python (tentative {attempt}/{max_retries}) : code {result.returncode}, stdout='{stdout_tail}', stderr='{stderr_tail}'",
+                        category="python_test"
+                    )
+
+            except subprocess.TimeoutExpired:
+                log_message("DEBUG", f"Timeout test Python (tentative {attempt}/{max_retries})", category="python_test")
+            except Exception as e:
+                log_message("DEBUG", f"Erreur test Python (tentative {attempt}/{max_retries}): {e}", category="python_test")
+
+            if attempt < max_retries:
+                log_message("INFO", f"Antivirus probablement actif — nouvelle tentative dans {retry_delay}s... ({attempt}/{max_retries})", category="python_test")
+                time.sleep(retry_delay)
+
+        log_message("ERREUR", f"Python inaccessible après {max_retries} tentatives : {python_exe}", category="python_test")
+        return False
     
     def _test_python_compatibility(self, python_exe: str, task: str) -> bool:
         """
