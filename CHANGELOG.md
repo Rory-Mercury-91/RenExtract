@@ -1,6 +1,25 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-10 (v1.2.36)
+
+### Extraction RPA/RPYC – fix installation Python embedded
+
+- **Retry antivirus post-extraction** : lors du premier lancement de la journée, Windows Defender
+  scannait `python.exe` immédiatement après son extraction, le rendant temporairement inaccessible.
+  La validation échouait en ~80ms avec l'erreur *"ne fonctionne pas après installation"*.
+- **Fix** : `_test_python_executable()` effectue désormais jusqu'à **3 tentatives espacées de 1,5s**
+  avant de déclarer l'échec, ce qui laisse le temps à l'antivirus de terminer son scan.
+- **Symptôme corrigé** : il n'est plus nécessaire de changer le dossier outils et relancer
+  l'application pour débloquer l'extraction.
+
+### Fichiers modifiés
+
+- `core/tools/python_manager.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-07 (v1.2.35)
 
 ### Générateur de traductions – langue au démarrage (fichier Ren'Py)
