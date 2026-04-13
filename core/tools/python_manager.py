@@ -107,11 +107,20 @@ class PythonManager:
                 
                 return python_exe
             else:
-                raise RuntimeError("Python Embedded 3.11 ne fonctionne pas après installation")
+                # Ne pas supprimer immédiatement l'installation : sur certaines machines,
+                # l'antivirus peut verrouiller python.exe pendant plusieurs secondes.
+                raise RuntimeError("Python Embedded 3.11 temporairement inaccessible après installation")
                 
         except Exception as e:
             log_message("ERREUR", f"Erreur installation Python Embedded 3.11 : {e}", category="python_setup_3")
-            self._cleanup_python_dir(self.python_embed_dir)
+            if not self._is_transient_python_access_issue(e):
+                self._cleanup_python_dir(self.python_embed_dir)
+            else:
+                log_message(
+                    "ATTENTION",
+                    "Installation Python conservée pour retry ultérieur (verrou probable antivirus).",
+                    category="python_setup_3"
+                )
             return None
         finally:
             # Nettoyer le fichier temporaire
@@ -289,7 +298,7 @@ class PythonManager:
         return None
     
     def _test_python_executable(self, python_exe: str, expected_version: str = None,
-                                max_retries: int = 3, retry_delay: float = 1.5) -> bool:
+                                max_retries: int = 8, retry_delay: float = 1.5) -> bool:
         """
         Teste si un exécutable Python fonctionne.
         Effectue plusieurs tentatives pour tolérer le scan antivirus post-extraction.
@@ -297,7 +306,7 @@ class PythonManager:
         Args:
             python_exe: Chemin vers l'exécutable Python
             expected_version: Version attendue ("2.7" ou "3.11")
-            max_retries: Nombre max de tentatives (défaut 3)
+            max_retries: Nombre max de tentatives (défaut 8)
             retry_delay: Délai en secondes entre chaque tentative (défaut 1.5s)
 
         Returns:
@@ -345,11 +354,32 @@ class PythonManager:
                 log_message("DEBUG", f"Erreur test Python (tentative {attempt}/{max_retries}): {e}", category="python_test")
 
             if attempt < max_retries:
-                log_message("INFO", f"Antivirus probablement actif — nouvelle tentative dans {retry_delay}s... ({attempt}/{max_retries})", category="python_test")
-                time.sleep(retry_delay)
+                current_delay = retry_delay if attempt <= 4 else retry_delay * 2
+                log_message(
+                    "INFO",
+                    f"Antivirus probablement actif — nouvelle tentative dans {current_delay}s... ({attempt}/{max_retries})",
+                    category="python_test"
+                )
+                time.sleep(current_delay)
 
         log_message("ERREUR", f"Python inaccessible après {max_retries} tentatives : {python_exe}", category="python_test")
         return False
+
+    def _is_transient_python_access_issue(self, error: Exception) -> bool:
+        """Détecte les erreurs temporaires typiques de verrou antivirus/fichier occupé."""
+        txt = str(error).lower()
+        markers = [
+            "temporairement inaccessible",
+            "inaccessible",
+            "access is denied",
+            "permission denied",
+            "used by another process",
+            "being used by another process",
+            "winerror 5",
+            "winerror 32",
+            "antivirus",
+        ]
+        return any(marker in txt for marker in markers)
     
     def _test_python_compatibility(self, python_exe: str, task: str) -> bool:
         """

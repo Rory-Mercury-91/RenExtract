@@ -250,6 +250,8 @@ class RenExtractApp:
             
             # Lancer le pré-chargement des images du tutoriel en arrière-plan
             self._preload_tutorial_images()
+            # Préparer Python embedded au démarrage pour éviter le délai au clic d'extraction
+            self._preload_python_embedded()
             
         except Exception as e:
             log_message("ATTENTION", f"Impossible de vérifier/Créer les dossiers: {e}", category="main")
@@ -276,6 +278,68 @@ class RenExtractApp:
             
         except Exception as e:
             log_message("DEBUG", f"Impossible de pré-charger les images du tutoriel: {e}", category="main")
+
+    def _preload_python_embedded(self):
+        """Précharge Python embedded (3.11 + 2.7) au démarrage (thread non bloquant)."""
+        try:
+            def preload_task():
+                try:
+                    log_message("INFO", "🐍 Préchargement Python embedded (3.11/2.7) démarré en arrière-plan...", category="main")
+                    self._post_startup_status("Préchargement des outils Python en cours...")
+
+                    from core.tools.python_manager import get_python_manager
+                    manager = get_python_manager()
+
+                    py3 = manager.setup_python_embedded()
+                    py2 = manager.setup_python27_embedded()
+
+                    py3_ok = bool(py3)
+                    py2_ok = bool(py2)
+
+                    if py3_ok:
+                        log_message("INFO", f"🐍 Python 3.11 embedded prêt : {py3}", category="main")
+                    else:
+                        log_message("ATTENTION", "Python 3.11 embedded non prêt au démarrage (retry au besoin).", category="main")
+
+                    if py2_ok:
+                        log_message("INFO", f"🐍 Python 2.7 embedded prêt : {py2}", category="main")
+                    else:
+                        log_message("ATTENTION", "Python 2.7 embedded non prêt au démarrage (retry au besoin).", category="main")
+
+                    if py3_ok and py2_ok:
+                        self._post_startup_status("Outils Python prêts (3.11 + 2.7).")
+                    elif py3_ok:
+                        self._post_startup_status("Outils Python partiels : 3.11 prêt, 2.7 à la demande.")
+                    else:
+                        self._post_startup_status("Outils Python non prêts : téléchargement à la demande.")
+                except Exception as e:
+                    log_message("DEBUG", f"Erreur préchargement Python embedded: {e}", category="main")
+                    self._post_startup_status("Préchargement outils Python échoué (fallback à la demande).")
+
+            preload_thread = threading.Thread(target=preload_task, daemon=True, name="PythonEmbeddedPreload")
+            preload_thread.start()
+        except Exception as e:
+            log_message("DEBUG", f"Impossible de lancer le préchargement Python embedded: {e}", category="main")
+
+    def _post_startup_status(self, message: str):
+        """Affiche un statut de démarrage dans l'UI si elle est disponible."""
+        try:
+            if not hasattr(self, "root"):
+                return
+
+            def _apply():
+                try:
+                    if not hasattr(self, "window"):
+                        return
+                    info_frame = self.window.get_component('info') if hasattr(self.window, 'get_component') else None
+                    if info_frame and hasattr(info_frame, 'update_status'):
+                        info_frame.update_status(message)
+                except Exception:
+                    pass
+
+            self.root.after(0, _apply)
+        except Exception:
+            pass
 
     def _create_root(self):
         try:
