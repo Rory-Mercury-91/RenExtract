@@ -227,7 +227,7 @@ def _hide_loading_console():
 
 # Imports légers uniquement ; core / ui chargés plus tard pour accélérer l'affichage
 from infrastructure import get_config_manager
-from infrastructure.config.constants import ensure_folders_exist
+from infrastructure.config.constants import BASE_DIR, CONFIG_DIR_NAME, ensure_folders_exist
 from infrastructure.helpers.unified_functions import show_translated_messagebox
 
 try:
@@ -247,6 +247,7 @@ class RenExtractApp:
     def _init_base(self):
         try:
             ensure_folders_exist()
+            self._cleanup_legacy_app_tools_dirs()
             
             # Lancer le pré-chargement des images du tutoriel en arrière-plan
             self._preload_tutorial_images()
@@ -255,6 +256,25 @@ class RenExtractApp:
             
         except Exception as e:
             log_message("ATTENTION", f"Impossible de vérifier/Créer les dossiers: {e}", category="main")
+
+    def _cleanup_legacy_app_tools_dirs(self):
+        """Supprime les anciens dossiers locaux inutilisés (05_ConfigRenExtract/tools,temp)."""
+        try:
+            import shutil
+            config_root = os.path.join(BASE_DIR, CONFIG_DIR_NAME)
+            legacy_dirs = [
+                os.path.join(config_root, "tools"),
+                os.path.join(config_root, "temp"),
+            ]
+            for d in legacy_dirs:
+                if os.path.isdir(d):
+                    try:
+                        shutil.rmtree(d)
+                        log_message("INFO", f"Ancien dossier supprimé: {d}", category="main")
+                    except Exception as e:
+                        log_message("ATTENTION", f"Impossible de supprimer le dossier {d}: {e}", category="main")
+        except Exception as e:
+            log_message("DEBUG", f"Nettoyage legacy tools/temp ignoré: {e}", category="main")
     
     def _preload_tutorial_images(self):
         """Lance le téléchargement des images du tutoriel en arrière-plan au démarrage"""
@@ -285,7 +305,7 @@ class RenExtractApp:
             def preload_task():
                 try:
                     log_message("INFO", "🐍 Préchargement Python embedded (3.11/2.7) démarré en arrière-plan...", category="main")
-                    self._post_startup_status("Préchargement des outils Python en cours...")
+                    self._post_startup_status("en cours...", ready=False)
 
                     from core.tools.python_manager import get_python_manager
                     manager = get_python_manager()
@@ -307,21 +327,21 @@ class RenExtractApp:
                         log_message("ATTENTION", "Python 2.7 embedded non prêt au démarrage (retry au besoin).", category="main")
 
                     if py3_ok and py2_ok:
-                        self._post_startup_status("Outils Python prêts (3.11 + 2.7).")
+                        self._post_startup_status("prêts (3.11 + 2.7)", ready=True)
                     elif py3_ok:
-                        self._post_startup_status("Outils Python partiels : 3.11 prêt, 2.7 à la demande.")
+                        self._post_startup_status("partiels (3.11 prêt, 2.7 à la demande)", ready=False)
                     else:
-                        self._post_startup_status("Outils Python non prêts : téléchargement à la demande.")
+                        self._post_startup_status("non prêts (téléchargement à la demande)", ready=False)
                 except Exception as e:
                     log_message("DEBUG", f"Erreur préchargement Python embedded: {e}", category="main")
-                    self._post_startup_status("Préchargement outils Python échoué (fallback à la demande).")
+                    self._post_startup_status("échec du préchargement (fallback à la demande)", ready=False)
 
             preload_thread = threading.Thread(target=preload_task, daemon=True, name="PythonEmbeddedPreload")
             preload_thread.start()
         except Exception as e:
             log_message("DEBUG", f"Impossible de lancer le préchargement Python embedded: {e}", category="main")
 
-    def _post_startup_status(self, message: str):
+    def _post_startup_status(self, message: str, ready: bool = False):
         """Affiche un statut de démarrage dans l'UI si elle est disponible."""
         try:
             if not hasattr(self, "root"):
@@ -332,8 +352,8 @@ class RenExtractApp:
                     if not hasattr(self, "window"):
                         return
                     info_frame = self.window.get_component('info') if hasattr(self.window, 'get_component') else None
-                    if info_frame and hasattr(info_frame, 'update_status'):
-                        info_frame.update_status(message)
+                    if info_frame and hasattr(info_frame, 'update_tools_status'):
+                        info_frame.update_tools_status(message, ready=ready)
                 except Exception:
                     pass
 

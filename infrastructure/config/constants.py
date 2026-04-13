@@ -78,7 +78,7 @@ def get_version():
         pass
     
     # FALLBACK : uniquement si version_build.py absent et git indisponible
-    return "v1.2.39"
+    return "v1.2.40"
 
 def increment_build_number():
     """
@@ -123,8 +123,6 @@ CONFIG_DIR_NAME = "05_ConfigRenExtract"
 TOOLS_SUBDIR = os.path.join(CONFIG_DIR_NAME, "tools")
 TEMP_SUBDIR = os.path.join(CONFIG_DIR_NAME, "temp")
 FOLDERS = {"configs": os.path.join(BASE_DIR, CONFIG_DIR_NAME),
-           "tools": os.path.join(BASE_DIR, TOOLS_SUBDIR),
-           "temp": os.path.join(BASE_DIR, TEMP_SUBDIR),
            "backup": os.path.join(BASE_DIR, "02_Sauvegardes"),
            "temporaires": os.path.join(BASE_DIR, "01_Temporaires"),
            "warnings": os.path.join(BASE_DIR, "03_Rapports")}
@@ -136,18 +134,12 @@ FILE_NAMES = {"config": os.path.join(FOLDERS["configs"], "config.json"),
               "font_and_screen_options": os.path.join(FOLDERS["configs"], "font_and_screen_options.json")}
 
 def get_app_temp_dir():
-    """Retourne un dossier temporaire dans l'application (05_ConfigRenExtract/temp). Utiliser plutôt que tempfile.gettempdir() pour garder les téléchargements/extractions sur le même disque que l'app (souvent plus rapide sur SSD)."""
-    d = FOLDERS.get("temp")
-    if d:
-        try:
-            os.makedirs(d, exist_ok=True)
-            return d
-        except Exception:
-            pass
-    return os.path.join(BASE_DIR, CONFIG_DIR_NAME, "temp")
+    """Retourne le dossier temporaire système (comportement standard)."""
+    import tempfile
+    return tempfile.gettempdir()
 
 def ensure_folders_exist():
-    """Crée les dossiers nécessaires s'ils n'existent pas (y compris 05_ConfigRenExtract/tools et 05_ConfigRenExtract/temp)."""
+    """Crée les dossiers nécessaires s'ils n'existent pas."""
     try:
         for p in FOLDERS.values():
             os.makedirs(p, exist_ok=True)

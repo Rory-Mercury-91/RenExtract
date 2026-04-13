@@ -83,6 +83,18 @@ class InfoFrame(tk.Frame):
         # === LIGNE D'INFORMATIONS ET NAVIGATION ===
         self.info_line = tk.Frame(self.main_frame, bg=theme["bg"])
         self.info_line.pack(fill='x', padx=10, pady=(5, 8))
+
+        # Indicateur visuel de disponibilité des outils (préchargement au démarrage)
+        self.label_tools_status = tk.Label(
+            self.info_line,
+            text="☐ Outils: en cours d'initialisation...",
+            font=('Consolas', 10, 'bold'),
+            bg=theme["bg"],
+            fg="#ffc107",
+            anchor='w',
+            justify='left'
+        )
+        self.label_tools_status.pack(side='left', padx=(0, 12))
         
         # Label gauche (informations générales)
         self.label_info_left = tk.Label(
@@ -908,6 +920,14 @@ class InfoFrame(tk.Frame):
             self.label_info_left.config(text=message)
         if self.label_info_right:
             self.label_info_right.config(text="")
+
+    def update_tools_status(self, message: str, ready: bool = False):
+        """Met à jour l'indicateur visuel d'état des outils."""
+        if not hasattr(self, 'label_tools_status') or self.label_tools_status is None:
+            return
+        marker = "☑" if ready else "☐"
+        color = "#28a745" if ready else "#ffc107"
+        self.label_tools_status.config(text=f"{marker} Outils: {message}", fg=color)
     
     def update_execution_time(self, execution_time):
         """Compatibilité - mise à jour du temps d'exécution"""
@@ -975,6 +995,8 @@ class InfoFrame(tk.Frame):
         
         if self.label_info_left:
             self.label_info_left.configure(bg=theme["bg"], fg=fg_color)
+        if hasattr(self, 'label_tools_status') and self.label_tools_status:
+            self.label_tools_status.configure(bg=theme["bg"])
         if self.label_info_right:
             self.label_info_right.configure(bg=theme["bg"], fg=fg_color)
         if self.processing_label:

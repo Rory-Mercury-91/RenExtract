@@ -1,6 +1,29 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-13 (v1.2.40)
+
+### InfoFrame - état visuel des outils au démarrage
+
+- **Indicateur dédié** : ajout d'un statut visuel dans la ligne d'information (`☐/☑ Outils`) pour afficher l'état de disponibilité des outils Python au lancement.
+- **Mise à jour en temps réel** : l'indicateur suit le préchargement (`en cours`, `prêts`, `partiels`, `échec`) à chaque démarrage de l'application.
+- **Comportement non bloquant** : l'interface reste immédiatement utilisable pendant l'initialisation arrière-plan des outils.
+
+### Nettoyage des dossiers legacy inutiles
+
+- **Fin de création auto** : suppression de la création automatique de `05_ConfigRenExtract/tools` et `05_ConfigRenExtract/temp`.
+- **Nettoyage au lancement** : suppression des anciens dossiers locaux `tools`/`temp` sous `05_ConfigRenExtract` quand ils existent encore.
+- **Temp standard** : retour explicite au dossier temporaire système pour les opérations temporaires.
+
+### Fichiers modifiés
+
+- `ui/info_frame.py`
+- `main.py`
+- `infrastructure/config/constants.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-13 (v1.2.39)
 
 ### Préchargement des outils Python au démarrage
