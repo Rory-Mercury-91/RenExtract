@@ -1,6 +1,21 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-13 (v1.2.42)
+
+### Stabilisation contrôle antivirus des outils Python
+
+- **Suppression du re-téléchargement agressif** : quand Python embedded est déjà présent, un échec ponctuel de validation ne déclenche plus la suppression/réinstallation immédiate.
+- **Réutilisation en session** : si Python 3.11 / 2.7 a déjà été validé pendant la session, il est réutilisé directement sans recontrôle bloquant au lancement d'extraction.
+- **Comportement plus robuste** : réduction des faux échecs liés aux verrous temporaires antivirus entre le préchargement au démarrage et l'exécution réelle.
+
+### Fichiers modifiés
+
+- `core/tools/python_manager.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-13 (v1.2.41)
 
 ### Correctif statut outils au redémarrage

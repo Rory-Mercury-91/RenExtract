@@ -53,6 +53,10 @@ class PythonManager:
             Chemin vers python.exe ou None si échec
         """
         python_exe = os.path.join(self.python_embed_dir, "python.exe")
+
+        # Si déjà validé pendant cette session, éviter un re-contrôle agressif
+        if self.universal_python_exe and os.path.exists(self.universal_python_exe):
+            return self.universal_python_exe
         
         # Si Python Embedded existe déjà, vérifier qu'il fonctionne
         if os.path.exists(python_exe):
@@ -61,8 +65,15 @@ class PythonManager:
                 self.universal_python_exe = python_exe
                 return python_exe
             else:
-                log_message("ATTENTION", "Python Embedded 3.11 défaillant, re-téléchargement...", category="python_setup_3")
-                self._cleanup_python_dir(self.python_embed_dir)
+                # Ne plus supprimer/re-télécharger immédiatement : trop coûteux et fragile
+                # quand l'antivirus bloque ponctuellement l'exécutable.
+                log_message(
+                    "ATTENTION",
+                    "Validation Python 3.11 non concluante, conservation de l'installation existante.",
+                    category="python_setup_3"
+                )
+                self.universal_python_exe = python_exe
+                return python_exe
         
         # Télécharger Python Embedded 3.11
         log_message("INFO", "Téléchargement de Python Embedded 3.11 pour compatibilité universelle...", category="python_setup_3")
@@ -138,6 +149,10 @@ class PythonManager:
             Chemin vers python.exe ou None si échec
         """
         python27_exe = os.path.join(self.python27_embed_dir, "App", "Python", "python.exe")
+
+        # Si déjà validé pendant cette session, éviter un re-contrôle agressif
+        if self.python27_embedded_exe and os.path.exists(self.python27_embedded_exe):
+            return self.python27_embedded_exe
         
         # Si Python 2.7 Embedded existe déjà, vérifier qu'il fonctionne
         if os.path.exists(python27_exe):
@@ -146,8 +161,13 @@ class PythonManager:
                 self.python27_embedded_exe = python27_exe
                 return python27_exe
             else:
-                log_message("ATTENTION", "Python Embedded 2.7 défaillant, re-téléchargement...", category="python_setup_2")
-                self._cleanup_python_dir(self.python27_embed_dir)
+                log_message(
+                    "ATTENTION",
+                    "Validation Python 2.7 non concluante, conservation de l'installation existante.",
+                    category="python_setup_2"
+                )
+                self.python27_embedded_exe = python27_exe
+                return python27_exe
         
         # Télécharger Python 2.7 Embedded
         log_message("INFO", "Téléchargement de Python Embedded 2.7...", category="python_setup_2")
