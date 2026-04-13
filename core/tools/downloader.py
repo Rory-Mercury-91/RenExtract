@@ -57,7 +57,7 @@ class UniversalDownloader:
             # Créer le répertoire parent si nécessaire
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             
-            # Préparer les chemins temporaires (dossier app ou Temp système selon config : downloads_use_system_temp)
+            # Préparer les chemins temporaires de téléchargement
             app_temp = config_manager.get_download_temp_dir()
             temp_zip_path = os.path.join(app_temp, "download_temp.zip")
             temp_extract_path = os.path.join(app_temp, "extract_temp")

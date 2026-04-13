@@ -1,6 +1,26 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-13 (v1.2.37)
+
+### Régression ciblée - retour au comportement initial du dossier tools
+
+- **Stockage des outils restauré** : retour à l'état initial avec utilisation du dossier utilisateur **`~/.renextract_tools`** pour le cache, les polices, le tutoriel et les composants outillés.
+- **Suppression de la logique "tools dans l'app"** : retrait du mode **`05_ConfigRenExtract/tools`** et de la migration automatique associée.
+- **Paramètres simplifiés** : suppression de la section dédiée au dossier tools dans l'onglet chemins, ainsi que des actions de bascule/réinitialisation.
+- **Temp téléchargements** : retrait de l'option UI et de la clé de config **`downloads_use_system_temp`** ; retour au temp système standard pour les téléchargements/extractions.
+- **Intégration release** : synchronisation locale avec `origin/main` avant préparation de cette version.
+
+### Fichiers modifiés
+
+- `ui/tab_settings/paths_tab.py`
+- `infrastructure/config/config.py`
+- `infrastructure/config/constants.py`
+- `core/tools/downloader.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-10 (v1.2.36)
 
 ### Extraction RPA/RPYC – fix installation Python embedded

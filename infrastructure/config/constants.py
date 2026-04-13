@@ -78,7 +78,7 @@ def get_version():
         pass
     
     # FALLBACK : uniquement si version_build.py absent et git indisponible
-    return "v1.2.36"
+    return "v1.2.37"
 
 def increment_build_number():
     """
@@ -389,7 +389,6 @@ DEFAULT_CONFIG = {
     "language_selector_integration":False,"developer_console_integration":False,"default_language_at_startup_integration":False,
     "dark_mode":True,"show_output_path_display":False,
     "last_game_directory":"",
-    "downloads_use_system_temp": False,
     "custom_extraction_patterns":[]
 }
 # font_preferences et advanced_screen_options → font_and_screen_options.json (voir config.py)
