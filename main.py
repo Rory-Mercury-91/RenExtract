@@ -239,6 +239,9 @@ except Exception:
 
 class RenExtractApp:
     def __init__(self):
+        # Dernier état connu des outils (réappliqué quand l'UI devient disponible)
+        self._tools_status_message = "en cours d'initialisation..."
+        self._tools_status_ready = False
         self._init_base()
         self._create_root()
         self._create_ui()
@@ -344,6 +347,10 @@ class RenExtractApp:
     def _post_startup_status(self, message: str, ready: bool = False):
         """Affiche un statut de démarrage dans l'UI si elle est disponible."""
         try:
+            # Toujours mémoriser le dernier état, même si l'UI n'est pas encore prête.
+            self._tools_status_message = message
+            self._tools_status_ready = ready
+
             if not hasattr(self, "root"):
                 return
 
@@ -358,6 +365,20 @@ class RenExtractApp:
                     pass
 
             self.root.after(0, _apply)
+        except Exception:
+            pass
+
+    def _apply_pending_tools_status(self):
+        """Réapplique le dernier statut outils quand l'interface est disponible."""
+        try:
+            if not hasattr(self, "window"):
+                return
+            info_frame = self.window.get_component('info') if hasattr(self.window, 'get_component') else None
+            if info_frame and hasattr(info_frame, 'update_tools_status'):
+                info_frame.update_tools_status(
+                    getattr(self, "_tools_status_message", "en cours d'initialisation..."),
+                    ready=getattr(self, "_tools_status_ready", False)
+                )
         except Exception:
             pass
 
@@ -517,6 +538,8 @@ class RenExtractApp:
                 self.window.deiconify()
             else:
                 self.root.deiconify()
+            # Réappliquer l'état des outils (utile si le thread a fini avant la création de l'UI)
+            self._apply_pending_tools_status()
             try:
                 if check_first_launch():
                     self.root.after(500, lambda: show_first_launch_popup(self.root, self.controller))

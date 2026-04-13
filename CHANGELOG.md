@@ -1,6 +1,21 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-13 (v1.2.41)
+
+### Correctif statut outils au redémarrage
+
+- **Race condition UI corrigée** : le statut des outils n'est plus perdu si le préchargement Python finit avant la création complète de l'interface.
+- **État persistant en mémoire** : mémorisation du dernier état (`en cours`, `prêts`, `partiels`, `échec`) puis réapplication automatique une fois `InfoFrame` disponible.
+- **Affichage fiable au 2e lancement** : l'indicateur visuel `☐/☑ Outils` reflète désormais correctement les logs même quand les outils sont déjà présents localement.
+
+### Fichiers modifiés
+
+- `main.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-13 (v1.2.40)
 
 ### InfoFrame - état visuel des outils au démarrage
