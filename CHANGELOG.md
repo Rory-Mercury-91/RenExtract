@@ -1,6 +1,23 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-04-13 (v1.2.39)
+
+### Préchargement des outils Python au démarrage
+
+- **Préchargement anticipé** : démarrage en arrière-plan de Python embedded **3.11** et **2.7** dès l'ouverture de l'application, pour réduire le délai au lancement de l'extraction RPA/RPYC.
+- **Contrôle antivirus renforcé** : validation de `python.exe` plus tolérante (plus de tentatives + temporisation progressive) pour mieux absorber les verrous temporaires de Defender.
+- **Conservation intelligente** : en cas d'échec transitoire d'accès au binaire, l'installation n'est plus supprimée immédiatement, afin de permettre un retry rapide.
+- **Retour visuel UI** : ajout d'un statut d'avancement dans l'interface (`préchargement en cours`, `prêt`, `partiel`) pendant l'initialisation des outils Python.
+
+### Fichiers modifiés
+
+- `core/tools/python_manager.py`
+- `main.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-13 (v1.2.37)
 
 ### Régression ciblée - retour au comportement initial du dossier tools
