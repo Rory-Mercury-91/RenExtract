@@ -17,6 +17,7 @@ from ui.themes import theme_manager
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
+from ui.shared.common_widgets import create_themed_summary_entry
 
 def create_extraction_config_tab(parent, main_interface):
     """Crée l'onglet de configuration d'extraction - parent = frame scrollable (ajout au notebook fait par l'interface)."""
@@ -186,7 +187,7 @@ def _create_exclusions_section(parent, main_interface):
     
     exclusions_label = tk.Label(
         parent,
-        text="📋 Fichiers à ignorer lors de l'analyse (séparés par des virgules) :",
+        text="📋 Fichiers à ignorer lors de l'analyse :",
         font=('Segoe UI', 9),
         bg=theme["bg"],
         fg=theme["fg"]
@@ -197,18 +198,28 @@ def _create_exclusions_section(parent, main_interface):
     exclusions_input_frame = tk.Frame(parent, bg=theme["bg"])
     exclusions_input_frame.pack(fill='x', pady=(0, 10))
     
-    exclusions_entry = tk.Entry(
+    exclusions_entry = create_themed_summary_entry(
         exclusions_input_frame,
-        textvariable=main_interface.extraction_excluded_files_var,
-        font=('Segoe UI', 10),
-        bg=theme["entry_bg"],
-        fg=theme["entry_fg"],
-        insertbackground=theme["entry_fg"],
-        relief='solid',
-        borderwidth=1
+        main_interface.extraction_excluded_files_var,
+        theme,
     )
     exclusions_entry.pack(side='left', fill='x', expand=True, pady=2)
     
+    # Bouton sélection via modale (checkboxes)
+    exclusions_pick_btn = tk.Button(
+        exclusions_input_frame,
+        text="📋 Sélectionner…",
+        command=lambda: _open_extraction_exclusion_picker(main_interface),
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    exclusions_pick_btn.pack(side='right', padx=(10, 0))
+
     # Bouton aide
     exclusions_help_btn = tk.Button(
         exclusions_input_frame,
@@ -222,7 +233,7 @@ def _create_exclusions_section(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    exclusions_help_btn.pack(side='right', padx=(10, 0))
+    exclusions_help_btn.pack(side='right', padx=(5, 0))
 
     exclusions_reset_btn = tk.Button(
         exclusions_input_frame,
@@ -476,9 +487,9 @@ def _show_exclusions_help(main_interface):
         ("Exclusion de fichiers de l'extraction\n\n", "bold_red"),
         ("Cette option permet d'ignorer certains fichiers lors de l'analyse pour trouver les textes oubliés.\n\n", "normal"),
 
-        ("📁 Format :\n", "bold_green"),
-        ("• Séparez les noms de fichiers par des ", "normal"), ("virgules", "bold"), (" (,).\n", "normal"),
-        ("• Utilisez uniquement le nom du fichier (ex: ", "normal"), ("screens.rpy", "italic"), (").\n\n", "normal"),
+        ("📁 Sélection :\n", "bold_green"),
+        ("• Cliquez sur ", "normal"), ("📋 Sélectionner…", "bold"), (" pour ouvrir la liste des .rpy du dossier langue.\n", "normal"),
+        ("• Cochez les fichiers à exclure, puis validez.\n\n", "normal"),
 
         ("✅ Exemples valides :\n", "bold_green"),
         ("• ", "green"), ("common.rpy, screens.rpy\n", "yellow"),
@@ -511,6 +522,50 @@ def _show_exclusions_help(main_interface):
         )
     except Exception as e:
         log_message("ERREUR", f"Erreur affichage aide exclusions : {e}", category="renpy_generator_extraction")
+
+def _open_extraction_exclusion_picker(main_interface):
+    """Ouvre la modale de sélection des .rpy à exclure pour l'extraction."""
+    try:
+        if not getattr(main_interface, "current_project_path", None):
+            main_interface._show_notification(
+                "Sélectionnez d'abord un projet Ren'Py.",
+                "warning",
+            )
+            return
+
+        language = get_selected_extraction_language(main_interface)
+        if not language:
+            main_interface._show_notification(
+                "Sélectionnez d'abord une langue de référence.",
+                "warning",
+            )
+            return
+
+        from ui.dialogs.rpy_exclusion_picker_dialog import show_rpy_exclusion_picker
+        result = show_rpy_exclusion_picker(
+            parent=main_interface.window,
+            project_path=main_interface.current_project_path,
+            language=language,
+            current_exclusions=main_interface.extraction_excluded_files_var.get(),
+            title="Exclusion extraction — fichiers .rpy",
+        )
+        if result is not None:
+            main_interface.extraction_excluded_files_var.set(result)
+            try:
+                config_manager.set('extraction_excluded_files', result)
+            except Exception:
+                pass
+            log_message(
+                "INFO",
+                f"Exclusions extraction mises à jour: {result or 'aucune'}",
+                category="extraction_config",
+            )
+    except Exception as e:
+        log_message(
+            "ERREUR",
+            f"Erreur ouverture sélecteur exclusions extraction: {e}",
+            category="extraction_config",
+        )
 
 def _reset_exclusions(main_interface):
     """Remet les exclusions par défaut"""

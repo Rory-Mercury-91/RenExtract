@@ -20,6 +20,7 @@ from ui.themes import theme_manager
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
+from ui.shared.common_widgets import create_themed_summary_entry
 
 def create_coherence_tab(parent, main_interface):
     """Crée l'onglet de vérification de cohérence - parent = frame scrollable (ajout au notebook fait par l'interface)."""
@@ -245,21 +246,32 @@ def _create_coherence_content(parent, main_interface):
     )
     manage_exclusions_btn.pack(side='right')
     
-    main_interface.coherence_excluded_files_entry = tk.Entry(
+    main_interface.coherence_excluded_files_entry = create_themed_summary_entry(
         exclusions_frame,
-        textvariable=main_interface.coherence_excluded_files_var,
-        font=('Segoe UI', 10),
-        bg=theme["entry_bg"],
-        fg=theme["entry_fg"],
-        insertbackground=theme["entry_fg"],
-        relief='solid',
-        borderwidth=1
+        main_interface.coherence_excluded_files_var,
+        theme,
     )
     main_interface.coherence_excluded_files_entry.pack(fill='x', pady=(0, 5), ipady=4)
+
+    exclusions_actions = tk.Frame(exclusions_frame, bg=theme["bg"])
+    exclusions_actions.pack(fill='x', pady=(0, 5))
+
+    tk.Button(
+        exclusions_actions,
+        text="📋 Sélectionner…",
+        command=lambda: _open_coherence_file_exclusion_picker(main_interface),
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=2,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    ).pack(side='left')
     
     tk.Label(
         exclusions_frame,
-        text="💡 Ex: z_lang.rpy, common.rpy",
+        text="💡 Utilisez « Sélectionner… » pour choisir les .rpy du dossier langue",
         font=('Segoe UI', 8, 'italic'),
         bg=theme["bg"],
         fg='#2980B9'
@@ -1049,6 +1061,61 @@ def _show_toast(main_interface, message, toast_type="info"):
         return False
 
 # ===== GESTIONNAIRE D'EXCLUSIONS DE LIGNES =====
+
+def _open_coherence_file_exclusion_picker(main_interface):
+    """Ouvre la modale de sélection des .rpy à exclure pour la cohérence."""
+    try:
+        project_path = None
+        language = None
+
+        selector = getattr(main_interface, "coherence_project_selector", None)
+        if selector is not None:
+            project_path = getattr(selector, "current_project_path", None)
+            if hasattr(selector, "selected_language_var"):
+                language = (selector.selected_language_var.get() or "").strip()
+
+        if not project_path:
+            project_path = getattr(main_interface, "current_project_path", None)
+
+        if not language:
+            language = getattr(main_interface, "coherence_language", None)
+
+        if not project_path:
+            show_translated_messagebox(
+                'warning',
+                'Projet manquant',
+                'Sélectionnez d\'abord un projet Ren\'Py.',
+                parent=main_interface.window,
+            )
+            return
+
+        if not language or language.startswith("N/A"):
+            show_translated_messagebox(
+                'warning',
+                'Langue manquante',
+                'Sélectionnez d\'abord une langue à analyser.',
+                parent=main_interface.window,
+            )
+            return
+
+        from ui.dialogs.rpy_exclusion_picker_dialog import show_rpy_exclusion_picker
+        result = show_rpy_exclusion_picker(
+            parent=main_interface.window,
+            project_path=project_path,
+            language=language,
+            current_exclusions=main_interface.coherence_excluded_files_var.get(),
+            title="Exclusion cohérence — fichiers .rpy",
+        )
+        if result is not None:
+            main_interface.coherence_excluded_files_var.set(result)
+            # La sauvegarde / application au sélecteur est gérée par la trace auto-save
+    except Exception as e:
+        log_message(
+            "ERREUR",
+            f"Erreur ouverture sélecteur exclusions cohérence: {e}",
+            category="coherence_tab",
+        )
+
 
 def _open_exclusions_manager(main_interface):
     """Ouvre la fenêtre de gestion des exclusions de lignes"""

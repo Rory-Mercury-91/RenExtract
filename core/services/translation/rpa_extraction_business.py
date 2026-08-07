@@ -962,31 +962,23 @@ class RPAExtractionBusiness:
             env.pop('PYTHONHOME', None)
             env['PYTHONDONTWRITEBYTECODE'] = '1'
 
-            # Configuration Windows pour éviter les fenêtres CMD
-            startupinfo = None
-            creation_flags = 0
-            if sys.platform == "win32":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW | subprocess.STARTF_USESTDHANDLES
-                startupinfo.wShowWindow = subprocess.SW_HIDE
-                creation_flags = subprocess.CREATE_NO_WINDOW
+            from infrastructure.helpers.subprocess_helper import Popen_silent
 
             # Construction et exécution de la commande
+            # Popen_silent : CREATE_NO_WINDOW + flux std sécurisés (anti WinError 50/6)
             full_command = [python_exe] + command
             log_message("DEBUG", f"Executing: {' '.join(full_command)} in {final_working_dir}", category="renpy_generator_rpa")
 
-            process = subprocess.Popen(
+            process = Popen_silent(
                 full_command, 
                 cwd=final_working_dir,  # Utilisation du chemin sécurisé
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                stdin=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 encoding='utf-8', 
                 errors='ignore', 
-                startupinfo=startupinfo, 
                 env=env,
-                creationflags=creation_flags
             )
             
             # Attendre avec timeout

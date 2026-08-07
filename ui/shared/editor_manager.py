@@ -136,36 +136,36 @@ def _try_open_with_default_smart(file_path, line_number):
     """Tente d'ouvrir avec l'éditeur par défaut en détectant le bon format de commande"""
     editor_type, editor_path = _get_default_editor_for_rpy()
     
-    # Flags pour masquer la fenêtre console sur Windows
-    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    # Flags pour masquer la fenêtre console sur Windows + handles sécurisés
+    from infrastructure.helpers.subprocess_helper import run_silent
     
     try:
         if editor_type == "sublime" and editor_path:
             cmd = [editor_path, f"{file_path}:{line_number}"]
             filename = os.path.basename(file_path)
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
         
         elif editor_type == "vscode" and editor_path:
             cmd = [editor_path, "--goto", f"{file_path}:{line_number}"]
             filename = os.path.basename(file_path)
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
         
         elif editor_type == "notepadpp" and editor_path:
             cmd = [editor_path, f"-n{line_number}", file_path]
             filename = os.path.basename(file_path)
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
         
         elif editor_type == "atom_pulsar" and editor_path:
             cmd = [editor_path, f"{file_path}:{line_number}"]
             filename = os.path.basename(file_path)
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
         
         else:
@@ -216,8 +216,7 @@ def open_file_with_editor(file_path, line_number):
 
 def _try_open_with_custom_editor(editor_path, file_path, line_number):
     """Tente d'ouvrir avec un éditeur personnalisé en détectant automatiquement la syntaxe"""
-    # Flags pour masquer la fenêtre console sur Windows
-    creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    from infrastructure.helpers.subprocess_helper import run_silent
     
     try:
         editor_name = os.path.basename(editor_path).lower()
@@ -229,35 +228,35 @@ def _try_open_with_custom_editor(editor_path, file_path, line_number):
             # VSCode
             cmd = [editor_path, "--goto", f"{file_path}:{line_number}"]
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
             
         elif "subl.exe" in editor_name or "sublime" in editor_name:
             # Sublime Text
             cmd = [editor_path, f"{file_path}:{line_number}"]
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
             
         elif "notepad++.exe" in editor_name or "notepad" in editor_name:
             # Notepad++
             cmd = [editor_path, f"-n{line_number}", file_path]
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
             
         elif "atom.exe" in editor_name or "pulsar.exe" in editor_name or "atom" in editor_name or "pulsar" in editor_name:
             # Atom/Pulsar
             cmd = [editor_path, f"{file_path}:{line_number}"]
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number}", category="editor_opener")
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
             
         else:
             # Éditeur inconnu - essayer la syntaxe générique
             log_message("INFO", f"📝 Ouverture : {filename}:{line_number} (éditeur inconnu)", category="editor_opener")
             cmd = [editor_path, f"{file_path}:{line_number}"]
-            subprocess.run(cmd, check=False, timeout=10, creationflags=creationflags)
+            run_silent(cmd, check=False, timeout=10)
             return True
             
     except Exception as e:

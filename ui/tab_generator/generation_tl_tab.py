@@ -1345,7 +1345,7 @@ def start_generation_simple(main_interface):
         
         translation_business = main_interface._get_translation_business()
         
-        translation_business.generate_translations_embedded_threaded(
+        translation_business.generate_translations_with_sdk_threaded(
             main_interface.current_project_path,
             language,
             options,
@@ -1357,7 +1357,7 @@ def start_generation_simple(main_interface):
         main_interface._set_operation_running(True)
         main_interface._update_status(f"Génération de base pour '{language}'...")
         
-        log_message("INFO", f"Génération simple lancée pour : {language}", category="renpy_generator_tl")
+        log_message("INFO", f"Génération simple (mode SDK) lancée pour : {language}", category="renpy_generator_tl")
         
     except Exception as e:
         main_interface._show_notification(f"Erreur démarrage génération : {e}", "error")
@@ -1452,7 +1452,7 @@ def start_generation_with_checked_options(main_interface):
         
         # Lancer la génération
         translation_business = main_interface._get_translation_business()
-        translation_business.generate_translations_embedded_threaded(
+        translation_business.generate_translations_with_sdk_threaded(
             main_interface.current_project_path,
             language,
             options,

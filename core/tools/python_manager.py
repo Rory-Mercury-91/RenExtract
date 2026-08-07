@@ -336,14 +336,13 @@ class PythonManager:
 
         for attempt in range(1, max_retries + 1):
             try:
-                creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                from infrastructure.helpers.subprocess_helper import run_silent
 
-                result = subprocess.run(
+                result = run_silent(
                     [python_exe, "--version"],
                     capture_output=True,
                     text=True,
                     timeout=5,
-                    creationflags=creationflags
                 )
 
                 if result.returncode == 0:
@@ -446,22 +445,19 @@ except Exception as e:
             
             startupinfo = None
             if sys.platform == "win32":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
+                from infrastructure.helpers.subprocess_helper import get_hidden_startupinfo
+                startupinfo = get_hidden_startupinfo()
             
-            # Test rapide (2 secondes max)
-            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
-            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            # Test rapide (2 secondes max) — run_silent sécurise les handles (anti WinError 50/6)
+            from infrastructure.helpers.subprocess_helper import run_silent
             
-            result = subprocess.run(
+            result = run_silent(
                 [python_exe, "-c", test_script],
                 capture_output=True,
                 text=True,
                 timeout=2,
                 env=clean_env,
                 startupinfo=startupinfo,
-                creationflags=creationflags
             )
             
             if result.returncode == 0 and "COMPAT_OK" in result.stdout:
@@ -509,11 +505,10 @@ except Exception as e:
             download_result = downloader.download_file(get_pip_url, get_pip_path)
             
             if download_result['success']:
-                # Installer pip (sans fenêtre console)
-                creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                subprocess.run([python_exe, get_pip_path], 
-                             capture_output=True, timeout=120, cwd=os.path.dirname(python_exe),
-                             creationflags=creationflags)
+                # Installer pip (sans fenêtre console, handles std sécurisés)
+                from infrastructure.helpers.subprocess_helper import run_silent
+                run_silent([python_exe, get_pip_path], 
+                             capture_output=True, timeout=120, cwd=os.path.dirname(python_exe))
                 
                 # Nettoyer
                 if os.path.exists(get_pip_path):

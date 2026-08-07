@@ -40,17 +40,16 @@ def get_version():
             pass
     
     # PRIORITÉ 2 : Essayer de lire depuis Git (si disponible en développement)
-    _creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
+        from infrastructure.helpers.subprocess_helper import run_silent
         # Essayer de récupérer le dernier tag Git
-        result = subprocess.run(
+        result = run_silent(
             ["git", "describe", "--tags", "--abbrev=0"],
             cwd=base_dir,
             capture_output=True,
             text=True,
             timeout=2,
             check=False,
-            creationflags=_creationflags
         )
         if result.returncode == 0 and result.stdout.strip():
             tag = result.stdout.strip()
@@ -63,14 +62,14 @@ def get_version():
     
     # PRIORITÉ 3 : Essayer de lire depuis Git sans tag (commit hash)
     try:
-        result = subprocess.run(
+        from infrastructure.helpers.subprocess_helper import run_silent
+        result = run_silent(
             ["git", "describe", "--always", "--dirty"],
             cwd=base_dir,
             capture_output=True,
             text=True,
             timeout=2,
             check=False,
-            creationflags=_creationflags
         )
         if result.returncode == 0 and result.stdout.strip():
             return f"dev-{result.stdout.strip()}"
@@ -209,7 +208,7 @@ THEMES = {
 }
 
 # Fenêtre
-WINDOW_CONFIG = {"title": WINDOW_TITLE, "geometry": "1400x900", "min_size": (200, 100)}
+WINDOW_CONFIG = {"title": WINDOW_TITLE, "geometry": "1400x900", "min_size": (1100, 720)}
 
 # Logging
 LOGGING_CONFIG = {

@@ -158,18 +158,16 @@ class UnifiedCleaner:
                     monitor_thread = threading.Thread(target=monitor_traceback, daemon=True)
                     monitor_thread.start()
                     
-                    # ✅ CORRECTION : Masquer la fenêtre console sur Windows
-                    from infrastructure.helpers.subprocess_helper import get_subprocess_flags
-                    creationflags = get_subprocess_flags()
+                    # ✅ CORRECTION : Masquer la fenêtre console + handles std sécurisés (anti WinError 50/6)
+                    from infrastructure.helpers.subprocess_helper import run_silent
                     
-                    result = subprocess.run(
+                    result = run_silent(
                         cmd,
                         capture_output=True,
                         text=True,
                         cwd=work_dir,
                         timeout=180,
                         env=env,
-                        creationflags=creationflags
                     )
                     
                     # Log du résultat de la commande

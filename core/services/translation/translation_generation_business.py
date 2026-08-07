@@ -109,6 +109,63 @@ class TranslationGenerationBusiness:
             return False
         return str(language).strip() == "french"
 
+    def _detect_renpy_version_for_sdk(self, project_path: str) -> str:
+        """
+        Détecte la version Ren'Py d'un projet via game/script_version.txt.
+        Retourne 'Unknown' si non détectable.
+        """
+        try:
+            game_dir = os.path.join(project_path, "game")
+            script_version_path = os.path.join(game_dir, "script_version.txt")
+            if not os.path.exists(script_version_path):
+                log_message("INFO", "script_version.txt introuvable: version Ren'Py inconnue", category="renpy_generator_tl")
+                return "Unknown"
+
+            with open(script_version_path, 'r', encoding='utf-8') as f:
+                version_content = f.read().strip()
+
+            numbers = re.findall(r'\d+', version_content)
+            if not numbers:
+                log_message("INFO", f"Version Ren'Py non détectable depuis script_version.txt: '{version_content}'", category="renpy_generator_tl")
+                return "Unknown"
+
+            major = numbers[0]
+            minor = numbers[1] if len(numbers) >= 2 else "0"
+            patch = numbers[2] if len(numbers) >= 3 else "0"
+            detected = f"{major}.{minor}.{patch}"
+            log_message("INFO", f"Version Ren'Py détectée pour SDK: {detected}", category="renpy_generator_tl")
+            return detected
+        except Exception as e:
+            log_message("ATTENTION", f"Erreur détection version Ren'Py pour SDK: {e}", category="renpy_generator_tl")
+            return "Unknown"
+
+    def _read_traceback_content(self, project_path: str) -> str:
+        """
+        Lit traceback.txt du projet (si présent) et retourne son contenu.
+        """
+        try:
+            traceback_path = os.path.join(project_path, "traceback.txt")
+            if not os.path.exists(traceback_path):
+                return ""
+            with open(traceback_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception as e:
+            log_message("ATTENTION", f"Lecture traceback.txt impossible: {e}", category="renpy_generator_tl")
+            return ""
+
+    def _traceback_requires_embedded_fallback(self, traceback_text: str) -> bool:
+        """
+        Détecte les erreurs connues qui échouent avec le SDK mais peuvent fonctionner avec l'exe du jeu.
+        """
+        if not traceback_text:
+            return False
+        txt = traceback_text.lower()
+        live2d_missing = (
+            "could not load live2d" in txt and
+            ("live2dcubismcore.dll" in txt or "was not found" in txt)
+        )
+        return live2d_missing
+
     def set_callbacks(self, progress_callback: Callable = None, status_callback: Callable = None,
                      completion_callback: Callable = None, error_callback: Callable = None):
         """Configure les callbacks pour l'interface utilisateur"""
@@ -795,12 +852,6 @@ init python early hide:
             env = os.environ.copy()
             env['RENPY_PLATFORM'] = 'all'
             
-            startupinfo = None
-            if sys.platform == "win32":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
-            
             if progress_callback:
                 progress_callback(40, "Génération des traductions...")
             if status_callback:
@@ -816,20 +867,19 @@ init python early hide:
                     log_message("ATTENTION", f"Impossible de supprimer traceback.txt : {e}", category="renpy_generator_tl")
             
             # === GÉNÉRATION TRADUCTIONS REN'PY ===
-            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
-            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            # Popen_silent : anti WinError 50/6 (app windowed + handles console invalides)
+            from infrastructure.helpers.subprocess_helper import Popen_silent
             
-            process = subprocess.Popen(
+            process = Popen_silent(
                 cmd,
                 cwd=project_path,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 encoding='utf-8',
                 errors='ignore',
-                startupinfo=startupinfo,
                 env=env,
-                creationflags=creationflags
             )
             
             # ✅ NOUVEAU : Surveillance traceback.txt en temps réel
@@ -1317,17 +1367,26 @@ init python early hide:
             elif self.status_callback:
                 self.status_callback("Recherche du SDK Ren'Py...")
             
-            # Obtenir le SDK optimal
-            sdk_path = self.sdk_manager.get_sdk_for_cleaning()
+            # Obtenir le SDK optimal (priorité à la version exacte du jeu)
+            renpy_version_detected = self._detect_renpy_version_for_sdk(project_path)
+            if renpy_version_detected != "Unknown":
+                log_message("INFO", f"Sélection SDK ciblée version jeu: {renpy_version_detected}", category="renpy_generator_tl")
+                sdk_path = self.sdk_manager.get_sdk_for_game_version(renpy_version_detected)
+            else:
+                log_message("INFO", "Version jeu inconnue: fallback vers sélection SDK standard", category="renpy_generator_tl")
+                sdk_path = self.sdk_manager.get_sdk_for_cleaning()
+
             if not sdk_path:
                 result['errors'].append("Aucun SDK Ren'Py trouvé ou téléchargeable.")
                 return result
             
             self.current_sdk_path = sdk_path
+            log_message("INFO", f"SDK retenu pour génération TL: {sdk_path}", category="renpy_generator_tl")
             renpy_exe = self.sdk_manager.get_renpy_executable(sdk_path)
             if not renpy_exe:
                 result['errors'].append("Exécutable Ren'Py non trouvé dans le SDK.")
                 return result
+            log_message("INFO", f"Exécutable Ren'Py retenu: {renpy_exe}", category="renpy_generator_tl")
             
             if progress_callback:
                 progress_callback(30, "Génération via SDK...")
@@ -1348,12 +1407,6 @@ init python early hide:
             env = os.environ.copy()
             env['RENPY_PLATFORM'] = 'all'
             
-            startupinfo = None
-            if sys.platform == "win32":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_HIDE
-            
             # ✅ NOUVEAU : Supprimer traceback.txt s'il existe
             traceback_path = os.path.join(project_path, "traceback.txt")
             if os.path.exists(traceback_path):
@@ -1363,20 +1416,26 @@ init python early hide:
                 except Exception as e:
                     log_message("ATTENTION", f"Impossible de supprimer traceback.txt : {e}", category="renpy_generator_tl")
             
-            # Lancer le processus avec monitoring
-            # ✅ CORRECTION : Masquer la fenêtre console sur Windows
-            creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            
-            process = subprocess.Popen(
+            # Rediriger la sortie vers un fichier pour éviter le blocage des pipes
+            # sur les gros volumes de logs Ren'Py.
+            app_temp = config_manager.get_download_temp_dir()
+            sdk_run_log_path = os.path.join(app_temp, "renpy_sdk_translate_run.log")
+            sdk_log_file = open(sdk_run_log_path, "w", encoding="utf-8", errors="ignore")
+            log_message("INFO", f"Journal d'exécution SDK: {sdk_run_log_path}", category="renpy_generator_tl")
+
+            # Popen_silent : anti WinError 50/6 (app windowed + handles console invalides)
+            from infrastructure.helpers.subprocess_helper import Popen_silent
+
+            process = Popen_silent(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=sdk_log_file,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
                 text=True,
                 encoding='utf-8',
                 errors='ignore',
-                startupinfo=startupinfo,
                 env=env,
-                creationflags=creationflags
+                cwd=sdk_path
             )
             
             # ✅ NOUVEAU : Surveillance traceback.txt en temps réel
@@ -1403,7 +1462,8 @@ init python early hide:
             # Monitoring avec timeout
             tl_folder = os.path.join(game_dir, "tl", language)
             generation_start_time = time.time()
-            timeout_seconds = 180  # 3 minutes pour SDK
+            timeout_seconds = 600  # 10 minutes pour SDK (jeux lourds)
+            log_message("INFO", f"Timeout SDK configuré à {timeout_seconds}s", category="renpy_generator_tl")
             
             while process.poll() is None:
                 # Vérifier si traceback a été détecté
@@ -1414,6 +1474,26 @@ init python early hide:
                         process.kill()
                         process.wait()
                     
+                    traceback_text = self._read_traceback_content(project_path)
+                    if self._traceback_requires_embedded_fallback(traceback_text):
+                        log_message("INFO", "Erreur Live2D détectée avec SDK: fallback automatique vers exécutable du jeu", category="renpy_generator_tl")
+                        fallback_result = self.generate_translations_embedded(
+                            project_path=project_path,
+                            language=language,
+                            options=options or {},
+                            progress_callback=progress_callback,
+                            status_callback=status_callback,
+                        )
+                        if fallback_result.get('success'):
+                            fallback_result.setdefault('warnings', []).append(
+                                "Génération SDK incompatible avec ce jeu (Live2D). Fallback exécutable du jeu utilisé avec succès."
+                            )
+                        else:
+                            fallback_result.setdefault('errors', []).append(
+                                "Le fallback exécutable du jeu a aussi échoué après l'échec SDK."
+                            )
+                        return fallback_result
+
                     result['errors'].append(
                         "Erreur Ren'Py détectée (traceback.txt généré). "
                         "Le problème vient du jeu, pas de RenExtract. "
@@ -1431,8 +1511,17 @@ init python early hide:
                         process.kill()
                         process.wait()
                     
-                    result['errors'].append(f"La génération SDK a dépassé le temps limite (3 minutes).")
-                    log_message("ERREUR", "Timeout lors de la génération SDK", category="renpy_generator_tl")
+                    result['errors'].append(f"La génération SDK a dépassé le temps limite ({timeout_seconds // 60} minutes).")
+                    log_message("ERREUR", f"Timeout lors de la génération SDK ({timeout_seconds}s)", category="renpy_generator_tl")
+                    try:
+                        sdk_log_file.flush()
+                        with open(sdk_run_log_path, "r", encoding="utf-8", errors="ignore") as lf:
+                            log_content = lf.read()
+                        if log_content:
+                            excerpt = log_content[-1200:]
+                            log_message("INFO", f"Extrait log SDK (timeout): {excerpt}", category="renpy_generator_tl")
+                    except Exception as log_err:
+                        log_message("ATTENTION", f"Impossible de lire le log SDK après timeout: {log_err}", category="renpy_generator_tl")
                     return result
                 
                 # Progression basée sur le temps
@@ -1449,11 +1538,31 @@ init python early hide:
                 
                 time.sleep(1)
             
-            # Récupérer la sortie
-            stdout, stderr = process.communicate()
+            # Le process est terminé, on finalise le fichier de log.
+            sdk_log_file.flush()
             
             # ✅ Vérifier si traceback.txt a été généré pendant l'exécution
             if traceback_detected or os.path.exists(traceback_path):
+                traceback_text = self._read_traceback_content(project_path)
+                if self._traceback_requires_embedded_fallback(traceback_text):
+                    log_message("INFO", "Erreur Live2D détectée avec SDK (post-run): fallback automatique vers exécutable du jeu", category="renpy_generator_tl")
+                    fallback_result = self.generate_translations_embedded(
+                        project_path=project_path,
+                        language=language,
+                        options=options or {},
+                        progress_callback=progress_callback,
+                        status_callback=status_callback,
+                    )
+                    if fallback_result.get('success'):
+                        fallback_result.setdefault('warnings', []).append(
+                            "Génération SDK incompatible avec ce jeu (Live2D). Fallback exécutable du jeu utilisé avec succès."
+                        )
+                    else:
+                        fallback_result.setdefault('errors', []).append(
+                            "Le fallback exécutable du jeu a aussi échoué après l'échec SDK."
+                        )
+                    return fallback_result
+
                 result['errors'].append(
                     "Erreur Ren'Py détectée (traceback.txt généré). "
                     "Le problème vient du jeu, pas de RenExtract. "
@@ -1487,8 +1596,14 @@ init python early hide:
                 log_message("INFO", f"Génération SDK réussie ! {len(translation_files)} fichiers créés", category="renpy_generator_tl")
             else:
                 error_msg = f"Génération SDK échouée. Code: {process.returncode}"
-                if stderr:
-                    error_msg += f" Erreur: {stderr[:200]}"
+                try:
+                    with open(sdk_run_log_path, "r", encoding="utf-8", errors="ignore") as lf:
+                        log_content = lf.read()
+                    if log_content:
+                        excerpt = log_content[-1200:]
+                        log_message("INFO", f"Extrait log SDK (échec): {excerpt}", category="renpy_generator_tl")
+                except Exception as log_err:
+                    log_message("ATTENTION", f"Impossible de lire le log SDK après échec: {log_err}", category="renpy_generator_tl")
                 result['errors'].append(error_msg)
                 log_message("ERREUR", error_msg, category="renpy_generator_tl")
                 
@@ -1499,6 +1614,11 @@ init python early hide:
             result['errors'].append(f"Erreur inattendue SDK : {e}")
             log_message("ERREUR", f"Erreur génération SDK : {e}", category="renpy_generator_tl")
         finally:
+            if 'sdk_log_file' in locals():
+                try:
+                    sdk_log_file.close()
+                except Exception:
+                    pass
             # Finaliser le statut
             if result['success']:
                 if progress_callback:

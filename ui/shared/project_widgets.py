@@ -14,6 +14,7 @@ from ui.shared.project_utils import (
     parse_exclusions_string
 )
 from infrastructure.logging.logging import log_message
+from ui.shared.common_widgets import ToolTip
 
 class ProjectLanguageSelector:
     """Widget composé pour sélection projet + langue + fichiers avec mode dual"""
@@ -46,9 +47,13 @@ class ProjectLanguageSelector:
         self.on_files_changed = on_files_changed
         
         # Variables Tkinter
-        self.project_var = tk.StringVar(value=initial_project_path)
+        # Affiche le nom du projet ; le chemin complet reste dans current_project_path (+ tooltip)
+        initial_display = os.path.basename(initial_project_path.rstrip('/\\')) if initial_project_path else ""
+        self.project_var = tk.StringVar(value=initial_display)
         self.selected_language_var = tk.StringVar()
         self.selected_file_var = tk.StringVar()
+        self._editing_project_path = False
+        self._project_path_tooltip = None
         
         # Widgets (seront créés par create_widgets)
         self.project_entry = None
@@ -58,6 +63,7 @@ class ProjectLanguageSelector:
         self.file_combo = None
         self.file_status_label = None
         self.mode_indicator_label = None  # NOUVEAU
+        self.mode_frame = None
         
         # Données
         self.available_languages = []
@@ -102,7 +108,7 @@ class ProjectLanguageSelector:
             )
             project_label.pack(side='left')
             
-            # Entry avec événements intelligents
+            # Entry : nom du projet visible, chemin complet en tooltip / à l'édition
             self.project_entry = tk.Entry(
                 project_frame,
                 textvariable=self.project_var,
@@ -113,9 +119,12 @@ class ProjectLanguageSelector:
             )
             self.project_entry.pack(side='left', padx=(10, 5), fill='x', expand=True)
             
-            # Événements pour saisie intelligente
-            self.project_entry.bind('<KeyRelease>', self._on_project_path_changed)
-            self.project_entry.bind('<FocusOut>', self._on_project_path_changed)
+            self.project_entry.bind('<FocusIn>', self._on_project_entry_focus_in)
+            self.project_entry.bind('<FocusOut>', self._on_project_entry_focus_out)
+            self.project_entry.bind('<Return>', self._on_project_entry_focus_out)
+            
+            tip_text = self.current_project_path if self.current_project_path else "Chemin du projet"
+            self._project_path_tooltip = ToolTip(self.project_entry, tip_text)
             
             # NOUVEAU : Bouton Scanner unique
             refresh_btn = tk.Button(
@@ -159,24 +168,24 @@ class ProjectLanguageSelector:
             )
             project_btn.pack(side='right')
             
-            # NOUVEAU : Indicateur de mode
-            mode_frame = tk.Frame(self.parent_frame, bg=theme["bg"])
-            mode_frame.pack(fill='x', padx=15, pady=(2, 5))
+            # Ligne mode + indicateur outils (injecté par InfoFrame à gauche)
+            self.mode_frame = tk.Frame(self.parent_frame, bg=theme["bg"])
+            self.mode_frame.pack(fill='x', padx=15, pady=(2, 5))
             
             self.mode_indicator_label = tk.Label(
-                mode_frame,
+                self.mode_frame,
                 text="🔧 Mode : Projet complet",
-                font=('Segoe UI', 9, 'bold'),
+                font=('Segoe UI', 10, 'bold'),
                 bg=theme["bg"],
                 fg='#3498db'
             )
-            self.mode_indicator_label.pack(anchor='w')
+            self.mode_indicator_label.pack(side='left', anchor='w')
             
             # Info projet (modifié pour inclure info fichier unique)
             self.project_info_label = tk.Label(
                 self.parent_frame,
                 text="📊 Aucun projet sélectionné",
-                font=('Segoe UI', 9, 'italic'),
+                font=('Segoe UI', 10, 'italic'),
                 bg=theme["bg"],
                 fg='#2980B9'
             )
@@ -251,7 +260,7 @@ class ProjectLanguageSelector:
         self.language_status_label = tk.Label(
             lang_status_column,
             text="📋 Projet non configuré - Cliquez sur 'Scanner'",
-            font=('Segoe UI', 9, 'italic'),
+            font=('Segoe UI', 10, 'italic'),
             bg=theme["bg"],
             fg='#666666'
         )
@@ -264,7 +273,7 @@ class ProjectLanguageSelector:
         self.file_status_label = tk.Label(
             file_status_column,
             text="📋 Sélectionnez une langue pour voir les fichiers",
-            font=('Segoe UI', 9, 'italic'),
+            font=('Segoe UI', 10, 'italic'),
             bg=theme["bg"],
             fg='#666666'
         )
@@ -346,8 +355,13 @@ class ProjectLanguageSelector:
                     fg='#9b59b6'
                 )
             
-            # Mettre à jour l'entry avec le chemin du fichier
-            self.project_var.set(file_path)
+            # Afficher le nom du fichier ; chemin complet en tooltip
+            self._set_project_display(file_path)
+            # En mode fichier unique, current_project_path ne doit pas écraser la logique fichier
+            # _set_project_display a mis current_project_path = file_path — corriger :
+            self.current_project_path = ""
+            if self._project_path_tooltip is not None:
+                self._project_path_tooltip.set_text(file_path)
             
             # Mettre à jour les informations
             filename = os.path.basename(file_path)
@@ -525,22 +539,70 @@ class ProjectLanguageSelector:
         if project_path:
             self._validate_and_set_project(project_path)
     
-    def _on_project_path_changed(self, event=None):
-        """Appelé lors de la saisie manuelle du chemin"""
-        path = self.project_var.get().strip()
-        
-        if not path:
+    def _set_project_display(self, project_path: str):
+        """Affiche le nom du projet dans l'entry et le chemin complet en tooltip."""
+        path = (project_path or "").strip()
+        self.current_project_path = path
+        display = os.path.basename(path.rstrip('/\\')) if path else ""
+        # Éviter de déclencher une boucle d'édition
+        was_editing = self._editing_project_path
+        self._editing_project_path = True
+        try:
+            self.project_var.set(display)
+        finally:
+            self._editing_project_path = was_editing
+
+        tip = path if path else "Aucun projet sélectionné"
+        if self._project_path_tooltip is not None:
+            self._project_path_tooltip.set_text(tip)
+        elif self.project_entry is not None:
+            self._project_path_tooltip = ToolTip(self.project_entry, tip)
+
+    def _on_project_entry_focus_in(self, event=None):
+        """À l'édition : afficher le chemin complet pour permettre la modification."""
+        if self._editing_project_path:
             return
-        
-        if os.path.exists(path):
-            if os.path.isfile(path):
-                # C'est un fichier - basculer en mode fichier unique
-                self._set_single_file_mode(path)
-            elif os.path.isdir(path):
-                # C'est un dossier - basculer en mode projet
-                if self.current_mode == "single_file":
-                    self._switch_to_project_mode()
-                self._validate_and_set_project(path)
+        self._editing_project_path = True
+        path = self.current_project_path or self.single_file_path or ""
+        self.project_var.set(path)
+
+    def _on_project_entry_focus_out(self, event=None):
+        """Valide le chemin saisi puis réaffiche le nom court."""
+        try:
+            raw = self.project_var.get().strip()
+            if not raw:
+                self._editing_project_path = False
+                self._set_project_display(self.current_project_path or "")
+                return
+
+            # Si l'utilisateur n'a pas changé le chemin (juste cliqué), restaurer le nom
+            if (
+                self.current_project_path
+                and raw == self.current_project_path
+            ) or (
+                self.current_project_path
+                and raw == os.path.basename(self.current_project_path.rstrip('/\\'))
+            ):
+                self._editing_project_path = False
+                self._set_project_display(self.current_project_path)
+                return
+
+            if os.path.exists(raw):
+                if os.path.isfile(raw):
+                    self._set_single_file_mode(raw)
+                elif os.path.isdir(raw):
+                    if self.current_mode == "single_file":
+                        self._switch_to_project_mode()
+                    self._validate_and_set_project(raw)
+            else:
+                # Chemin invalide : restaurer l'affichage précédent
+                self._set_project_display(self.current_project_path or self.single_file_path or "")
+        finally:
+            self._editing_project_path = False
+
+    def _on_project_path_changed(self, event=None):
+        """Compatibilité — la validation se fait désormais au FocusOut."""
+        self._on_project_entry_focus_out(event)
     
     def _validate_and_set_project(self, project_path, force_refresh=False):
         """Valide et définit le projet actuel avec remontée intelligente"""
@@ -569,8 +631,7 @@ class ProjectLanguageSelector:
                         return
 
                 # Projet valide trouvé
-                self.current_project_path = actual_project_path
-                self.project_var.set(actual_project_path)
+                self._set_project_display(actual_project_path)
 
                 # Info projet avec indication si remontée effectuée
                 info_text = get_project_info_summary(actual_project_path)

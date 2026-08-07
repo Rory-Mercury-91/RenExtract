@@ -17,7 +17,7 @@ from ui.themes import theme_manager
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import show_translated_messagebox
-from ui.shared.common_widgets import PlaceholderEntry
+from ui.shared.common_widgets import PlaceholderEntry, create_themed_summary_entry
 from core.services.translation.combination_business import CombinationBusiness
 from core.models.backup.unified_backup_manager import UnifiedBackupManager, BackupType
 
@@ -112,20 +112,28 @@ def create_combination_tab(parent, main_interface):
     exclusions_input_frame = tk.Frame(exclusions_frame, bg=theme["bg"])
     exclusions_input_frame.pack(fill='x', pady=(0, 10))
     
-    # Entry pour les exclusions avec variable unifiée
-    exclusions_entry = tk.Entry(
+    # Entry en lecture seule (sélection via modale à cases à cocher)
+    exclusions_entry = create_themed_summary_entry(
         exclusions_input_frame,
-        textvariable=main_interface.unified_excluded_files_var,
-        font=('Segoe UI', 10),
-        bg=theme["entry_bg"],
-        fg=theme["entry_fg"],
-        insertbackground=theme["entry_fg"],
-        relief='solid',
-        borderwidth=1
+        main_interface.unified_excluded_files_var,
+        theme,
     )
     exclusions_entry.pack(side='left', fill='x', expand=True, pady=2)
-    exclusions_entry.bind('<KeyRelease>', lambda e: _on_unified_exclusion_changed(main_interface))
     
+    exclusions_pick_btn = tk.Button(
+        exclusions_input_frame,
+        text="📋 Sélectionner…",
+        command=lambda: _open_unified_exclusion_picker(main_interface),
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    exclusions_pick_btn.pack(side='right', padx=(10, 0))
+
     # Bouton aide
     exclusions_help_btn = tk.Button(
         exclusions_input_frame,
@@ -139,7 +147,7 @@ def create_combination_tab(parent, main_interface):
         relief='flat',
         cursor='hand2'
     )
-    exclusions_help_btn.pack(side='right', padx=(10, 0))
+    exclusions_help_btn.pack(side='right', padx=(5, 0))
 
     exclusions_reset_btn = tk.Button(
         exclusions_input_frame,
@@ -158,7 +166,7 @@ def create_combination_tab(parent, main_interface):
     # Note d'exemple
     exclusions_note = tk.Label(
         exclusions_frame,
-        text="💡 Exemple: common.rpy, screens.rpy, menu.rpy",
+        text="💡 Utilisez « Sélectionner… » pour choisir les .rpy du dossier langue",
         font=('Segoe UI', 8, 'italic'),
         bg=theme["bg"],
         fg='#666666'
@@ -402,9 +410,9 @@ def _show_unified_exclusion_help(main_interface):
         ("Cette option permet d'exclure certains fichiers lors des opérations de ", "normal"),
         ("combinaison", "bold"), (" et de ", "normal"), ("division", "bold"), (" des fichiers de traduction.\n\n", "normal"),
 
-        ("Format :\n", "bold_green"),
-        ("• Séparez les noms de fichiers par des ", "normal"), ("virgules", "bold"), (" (,).\n", "normal"),
-        ("• Utilisez le nom complet du fichier (avec l'extension ", "normal"), (".rpy", "yellow"), (").\n", "normal"),
+        ("Sélection :\n", "bold_green"),
+        ("• Cliquez sur ", "normal"), ("📋 Sélectionner…", "bold"), (" pour ouvrir la liste des .rpy du dossier langue.\n", "normal"),
+        ("• Cochez les fichiers à exclure, puis validez.\n", "normal"),
         ("• La correspondance sur le nom de fichier est ", "normal"), ("exacte", "underline"), (".\n\n", "normal"),
 
         ("Exemples valides :\n", "bold_green"),
@@ -434,6 +442,43 @@ def _show_unified_exclusion_help(main_interface):
         )
     except Exception as e:
         log_message("ERREUR", f"Erreur affichage aide exclusion unifiée : {e}", category="renpy_generator_unified")
+
+
+def _open_unified_exclusion_picker(main_interface):
+    """Ouvre la modale de sélection des .rpy à exclure pour combinaison/division."""
+    try:
+        if not getattr(main_interface, "current_project_path", None):
+            show_translated_messagebox(
+                'warning',
+                'Projet manquant',
+                'Sélectionnez d\'abord un projet Ren\'Py.',
+                parent=main_interface.window,
+            )
+            return
+
+        language = ""
+        if hasattr(main_interface, "language_var"):
+            language = (main_interface.language_var.get() or "").strip()
+        if not language:
+            language = "french"
+
+        from ui.dialogs.rpy_exclusion_picker_dialog import show_rpy_exclusion_picker
+        result = show_rpy_exclusion_picker(
+            parent=main_interface.window,
+            project_path=main_interface.current_project_path,
+            language=language,
+            current_exclusions=main_interface.unified_excluded_files_var.get(),
+            title="Exclusion combinaison/division — fichiers .rpy",
+        )
+        if result is not None:
+            main_interface.unified_excluded_files_var.set(result)
+            _on_unified_exclusion_changed(main_interface)
+    except Exception as e:
+        log_message(
+            "ERREUR",
+            f"Erreur ouverture sélecteur exclusions unifiées: {e}",
+            category="renpy_generator_combine_tl",
+        )
 
 
 # ===== FONCTIONS PRINCIPALES MODIFIÉES =====

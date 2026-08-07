@@ -16,6 +16,8 @@ import threading
 from ui.themes import theme_manager
 from infrastructure.config.config import config_manager
 from infrastructure.logging.logging import log_message
+from infrastructure.helpers.unified_functions import show_translated_messagebox
+from ui.shared.common_widgets import create_themed_summary_entry
 from core.services.tools.cleaning_business import UnifiedCleaner, unified_clean_all_translations
 
 def create_cleaning_tab(parent, main_interface):
@@ -135,20 +137,27 @@ def create_cleaning_tab(parent, main_interface):
     exclusions_input_frame = tk.Frame(exclusions_frame, bg=theme["bg"])
     exclusions_input_frame.pack(fill='x', pady=(0, 10))
     
-    # Entry pour les exclusions
-    exclusions_entry = tk.Entry(
+    # Affichage (non éditable) — sélection via modale à cases à cocher
+    exclusions_entry = create_themed_summary_entry(
         exclusions_input_frame,
-        textvariable=main_interface.cleanup_excluded_files_var,
-        font=('Segoe UI', 10),
-        bg=theme["entry_bg"],
-        fg=theme["entry_fg"],
-        insertbackground=theme["entry_fg"],
-        relief='solid',
-        borderwidth=1
+        main_interface.cleanup_excluded_files_var,
+        theme,
     )
     exclusions_entry.pack(side='left', fill='x', expand=True, pady=2, ipady=4)
-    exclusions_entry.bind('<KeyRelease>', lambda e: _on_cleanup_exclusion_changed(main_interface))
-    
+
+    exclusions_pick_btn = tk.Button(
+        exclusions_input_frame,
+        text="📋 Sélectionner…",
+        command=lambda: _open_cleanup_exclusion_picker(main_interface),
+        bg=theme["button_nav_bg"],
+        fg="#000000",
+        font=('Segoe UI', 9),
+        pady=4,
+        padx=8,
+        relief='flat',
+        cursor='hand2'
+    )
+    exclusions_pick_btn.pack(side='right', padx=(10, 0))
 
     exclusions_reset_btn = tk.Button(
         exclusions_input_frame,
@@ -167,7 +176,7 @@ def create_cleaning_tab(parent, main_interface):
     # Note d'exemple
     exclusions_note = tk.Label(
         exclusions_frame,
-        text="💡 Exemple: common.rpy, menu.rpy, mon_fichier.rpy",
+        text="💡 Utilisez « Sélectionner… » pour choisir les .rpy du dossier langue",
         font=('Segoe UI', 8, 'italic'),
         bg=theme["bg"],
         fg='#666666'
@@ -239,6 +248,53 @@ def _on_cleanup_exclusion_changed(main_interface):
         log_message("DEBUG", "Liste d'exclusions nettoyage mise à jour", category="renpy_generator_clean_tl")
     except Exception as e:
         log_message("ERREUR", f"Erreur sauvegarde exclusions nettoyage: {e}", category="renpy_generator_clean_tl")
+
+def _open_cleanup_exclusion_picker(main_interface):
+    """Ouvre la modale de sélection des .rpy à exclure pour le nettoyage."""
+    try:
+        if not getattr(main_interface, "current_project_path", None):
+            show_translated_messagebox(
+                'warning',
+                'Projet manquant',
+                'Sélectionnez d\'abord un projet Ren\'Py.',
+                parent=main_interface.window,
+            )
+            return
+
+        language = None
+        language_vars = getattr(main_interface, "language_vars", {}) or {}
+        selected = [lang for lang, var in language_vars.items() if var.get()]
+        if selected:
+            language = selected[0]
+        elif language_vars:
+            language = next(iter(language_vars))
+
+        if not language:
+            show_translated_messagebox(
+                'warning',
+                'Langue manquante',
+                'Scannez / sélectionnez d\'abord au moins une langue à nettoyer.',
+                parent=main_interface.window,
+            )
+            return
+
+        from ui.dialogs.rpy_exclusion_picker_dialog import show_rpy_exclusion_picker
+        result = show_rpy_exclusion_picker(
+            parent=main_interface.window,
+            project_path=main_interface.current_project_path,
+            language=language,
+            current_exclusions=main_interface.cleanup_excluded_files_var.get(),
+            title="Exclusion nettoyage — fichiers .rpy",
+        )
+        if result is not None:
+            main_interface.cleanup_excluded_files_var.set(result)
+            _on_cleanup_exclusion_changed(main_interface)
+    except Exception as e:
+        log_message(
+            "ERREUR",
+            f"Erreur ouverture sélecteur exclusions nettoyage: {e}",
+            category="renpy_generator_clean_tl",
+        )
 
 def _reset_cleanup_exclusions(main_interface):
     """Remet les exclusions de nettoyage par défaut"""

@@ -378,14 +378,14 @@ translate test:
             # Format générique (espérer que ça marche)
             cmd = [path, f"{test_file}:7"]
         
-        # Exécuter la commande
-        creationflags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        # Exécuter la commande (flux std sécurisés anti WinError 50/6)
+        from infrastructure.helpers.subprocess_helper import Popen_silent
         
-        subprocess.Popen(
+        Popen_silent(
             cmd,
-            creationflags=creationflags,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
         )
         
         log_message("INFO", f"Test éditeur lancé : {' '.join(cmd)}", category="paths_tab")

@@ -16,6 +16,7 @@ from core.models.files.file_manager import file_manager
 from infrastructure.logging.logging import log_message
 from infrastructure.helpers.unified_functions import get_last_directory, set_last_directory
 from ui.shared.project_widgets import ProjectLanguageSelector
+from ui.shared.common_widgets import ToolTip
 
 class InfoFrame(tk.Frame):
     """Frame d'informations avec ProjectLanguageSelector unifié et mode dual"""
@@ -38,10 +39,13 @@ class InfoFrame(tk.Frame):
         self.main_frame = None
         self.project_selector = None
         self.info_line = None
+        self.nav_line = None
         self.label_info_left = None
         self.label_info_right = None
         self.next_file_btn = None
         self.processing_label = None
+        self._tools_status_detail = "Initialisation des outils…"
+        self._tools_tooltip = None
         
         # État
         self.is_processing = False
@@ -79,24 +83,34 @@ class InfoFrame(tk.Frame):
             on_files_changed=self._on_files_changed,
             show_project_input=True
         )
-        
-        # === LIGNE D'INFORMATIONS ET NAVIGATION ===
-        self.info_line = tk.Frame(self.main_frame, bg=theme["bg"])
-        self.info_line.pack(fill='x', padx=10, pady=(5, 8))
 
-        # Indicateur visuel de disponibilité des outils (préchargement au démarrage)
+        # Indicateur outils : juste avant « Mode : Projet complet »
+        tools_host = getattr(self.project_selector, "mode_frame", None) or self.main_frame
         self.label_tools_status = tk.Label(
-            self.info_line,
-            text="☐ Outils: en cours d'initialisation...",
-            font=('Consolas', 10, 'bold'),
+            tools_host,
+            text="☐",
+            font=('Segoe UI', 12, 'bold'),
             bg=theme["bg"],
             fg="#ffc107",
             anchor='w',
-            justify='left'
+            cursor='question_arrow',
+            padx=4,
         )
-        self.label_tools_status.pack(side='left', padx=(0, 12))
+        if hasattr(self.project_selector, "mode_indicator_label") and self.project_selector.mode_indicator_label:
+            self.label_tools_status.pack(
+                side='left',
+                before=self.project_selector.mode_indicator_label,
+                padx=(0, 10),
+            )
+        else:
+            self.label_tools_status.pack(side='left', padx=(0, 10))
+        self._tools_tooltip = ToolTip(self.label_tools_status, self._tools_status_detail)
         
-        # Label gauche (informations générales)
+        # === Ligne fichier + navigation (Précédent/Suivant à droite) ===
+        self.info_line = tk.Frame(self.main_frame, bg=theme["bg"])
+        self.info_line.pack(fill='x', padx=10, pady=(8, 8))
+        
+        # Label gauche (fichier en cours)
         self.label_info_left = tk.Label(
             self.info_line,
             text="Sélectionnez un projet ou un fichier pour commencer",
@@ -108,51 +122,6 @@ class InfoFrame(tk.Frame):
         )
         self.label_info_left.pack(side='left', fill='x', expand=True)
         
-        # Frame pour les boutons de navigation
-        self.navigation_frame = tk.Frame(self.info_line, bg=theme["bg"])
-        
-        # Bouton Fichier Précédent (masqué initialement)
-        self.prev_file_btn = tk.Button(
-            self.navigation_frame,
-            text="◀️ Précédent",
-            command=self._prev_file,
-            bg=theme["button_secondary_bg"],
-            fg="#000000",
-            font=('Segoe UI', 9, 'bold'),
-            relief='solid',
-            cursor='hand2',
-            width=18,
-            pady=8,
-            borderwidth=2
-        )
-        
-        # Label de position (Fichier X/Y)
-        self.position_label = tk.Label(
-            self.navigation_frame,
-            text="",
-            font=('Consolas', 9),
-            bg=theme["bg"],
-            fg=theme["accent"]
-        )
-        
-        # Bouton Fichier Suivant (masqué initialement)
-        self.next_file_btn = tk.Button(
-            self.navigation_frame,
-            text="▶️ Suivant",
-            command=self._next_file,
-            bg=theme["button_secondary_bg"],
-            fg="#000000",
-            font=('Segoe UI', 9, 'bold'),
-            relief='solid',
-            cursor='hand2',
-            width=18,
-            pady=8,
-            borderwidth=2
-        )
-        
-        
-        # Ne pas pack encore - sera affiché quand nécessaire
-        
         # Label droite (statistiques)
         self.label_info_right = tk.Label(
             self.info_line,
@@ -163,7 +132,47 @@ class InfoFrame(tk.Frame):
             anchor='e',
             justify='right'
         )
-        self.label_info_right.pack(side='right', fill='x')
+        self.label_info_right.pack(side='right', padx=(10, 0))
+
+        # Navigation sur la même ligne (à gauche des stats)
+        self.nav_line = None  # plus de ligne dédiée
+        self.navigation_frame = tk.Frame(self.info_line, bg=theme["bg"])
+        
+        self.prev_file_btn = tk.Button(
+            self.navigation_frame,
+            text="◀️ Précédent",
+            command=self._prev_file,
+            bg=theme["button_secondary_bg"],
+            fg="#000000",
+            font=('Segoe UI', 10, 'bold'),
+            relief='solid',
+            cursor='hand2',
+            padx=14,
+            pady=6,
+            borderwidth=2
+        )
+        
+        self.position_label = tk.Label(
+            self.navigation_frame,
+            text="",
+            font=('Consolas', 10),
+            bg=theme["bg"],
+            fg=theme["accent"]
+        )
+        
+        self.next_file_btn = tk.Button(
+            self.navigation_frame,
+            text="▶️ Suivant",
+            command=self._next_file,
+            bg=theme["button_secondary_bg"],
+            fg="#000000",
+            font=('Segoe UI', 10, 'bold'),
+            relief='solid',
+            cursor='hand2',
+            padx=14,
+            pady=6,
+            borderwidth=2
+        )
         
         # Label de traitement (caché par défaut)
         self.processing_label = tk.Label(
@@ -447,12 +456,10 @@ class InfoFrame(tk.Frame):
             progress_indicator = self._get_progress_indicator(filepath)
             
             if self.current_mode == "single_file":
-                # Affichage mode fichier unique
-                file_dir = os.path.basename(os.path.dirname(filepath))
-                
+                # Affichage mode fichier unique — nom de fichier uniquement
                 if self.label_info_left:
                     self.label_info_left.config(
-                        text=f"{progress_indicator} 📄 Fichier unique • {file_dir} • {filename}",
+                        text=f"{progress_indicator} {filename}",
                         fg="#9b59b6"
                     )
                 
@@ -467,41 +474,28 @@ class InfoFrame(tk.Frame):
                     )
                 
             else:
-                # Affichage mode projet
-                project_name = os.path.basename(self.current_project_path) if self.current_project_path else "Projet"
+                # Affichage mode projet — fichier seul (langue/projet déjà visibles au-dessus)
+                if self.label_info_left:
+                    self.label_info_left.config(
+                        text=f"{progress_indicator} {filename}",
+                        fg=theme_manager.get_theme()["fg"]
+                    )
+                
+                line_count = 0
+                if hasattr(self.app_controller, 'file_content') and self.app_controller.file_content:
+                    line_count = len(self.app_controller.file_content)
                 
                 if len(self.current_files) > 1:
                     current_num = self.current_file_index + 1
                     total = len(self.current_files)
-                    
-                    if self.label_info_left:
-                        self.label_info_left.config(
-                            text=f"{progress_indicator} {project_name} • {self.current_language} • {filename}",
-                            fg=theme_manager.get_theme()["fg"]
-                        )
-                    
-                    line_count = 0
-                    if hasattr(self.app_controller, 'file_content') and self.app_controller.file_content:
-                        line_count = len(self.app_controller.file_content)
-                    
                     progress_stats = self._get_files_progress_stats()
                     
                     if self.label_info_right:
                         self.label_info_right.config(
-                            text=f"{line_count} lignes | {current_num}/{total} fichiers {progress_stats}",
+                            text=f"{line_count} lignes | {current_num}/{total} {progress_stats}",
                             fg=theme_manager.get_theme()["fg"]
                         )
                 else:
-                    if self.label_info_left:
-                        self.label_info_left.config(
-                            text=f"{progress_indicator} {project_name} • {self.current_language} • {filename}",
-                            fg=theme_manager.get_theme()["fg"]
-                        )
-                    
-                    line_count = 0
-                    if hasattr(self.app_controller, 'file_content') and self.app_controller.file_content:
-                        line_count = len(self.app_controller.file_content)
-                    
                     if self.label_info_right:
                         self.label_info_right.config(
                             text=f"{line_count} lignes",
@@ -706,26 +700,33 @@ class InfoFrame(tk.Frame):
             )
     
     def _show_navigation_buttons(self):
-        """Affiche les boutons de navigation et la position"""
+        """Affiche Précédent/Suivant sur la ligne fichier (à gauche des stats)."""
         if not hasattr(self, 'navigation_frame') or not self.navigation_frame:
             return
             
         if self.current_mode == "project" and len(self.current_files) > 1:
-            # Afficher le frame de navigation
-            self.navigation_frame.pack(side='right', padx=(5, 10), before=self.label_info_right)
-            
-            # Pack les boutons dans l'ordre
-            self.prev_file_btn.pack(side='left', padx=(0, 5))
-            self.position_label.pack(side='left', padx=5)
-            self.next_file_btn.pack(side='left', padx=(5, 0))
-            
-            # Mettre à jour la position
+            # Avant les stats à droite, après le nom de fichier à gauche
+            self.navigation_frame.pack(side='right', before=self.label_info_right, padx=(8, 8))
+            self.prev_file_btn.pack(side='left', padx=(0, 6))
+            self.position_label.pack(side='left', padx=4)
+            self.next_file_btn.pack(side='left', padx=(6, 0))
             self._update_position_display()
     
     def _hide_navigation_buttons(self):
         """Cache les boutons de navigation"""
         if hasattr(self, 'navigation_frame') and self.navigation_frame:
             self.navigation_frame.pack_forget()
+        for widget in (
+            getattr(self, 'prev_file_btn', None),
+            getattr(self, 'position_label', None),
+            getattr(self, 'next_file_btn', None),
+        ):
+            if widget is None:
+                continue
+            try:
+                widget.pack_forget()
+            except Exception:
+                pass
     
     def _update_position_display(self):
         """Met à jour l'affichage de la position (masqué car redondant avec les statistiques)"""
@@ -922,12 +923,22 @@ class InfoFrame(tk.Frame):
             self.label_info_right.config(text="")
 
     def update_tools_status(self, message: str, ready: bool = False):
-        """Met à jour l'indicateur visuel d'état des outils."""
+        """Met à jour l'indicateur compact d'état des outils (détail en tooltip)."""
         if not hasattr(self, 'label_tools_status') or self.label_tools_status is None:
             return
         marker = "☑" if ready else "☐"
         color = "#28a745" if ready else "#ffc107"
-        self.label_tools_status.config(text=f"{marker} Outils: {message}", fg=color)
+        self.label_tools_status.config(text=marker, fg=color)
+        detail = (message or "").strip()
+        if detail and not detail.lower().startswith("outils"):
+            detail = f"Outils: {detail}"
+        elif not detail:
+            detail = "Outils: statut inconnu"
+        self._tools_status_detail = detail
+        if self._tools_tooltip is not None:
+            self._tools_tooltip.set_text(detail)
+        else:
+            self._tools_tooltip = ToolTip(self.label_tools_status, detail)
     
     def update_execution_time(self, execution_time):
         """Compatibilité - mise à jour du temps d'exécution"""
@@ -949,6 +960,8 @@ class InfoFrame(tk.Frame):
                 self.label_info_right.pack_forget()
             if self.next_file_btn:
                 self.next_file_btn.pack_forget()
+            if hasattr(self, 'navigation_frame') and self.navigation_frame:
+                self.navigation_frame.pack_forget()
             
             if self.processing_label:
                 if message:

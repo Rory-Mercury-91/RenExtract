@@ -1,6 +1,50 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-08-07 (v1.2.43)
+
+### Correctif WinError 50 (extraction RPA / génération TL)
+
+- **Sous-processus Windows sécurisés** : redirection systématique des flux std manquants (`stdin`/`stdout`/`stderr`) pour les apps `--windowed`, afin d'éviter `[WinError 50] The request is not supported`.
+- **Helper unifié** : renforcement de `subprocess_helper` (`run_silent` / `Popen_silent`) et adoption sur les chemins critiques (RPA, TL, Python embedded, nettoyage, éditeurs, etc.).
+- **STARTF_USESTDHANDLES** : retrait du flag mal configuré lors de l'exécution unrpyc/rpatool.
+
+### Exclusion de fichiers .rpy par cases à cocher
+
+- **Modale de sélection** : liste des `.rpy` du dossier langue avec checkboxes, recherche et validation.
+- **Onglets concernés** : extraction textes oubliés, combinaison/division, cohérence et nettoyage.
+- **Affichage thème** : barre de résumé lisible (évite le fond blanc Windows lié à `readonly`).
+
+### Interface principale allégée
+
+- **Champ Projet** : affichage du nom du projet, chemin complet en tooltip au survol.
+- **Indicateur outils** : case `☑/☐` compacte devant « Mode : Projet complet », détail Python en tooltip.
+- **Statut fichier** : affichage du fichier courant uniquement (sans redondance projet/langue).
+- **Navigation** : boutons Précédent/Suivant sur la ligne fichier ; taille minimale de fenêtre portée à **1100×720**.
+
+### SDK Ren'Py
+
+- **Cache d'archives** : conservation des ZIP SDK téléchargés pour réutilisation.
+- **Génération TL** : bascule de la génération simple/options vers le mode SDK.
+
+### Fichiers modifiés
+
+- `infrastructure/helpers/subprocess_helper.py`
+- `core/services/translation/rpa_extraction_business.py`
+- `core/services/translation/translation_generation_business.py`
+- `core/tools/python_manager.py`
+- `core/tools/sdk_manager.py`
+- `ui/dialogs/rpy_exclusion_picker_dialog.py`
+- `ui/info_frame.py`
+- `ui/shared/common_widgets.py`
+- `ui/shared/project_widgets.py`
+- `ui/shared/project_utils.py`
+- `ui/tab_generator/*`, `ui/tab_tools/*`
+- `infrastructure/config/constants.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-04-13 (v1.2.42)
 
 ### Stabilisation contrôle antivirus des outils Python

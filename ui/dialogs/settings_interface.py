@@ -979,12 +979,11 @@ Si vous n'avez pas le SDK :
                 # Test simple : vérifier que le fichier existe et est exécutable
                 try:
                     # Test rapide avec --version (marche pour la plupart des éditeurs)
-                    _cf = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                    result = subprocess.run([path, "--version"],
+                    from infrastructure.helpers.subprocess_helper import run_silent
+                    result = run_silent([path, "--version"],
                                         capture_output=True,
                                         timeout=3,
-                                        text=True,
-                                        creationflags=_cf)
+                                        text=True)
                     self._show_toast(f"✅ {editor_name} : Chemin valide", "success")
                 except subprocess.TimeoutExpired:
                     self._show_toast(f"✅ {editor_name} : Chemin valide (timeout OK)", "success")

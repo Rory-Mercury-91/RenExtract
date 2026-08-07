@@ -15,6 +15,8 @@ import sys
 import glob
 import subprocess
 import tempfile
+import shutil
+import re
 from typing import Optional, List, Dict, Any
 from infrastructure.logging.logging import log_message
 from infrastructure.config.config import config_manager
@@ -37,9 +39,12 @@ class SDKManager:
         
         self.tools_dir = tools_dir
         self.embedded_sdk_dir = os.path.join(tools_dir, "renpy_sdk_embedded")
+        self.sdk_archives_dir = os.path.join(tools_dir, "renpy_sdk_archives")
         
         # Assurer que le dossier tools existe
         os.makedirs(tools_dir, exist_ok=True)
+        os.makedirs(self.embedded_sdk_dir, exist_ok=True)
+        os.makedirs(self.sdk_archives_dir, exist_ok=True)
     
     def get_embedded_sdk_path(self) -> Optional[str]:
         """Retourne le chemin vers le SDK Ren'Py intégré s'il existe"""
@@ -85,6 +90,8 @@ class SDKManager:
             
             # URL fixe pour la version spécifiée
             sdk_url = f"https://www.renpy.org/dl/{version}/renpy-{version}-sdk.zip"
+            archive_filename = f"renpy-{version}-sdk.zip"
+            cached_archive_path = os.path.join(self.sdk_archives_dir, archive_filename)
             
             downloader = get_downloader()
             
@@ -93,17 +100,25 @@ class SDKManager:
             if info_result['success']:
                 size_mb = info_result['content_length'] / 1024 / 1024
                 log_message("INFO", f"SDK distant détecté: {size_mb:.1f} MB", category="sdk_manager")
+            else:
+                raise RuntimeError(f"SDK non disponible pour {version} ({sdk_url})")
             
-            # Télécharger le SDK (dossier temp selon config : app ou système)
+            # Télécharger (ou réutiliser) l'archive ZIP dans le cache des tools
+            if os.path.exists(cached_archive_path):
+                archive_size_mb = os.path.getsize(cached_archive_path) / 1024 / 1024
+                log_message("INFO", f"Archive SDK en cache réutilisée: {archive_filename} ({archive_size_mb:.1f} MB)", category="sdk_manager")
+            else:
+                log_message("INFO", f"Téléchargement de l'archive SDK: {archive_filename}", category="sdk_manager")
+                download_result = downloader.download_file(sdk_url, cached_archive_path, force_redownload=False)
+                if not download_result['success']:
+                    raise Exception(f"Échec téléchargement SDK: {download_result['error']}")
+                log_message("INFO", f"Archive SDK téléchargée: {download_result['file_size']/1024/1024:.1f} MB", category="sdk_manager")
+
+            # Préparer une copie temporaire pour l'extraction
             app_temp = config_manager.get_download_temp_dir()
             temp_zip_path = os.path.join(app_temp, "renpy_sdk_temp.zip")
-            
-            download_result = downloader.download_file(sdk_url, temp_zip_path, force_redownload=True)
-            
-            if not download_result['success']:
-                raise Exception(f"Échec téléchargement SDK: {download_result['error']}")
-            
-            log_message("INFO", f"SDK téléchargé: {download_result['file_size']/1024/1024:.1f} MB", category="sdk_manager")
+            shutil.copy2(cached_archive_path, temp_zip_path)
+            log_message("INFO", f"Archive SDK copiée en temporaire: {temp_zip_path}", category="sdk_manager")
             
             log_message("INFO", "Extraction du SDK Ren'Py...", category="sdk_manager")
             
@@ -372,6 +387,61 @@ class SDKManager:
         except Exception as e:
             log_message("ERREUR", f"Erreur sélection intelligente SDK : {e}", category="sdk_manager")
             return self.download_renpy_sdk()
+
+    def _normalize_renpy_version(self, version_text: str) -> Optional[str]:
+        """
+        Normalise un texte de version Ren'Py au format x.y.z.
+        """
+        if not version_text:
+            return None
+        numbers = re.findall(r'\d+', str(version_text))
+        if not numbers:
+            return None
+        major = numbers[0]
+        minor = numbers[1] if len(numbers) >= 2 else "0"
+        patch = numbers[2] if len(numbers) >= 3 else "0"
+        return f"{major}.{minor}.{patch}"
+
+    def get_sdk_for_game_version(self, renpy_version: str) -> Optional[str]:
+        """
+        Retourne un SDK Ren'Py aligné sur la version détectée du jeu.
+        Ordre de fallback:
+        1) version exacte (x.y.z)
+        2) version mineure .0 (x.y.0)
+        3) stratégie standard get_sdk_for_cleaning()
+        """
+        normalized = self._normalize_renpy_version(renpy_version)
+        log_message("INFO", f"Demande SDK pour version jeu: '{renpy_version}' -> '{normalized}'", category="sdk_manager")
+        if not normalized:
+            log_message("INFO", "Version jeu non exploitable, fallback vers sélection SDK standard", category="sdk_manager")
+            return self.get_sdk_for_cleaning()
+
+        try:
+            major, minor, patch = normalized.split(".")
+            exact_version = f"{major}.{minor}.{patch}"
+            minor_zero_version = f"{major}.{minor}.0"
+
+            # Tentative exacte
+            sdk_exact = self.download_renpy_sdk(exact_version)
+            if sdk_exact and self.validate_sdk_path(sdk_exact):
+                log_message("INFO", f"SDK exact sélectionné: {exact_version}", category="sdk_manager")
+                return sdk_exact
+
+            # Fallback même mineure en .0
+            if minor_zero_version != exact_version:
+                log_message("INFO", f"Fallback SDK sur mineure .0: {minor_zero_version}", category="sdk_manager")
+                sdk_minor = self.download_renpy_sdk(minor_zero_version)
+                if sdk_minor and self.validate_sdk_path(sdk_minor):
+                    log_message("INFO", f"SDK fallback mineure sélectionné: {minor_zero_version}", category="sdk_manager")
+                    return sdk_minor
+
+            # Fallback global existant
+            log_message("INFO", "Aucun SDK versionné trouvé, fallback vers sélection SDK standard", category="sdk_manager")
+            return self.get_sdk_for_cleaning()
+
+        except Exception as e:
+            log_message("ERREUR", f"Erreur sélection SDK par version: {e}", category="sdk_manager")
+            return self.get_sdk_for_cleaning()
     
     def get_renpy_executable(self, sdk_path: str) -> Optional[str]:
         """

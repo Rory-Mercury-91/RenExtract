@@ -299,3 +299,58 @@ def parse_exclusions_string(exclusions_str: str) -> List[str]:
     
     exclusions = [item.strip() for item in exclusions_str.split(',') if item.strip()]
     return exclusions
+
+
+def exclusions_list_to_string(exclusions: List[str]) -> str:
+    """Convertit une liste d'exclusions en chaîne séparée par des virgules."""
+    cleaned = [item.strip() for item in exclusions if item and item.strip()]
+    # Dédupliquer en conservant l'ordre
+    seen = set()
+    unique = []
+    for item in cleaned:
+        key = item.lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+    return ", ".join(unique)
+
+
+def list_language_rpy_files(project_path: str, language: str) -> List[Dict[str, str]]:
+    """
+    Liste tous les fichiers .rpy du dossier langue (sans filtre d'exclusion).
+
+    Args:
+        project_path: Racine du projet Ren'Py
+        language: Nom du dossier langue (ex: french)
+
+    Returns:
+        Liste triée de dicts :
+        [{'name': 'script.rpy', 'relative': 'script.rpy', 'path': '...'}, ...]
+    """
+    files: List[Dict[str, str]] = []
+    try:
+        if not project_path or not language:
+            return files
+
+        language_path = os.path.join(project_path, "game", "tl", language)
+        if not os.path.isdir(language_path):
+            return files
+
+        for root, _dirs, files_in_dir in os.walk(language_path):
+            for filename in files_in_dir:
+                if not filename.lower().endswith('.rpy'):
+                    continue
+                full_path = os.path.join(root, filename)
+                relative = os.path.relpath(full_path, language_path).replace('\\', '/')
+                files.append({
+                    'name': filename,
+                    'relative': relative,
+                    'path': full_path,
+                })
+
+        files.sort(key=lambda item: item['relative'].lower())
+        return files
+
+    except Exception as e:
+        log_message("ERREUR", f"Erreur listage .rpy langue {language}: {e}", category="project_utils")
+        return files
