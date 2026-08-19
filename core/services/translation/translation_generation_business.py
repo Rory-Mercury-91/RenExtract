@@ -1357,6 +1357,37 @@ init python early hide:
                 result['errors'].append("Le dossier 'game' n'existe pas dans le projet.")
                 return result
             
+            # === PRÉPARATION FICHIERS FRANÇAIS AVANT GÉNÉRATION SDK ===
+            if options.get('create_common_file', False) and self._is_french_language_target(language):
+                if progress_callback:
+                    progress_callback(6, "Préparation du fichier common français...")
+                if status_callback:
+                    status_callback("Préparation du fichier common français...")
+                try:
+                    common_success, common_message = self.create_french_common_file_pre_generation(project_path, language)
+                    if common_success:
+                        result['french_common_prepared'] = True
+                        result['french_common_message'] = common_message
+                    else:
+                        result['warnings'].append(f"Common français : {common_message}")
+                except Exception as common_error:
+                    result['warnings'].append(f"Erreur common français : {common_error}")
+
+            if options.get('create_screen_file', False) and self._is_french_language_target(language):
+                if progress_callback:
+                    progress_callback(8, "Préparation du fichier screens français...")
+                if status_callback:
+                    status_callback("Préparation du fichier screens français...")
+                try:
+                    screens_success, screens_message = self.create_french_screen_file_pre_generation(project_path, language)
+                    if screens_success:
+                        result['french_screens_prepared'] = True
+                        result['french_screens_message'] = screens_message
+                    else:
+                        result['warnings'].append(f"Screens français : {screens_message}")
+                except Exception as screens_error:
+                    result['warnings'].append(f"Erreur screens français : {screens_error}")
+
             if progress_callback:
                 progress_callback(15, "Recherche du SDK Ren'Py...")
             elif self.progress_callback:
@@ -1594,6 +1625,118 @@ init python early hide:
                 result['success'] = True
                 
                 log_message("INFO", f"Génération SDK réussie ! {len(translation_files)} fichiers créés", category="renpy_generator_tl")
+
+                # === MODULES COMPLÉMENTAIRES (même logique que embedded) ===
+                # Polices GUI
+                if options.get('apply_system_font', False):
+                    if progress_callback:
+                        progress_callback(85, "Application des polices GUI...")
+                    if status_callback:
+                        status_callback("Application des polices GUI...")
+                    try:
+                        font_options = {'individual_fonts': options.get('individual_fonts', {})}
+                        font_success, font_info = self.create_individual_font_system_file(project_path, language, font_options)
+                        if font_success:
+                            result['font_applied'] = True
+                            result['font_summary'] = font_info
+                        else:
+                            result['warnings'].append(f"Impossible d'appliquer les polices GUI : {font_info}")
+                    except Exception as font_error:
+                        result['warnings'].append(f"Erreur lors de l'application des polices GUI : {font_error}")
+
+                # Console développeur
+                if options.get('create_developer_console', False):
+                    if progress_callback:
+                        progress_callback(90, "Création de la console développeur...")
+                    if status_callback:
+                        status_callback("Création de la console développeur...")
+                    try:
+                        cons_success, cons_message = self.create_developer_console_file(project_path, language)
+                        if cons_success:
+                            result['developer_console_created'] = True
+                            result['developer_console_message'] = cons_message
+                        else:
+                            result['warnings'].append(f"Console développeur : {cons_message}")
+                    except Exception as cons_error:
+                        result['warnings'].append(f"Erreur console développeur : {cons_error}")
+
+                # Langue par défaut au démarrage
+                if options.get('create_default_language_at_startup', False):
+                    if progress_callback:
+                        progress_callback(93, "Création du forçage de langue au démarrage...")
+                    if status_callback:
+                        status_callback("Création du forçage de langue au démarrage...")
+                    try:
+                        lang_success, lang_message = self.create_default_language_at_startup_file(project_path, language)
+                        if lang_success:
+                            result['default_language_at_startup_created'] = True
+                            result['default_language_at_startup_message'] = lang_message
+                        else:
+                            result['warnings'].append(f"Langue au démarrage : {lang_message}")
+                    except Exception as lang_err:
+                        result['warnings'].append(f"Erreur langue au démarrage : {lang_err}")
+
+                # Screen preferences avancées
+                options_explicitly_passed = options and 'advanced_screen_options' in options
+                is_simple_generation = False
+                if options and not options_explicitly_passed:
+                    no_explicit_options = (
+                        not options.get('create_common_file', False) and
+                        not options.get('create_screen_file', False) and
+                        not options.get('create_developer_console', False) and
+                        not options.get('create_default_language_at_startup', False) and
+                        not options.get('create_language_selector', False) and
+                        not options.get('apply_system_font', False)
+                    )
+                    is_simple_generation = no_explicit_options
+
+                if options_explicitly_passed:
+                    advanced_options = options['advanced_screen_options']
+                elif is_simple_generation:
+                    advanced_options = {
+                        'language_selector': False, 'fontsize_control': False,
+                        'textbox_opacity': False, 'textbox_offset': False,
+                        'textbox_outline': False
+                    }
+                else:
+                    advanced_options = config_manager.get_advanced_screen_options()
+
+                if not is_simple_generation and any(advanced_options.values()):
+                    if progress_callback:
+                        progress_callback(96, "Création des options screen preferences...")
+                    if status_callback:
+                        status_callback("Création des options screen preferences...")
+                    try:
+                        adv_success, adv_message = self.generate_advanced_screen_preferences(
+                            project_path, language, advanced_options
+                        )
+                        if adv_success:
+                            result['screen_preferences_created'] = True
+                            result['screen_preferences_message'] = adv_message
+                        else:
+                            result['warnings'].append(f"Options screen preferences : {adv_message}")
+                    except Exception as adv_error:
+                        result['warnings'].append(f"Erreur options screen preferences : {adv_error}")
+
+                if progress_callback:
+                    progress_callback(98, "Finalisation...")
+
+                # Résumé final
+                additional_features = []
+                if result.get('french_common_prepared'):
+                    additional_features.append("fichier common français")
+                if result.get('french_screens_prepared'):
+                    additional_features.append("fichier screens français")
+                if result.get('font_applied'):
+                    additional_features.append("polices GUI appliquées")
+                if result.get('developer_console_created'):
+                    additional_features.append("console développeur activée")
+                if result.get('default_language_at_startup_created'):
+                    additional_features.append("langue au démarrage configurée")
+                if result.get('screen_preferences_created'):
+                    additional_features.append("screen preferences configurées")
+                if additional_features:
+                    result['additional_features'] = additional_features
             else:
                 error_msg = f"Génération SDK échouée. Code: {process.returncode}"
                 try:

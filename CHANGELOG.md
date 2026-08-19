@@ -1,6 +1,21 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-08-19 (v1.2.44)
+
+### Correctif génération TL via SDK
+
+- **Common.rpy / Screens.rpy** : restauration de la préparation des fichiers français avant la génération SDK (blocs manquants depuis v1.2.43).
+- **Options post-génération** : restauration de l'application des polices GUI, console développeur, langue au démarrage et screen preferences après la génération SDK.
+- **Ordre d'exécution** : common/screens → génération TL → polices → console → langue → screen preferences.
+
+### Fichiers modifiés
+
+- `core/services/translation/translation_generation_business.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-08-07 (v1.2.43)
 
 ### Correctif WinError 50 (extraction RPA / génération TL)
