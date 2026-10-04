@@ -117,8 +117,7 @@ class AppController:
         """
         try:
             import tkinter.filedialog as filedialog
-            from pathlib import Path
-            from infrastructure.helpers.unified_functions import show_translated_messagebox, get_last_directory, set_last_directory
+            from infrastructure.helpers.unified_functions import show_translated_messagebox, set_last_directory
             
             lines_count = len(content.splitlines())
             message = f"""Le presse-papiers contient du texte.
@@ -138,7 +137,8 @@ class AppController:
             # === SAUVEGARDE INTELLIGENTE ===
             
             # Étape 1: Sélectionner le dossier de langue
-            initial_dir = get_last_directory() or str(Path.home())
+            # Ouvre directement game/tl/<langue> du projet en cours (french en priorité).
+            initial_dir = self._resolve_clipboard_save_directory()
             
             language_folder = filedialog.askdirectory(
                 parent=self.main_window.root,
@@ -198,6 +198,116 @@ class AppController:
         except Exception as e:
             log_message("ERREUR", f"Erreur dialog sauvegarde intelligente: {e}", category="clipboard")
             return {"action": "cancel", "saved_path": None}
+
+    def _resolve_clipboard_save_directory(self):
+        """
+        Dossier de départ pour enregistrer le presse-papiers.
+
+        Priorité :
+        1. Dossier de la langue sélectionnée dans le projet en cours
+        2. game/tl/french de ce projet, s'il existe
+        3. Première autre langue trouvée sous game/tl
+        4. Dernier dossier utilisé, puis le dossier personnel
+        """
+        from pathlib import Path
+        from infrastructure.helpers.unified_functions import get_last_directory
+
+        fallback = get_last_directory() or str(Path.home())
+
+        try:
+            project_path, language = self._get_current_translation_context()
+            project_root = self._find_renpy_project_root(project_path)
+            if not project_root:
+                return fallback
+
+            tl_root = os.path.join(project_root, "game", "tl")
+            if not os.path.isdir(tl_root):
+                return fallback
+
+            ignored_languages = {"", "none", "n/a (fichier unique)"}
+            if language and language.lower() not in ignored_languages:
+                selected_dir = os.path.join(tl_root, language)
+                if os.path.isdir(selected_dir):
+                    log_message(
+                        "INFO",
+                        f"Presse-papiers : ouverture dans {selected_dir}",
+                        category="clipboard",
+                    )
+                    return selected_dir
+
+            french_dir = os.path.join(tl_root, "french")
+            if os.path.isdir(french_dir):
+                log_message(
+                    "INFO",
+                    f"Presse-papiers : ouverture dans {french_dir}",
+                    category="clipboard",
+                )
+                return french_dir
+
+            for name in sorted(os.listdir(tl_root), key=str.lower):
+                if name.startswith(".") or name.lower() == "none":
+                    continue
+                candidate = os.path.join(tl_root, name)
+                if os.path.isdir(candidate):
+                    return candidate
+
+        except Exception as e:
+            log_message(
+                "DEBUG",
+                f"Dossier langue presse-papiers introuvable: {e}",
+                category="clipboard",
+            )
+
+        return fallback
+
+    def _get_current_translation_context(self):
+        """Retourne (chemin du projet, langue) tels que choisis dans l'interface."""
+        project_path = ""
+        language = ""
+
+        info = None
+        if self.main_window and hasattr(self.main_window, "get_component"):
+            info = self.main_window.get_component("info")
+
+        if info is not None:
+            project_path = getattr(info, "current_project_path", "") or ""
+            language = (getattr(info, "current_language", "") or "").strip()
+            selector = getattr(info, "project_selector", None)
+            if selector is not None:
+                if not project_path:
+                    project_path = getattr(selector, "current_project_path", "") or ""
+                if not language:
+                    lang_var = getattr(selector, "selected_language_var", None)
+                    if lang_var is not None:
+                        language = (lang_var.get() or "").strip()
+
+        if not project_path and getattr(self, "project_manager", None):
+            project_path = self.project_manager.get_current_project() or ""
+
+        if not project_path:
+            project_path = config_manager.get("current_project", "") or ""
+
+        return project_path, language
+
+    def _find_renpy_project_root(self, start_path):
+        """Remonte jusqu'au dossier qui contient game/."""
+        if not start_path:
+            return ""
+
+        current = start_path
+        if os.path.isfile(current):
+            current = os.path.dirname(current)
+        current = os.path.abspath(current)
+
+        for _ in range(12):
+            if os.path.isdir(os.path.join(current, "game")):
+                return current
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+
+        return ""
 
     def _validate_language_folder_clipboard(self, folder_path):
         """

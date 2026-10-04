@@ -1,6 +1,22 @@
 
 # 📝 CHANGELOG - RenExtract
 
+## 2026-10-04 (v1.2.45)
+
+### Presse-papiers : dossier de langue du projet
+
+- **Sauvegarde du presse-papiers** : le sélecteur de dossier s'ouvre dans `game/tl/<langue>` du projet en cours de traduction.
+- **Priorité** : langue sélectionnée dans l'interface, sinon `french` s'il existe, sinon une autre langue du projet.
+- **Repli** : dernier dossier utilisé, puis le dossier personnel, si aucun projet n'est ouvert.
+
+### Fichiers modifiés
+
+- `core/app_controller.py`
+- `infrastructure/config/constants.py`
+- `CHANGELOG.md`
+
+---
+
 ## 2026-08-19 (v1.2.44)
 
 ### Correctif génération TL via SDK
